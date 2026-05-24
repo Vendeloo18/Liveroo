@@ -1,8 +1,5 @@
 {
   "projects": {
-    "default": "subastas-ve-dev",
-    "subastas": "instacompras-fe791"
-  },
-  "targets": {},
-  "etags": {}
+    "default": "instacompras-fe791"
+  }
 }
