@@ -12,7 +12,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signUp, error, clearError } = useAuthStore();
+  const { signIn, signUp, signInWithGoogle, error, clearError } = useAuthStore();
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -24,6 +24,13 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); clearError(); setLoading(true);
     try { await signIn(email, password); router.push("/"); }
+    catch {} finally { setLoading(false); }
+  };
+
+
+  const handleGoogle = async () => {
+    clearError(); setLoading(true);
+    try { await signInWithGoogle(); router.push("/"); }
     catch {} finally { setLoading(false); }
   };
 
@@ -75,7 +82,7 @@ export default function AuthPage() {
         {/* Buttons */}
         <div style={{ width:"100%", maxWidth:380, display:"flex", flexDirection:"column", gap:12, marginBottom:24 }}>
           {[
-            { label:"Continuar con Google", onClick: undefined },
+            { label:"Continuar con Google", onClick: handleGoogle },
             { label:"Continuar con Apple", onClick: undefined },
             { label:"Continuar con Correo", onClick: () => setScreen("email-signup") },
           ].map((btn, i) => (
@@ -171,7 +178,7 @@ export default function AuthPage() {
 
           <div style={{ display:"flex", gap:10, marginBottom:20 }}>
             {["Google","Apple"].map(s => (
-              <button key={s} style={{ flex:1, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:12, padding:"12px", fontSize:"0.82rem", fontWeight:600, color:"rgba(255,255,255,0.6)", cursor:"pointer", fontFamily:"inherit" }}>{s}</button>
+              <button key={s} onClick={s==="Google" ? handleGoogle : undefined} style={{ flex:1, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:12, padding:"12px", fontSize:"0.82rem", fontWeight:600, color:"rgba(255,255,255,0.6)", cursor:"pointer", fontFamily:"inherit" }}>{s}</button>
             ))}
           </div>
 

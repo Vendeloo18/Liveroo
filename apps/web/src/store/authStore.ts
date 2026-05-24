@@ -6,6 +6,8 @@ import { create } from "zustand";
 import { type UserProfile } from "@subastas-ve/shared";
 import {
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
@@ -33,6 +35,7 @@ interface AuthState {
     displayName: string;
     whatsapp?: string;
   }) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
   _init: () => () => void; // returns unsubscribe
@@ -77,6 +80,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         updatedAt: serverTimestamp(),
       };
       await setDoc(doc(db, "users", user.uid), profile);
+    } catch (err: any) {
+      set({ error: mapFirebaseError(err.code), loading: false });
+      throw err;
+    }
+  },
+
+  signInWithGoogle: async () => {
+    set({ error: null, loading: true });
+    try {
+      const provider = new GoogleAuthProvider();
+      const { user } = await signInWithPopup(auth, provider);
+      // Crear perfil en Firestore solo si no existe
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, {
+          uid: user.uid,
+          email: user.email ?? "",
+          displayName: user.displayName ?? "Usuario",
+          whatsapp: null,
+          role: "buyer",
+          sellerStatus: undefined,
+          ratingAvg: 0,
+          ratingCount: 0,
+          totalSales: 0,
+          totalPurchases: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
     } catch (err: any) {
       set({ error: mapFirebaseError(err.code), loading: false });
       throw err;
