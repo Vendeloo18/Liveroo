@@ -52,7 +52,7 @@ function AuctionCard({ auction, onClick }: { auction: Auction; onClick: () => vo
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
             <div style={{ fontSize:"0.58rem", color:"rgba(255,255,255,0.3)", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase" }}>Puja actual</div>
-            <div style={{ fontSize:"1rem", fontWeight:900, color:"#fff", letterSpacing:"-0.02em" }}>${auction.currentBidUsd.toFixed(2)}</div>
+            <div style={{ fontSize:"1rem", fontWeight:900, color:"#fff", letterSpacing:"-0.02em" }}>${(auction.currentBidUsd ?? 0).toFixed(2)}</div>
           </div>
           <div style={{ background:"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))", border:"1px solid rgba(168,85,247,0.25)", borderRadius:8, padding:"5px 12px" }}>
             <span style={{ fontSize:"0.7rem", fontWeight:800, color:"#fff" }}>Pujar</span>
@@ -130,7 +130,7 @@ export default function Home() {
                   <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"60%", background:"linear-gradient(transparent,rgba(8,8,24,0.95))" }}/>
                   <div style={{ position:"absolute", top:10, left:10, background:"rgba(229,62,62,0.92)", borderRadius:8, padding:"3px 8px", display:"flex", alignItems:"center", gap:4 }}>
                     <div style={{ width:4, height:4, background:"#fff", borderRadius:"50%" }}/>
-                    <span style={{ fontSize:"0.6rem", fontWeight:800, color:"#fff" }}>LIVE {show.viewerCount>0&&`• ${show.viewerCount>=1000?`${(show.viewerCount/1000).toFixed(1)}K`:show.viewerCount}`}</span>
+                    <span style={{ fontSize:"0.6rem", fontWeight:800, color:"#fff" }}>LIVE {show.viewerCount>0&&`• ${show.viewerCount>=1000?`${((show.viewerCount ?? 0)/1000).toFixed(1)}K`:show.viewerCount}`}</span>
                   </div>
                 </div>
                 <div style={{ padding:"10px 12px 14px" }}>
