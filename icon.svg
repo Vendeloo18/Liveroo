@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#111111"/>
-  <rect x="118" y="118" width="22" height="276" rx="11" fill="#FFD000"/>
-  <rect x="158" y="118" width="64" height="276" rx="14" fill="white"/>
-  <rect x="158" y="320" width="218" height="74" rx="14" fill="white"/>
-  <!-- small solid red dot, bottom right corner, no ring -->
-  <circle cx="408" cy="388" r="18" fill="#FF2D2D"/>
-</svg>
