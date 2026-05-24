@@ -1,0 +1,27 @@
+{
+  "name": "subastas-ve",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.2.2",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:functions": "turbo run dev --filter=functions",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "prettier": "^3.2.5",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

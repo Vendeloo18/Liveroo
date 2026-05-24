@@ -1,0 +1,33 @@
+{
+  "name": "mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@subastas-ve/shared": "workspace:*",
+    "expo": "~51.0.0",
+    "expo-router": "~3.5.0",
+    "react": "18.2.0",
+    "react-native": "0.74.0",
+    "firebase": "^10.11.0",
+    "zustand": "^4.5.2",
+    "@react-native-firebase/app": "^20.0.0",
+    "@react-native-firebase/auth": "^20.0.0",
+    "@react-native-firebase/firestore": "^20.0.0",
+    "@react-native-firebase/messaging": "^20.0.0",
+    "react-native-agora": "^4.3.0",
+    "@sentry/react-native": "^5.22.0",
+    "date-fns": "^3.6.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~18.2.0",
+    "typescript": "^5.4.0"
+  }
+}
