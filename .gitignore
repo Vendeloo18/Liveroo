@@ -11,3 +11,5 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 *.tsbuildinfo
+serviceAccountKey.json
+scripts/seedProd.js

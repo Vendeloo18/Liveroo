@@ -171,32 +171,6 @@ export default function Home() {
       )}
 
       {/* Upcoming Shows */}
-      {soon.length > 0 && (
-        <div style={{ padding:"28px 20px 0", position:"relative", zIndex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
-            <div style={{ width:8, height:8, borderRadius:"50%", background:"#F5C518", boxShadow:"0 0 8px rgba(245,197,24,0.5)" }}/>
-            <span style={{ fontSize:"0.7rem", fontWeight:800, color:"rgba(255,255,255,0.5)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Próximos shows</span>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {soon.map(show => (
-              <div key={show.id} onClick={() => router.push(`/shows/${show.id}`)} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.08)", borderRadius:16, overflow:"hidden", display:"flex", alignItems:"center", cursor:"pointer" }}>
-                <div style={{ width:70, height:70, flexShrink:0, overflow:"hidden" }}>
-                  {show.coverImageURL ? <img src={show.coverImageURL} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : <div style={{ width:"100%", height:"100%", background:"rgba(168,85,247,0.08)" }}/>}
-                </div>
-                <div style={{ flex:1, padding:"12px 14px", minWidth:0 }}>
-                  <div style={{ fontSize:"0.85rem", fontWeight:700, color:"#fff", marginBottom:3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{show.title}</div>
-                  <div style={{ fontSize:"0.7rem", color:"rgba(255,255,255,0.35)" }}>{show.sellerName} · {show.totalProducts} productos</div>
-                </div>
-                <div style={{ padding:"0 14px", flexShrink:0 }}>
-                  <div style={{ background:"rgba(245,197,24,0.08)", border:"1px solid rgba(245,197,24,0.15)", borderRadius:20, padding:"5px 12px" }}>
-                    <span style={{ fontSize:"0.63rem", fontWeight:700, color:"#F5C518" }}>Pronto</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {shows.length===0 && auctions.length===0 && (
         <div style={{ padding:"80px 20px", textAlign:"center", position:"relative", zIndex:1 }}>
