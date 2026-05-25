@@ -43,7 +43,7 @@ export function useAgora(channelName: string, role: "host" | "audience") {
 
       setJoined(true);
     } catch (e: any) {
-      setError(e.message ?? "Error conectando");
+      console.error("AGORA ERROR:", e.code, e.name, e.message); setError(e.message ?? "Error conectando");
     } finally {
       setLoading(false);
     }
