@@ -1,7 +1,7 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { doc, collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, onSnapshot, query, orderBy, addDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { db } from "../../../../lib/firebase";
 import { useAuthStore } from "../../../../store/authStore";
@@ -35,7 +35,7 @@ export default function SellerShowPage() {
   const handleStart = async () => {
     setLoading("start");
     try {
-      await httpsCallable(fnc,"startShow")({ showId });
+      await updateDoc(doc(db,"shows",showId), { status:"live", updatedAt: serverTimestamp() });
       await agora.join(localVideoRef.current);
     } catch(e:any) { alert(e.message); }
     finally { setLoading(null); }
@@ -44,7 +44,7 @@ export default function SellerShowPage() {
   const handleEnd = async () => {
     if(!confirm("¿Terminar el show?")) return;
     setLoading("end");
-    try { await agora.leave(); await httpsCallable(fnc,"endShow")({ showId }); router.push("/seller"); }
+    try { await agora.leave(); await updateDoc(doc(db,"shows",showId), { status:"ended", updatedAt: serverTimestamp() }); router.push("/seller"); }
     catch(e:any) { alert(e.message); }
     finally { setLoading(null); }
   };

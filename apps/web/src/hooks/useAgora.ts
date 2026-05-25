@@ -22,7 +22,7 @@ export function useAgora(channelName: string, role: "host" | "audience") {
       const client = AgoraRTC.createClient({ mode:"live", codec:"vp8" });
       clientRef.current = client;
       await client.setClientRole(role);
-      await client.join(AGORA_APP_ID, channelName, AGORA_TOKEN, null);
+      await client.join(AGORA_APP_ID, channelName, null, null);
 
       if (role === "host") {
         const [micTrack, cameraTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
