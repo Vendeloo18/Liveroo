@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const AGORA_APP_ID = "2cd32d3fd3554834954d580d57c870b9";
-const AGORA_TOKEN = "007eJxTYFip+vHRgbv7jdR9zL9l7n8+sXjp2b9n5JVERX/5fJXdfvC3AoNRcoqxUYpxWoqxqamJhbGJpalJiqmFQYqpebKFuUGS5ZPLwlkNgYwMV/PXMzBCIYgvxFCckV8eb2hubmlmYWQJ1GphwcAAAC2qJZQ=";
+const AGORA_TOKEN = "007eJxTYJgXf6lyQr/ykZOtL/SsjD8UPv39TlCgYuIGnyVZlyafnKygwGCUnGJslGKclmJsampiYWxiaWqSYmphkGJqnmxhbpBkGXRNOKshkJGB/YMCIyMDBIL4QgzFGfnl8Ybm5pZmFkaWQK0WFgwMAJqeIzo=";
 
 export function useAgora(channelName: string, role: "host" | "audience") {
   const clientRef = useRef<any>(null);
