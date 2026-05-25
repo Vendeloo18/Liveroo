@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const AGORA_APP_ID = "2cd32d3fd3554834954d580d57c870b9";
-const AGORA_TOKEN = "007eJxTYJjIxbuoaOHZiTZxC/+lLqh74X31W4dA1sPdF1qZJ3S11igoMBglpxgbpRinpRibmppYGJtYmpqkmFoYpJiaJ1uYGyRZnpcWymoIZGRgSAphZWSAQBCfnaE4I7/cwMCQgQEAxiEfSA==";
+const AGORA_TOKEN = "007eJxTYLC3UnCTe7x77+R9VjWLePZO7V3Ra7ZcefGl1JqbB847X0xSYDBKTjE2SjFOSzE2NTWxMDaxNDVJMbUwSDE1T7YwN0iyZL0knNUQyMggvvguAyMUgvgsDCGpxSUMDABJiR8M";
 
 export function useAgora(channelName: string, role: "host" | "audience") {
   const clientRef = useRef<any>(null);
@@ -22,7 +22,7 @@ export function useAgora(channelName: string, role: "host" | "audience") {
       const client = AgoraRTC.createClient({ mode:"live", codec:"vp8" });
       clientRef.current = client;
       await client.setClientRole(role);
-      await client.join(AGORA_APP_ID, channelName, null, null);
+      await client.join(AGORA_APP_ID, channelName, AGORA_TOKEN, null);
 
       if (role === "host") {
         const [micTrack, cameraTrack] = await AgoraRTC.createMicrophoneAndCameraTracks(
