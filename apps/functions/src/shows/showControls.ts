@@ -1,15 +1,36 @@
 // =============================================================
-// CLOUD FUNCTION: startShow (callable)
+// CLOUD FUNCTIONS: control del show en vivo
 // =============================================================
-// El vendedor llama a esta función para iniciar su show en vivo.
-// Valida que sea el dueño del show, que esté scheduled, y que
-// tenga al menos un producto. Activa el primer producto.
+// startShow   — el vendedor arranca; activa la primera subasta de la cola
+// endShow     — termina el show y cancela lo que quedó sin subastar
+// skipAuction — salta la subasta actual y pasa a la siguiente
+//
+// Las subastas del show viven en /auctions con mode="live" y showId.
+// Son los mismos documentos que las subastas sueltas: cambia el modo,
+// no el motor.
 // =============================================================
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+// Timestamp/FieldValue desde el subpath modular: el namespace
+// admin.firestore.* no sobrevive al envoltorio del emulador.
+import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
-import { COLLECTIONS } from "../constants";
+import { COLLECTIONS, DEFAULT_LIVE_TIMER_S } from "../constants";
+
+// limit(2) y no 1: skipAuction necesita descartar la propia subasta
+// saltada si todavía figuraba en la cola, y quedarse con la siguiente real.
+const nextWaitingQuery = (showId: string) =>
+  db
+    .collection(COLLECTIONS.AUCTIONS)
+    .where("showId", "==", showId)
+    .where("status", "==", "waiting")
+    .orderBy("sortOrder", "asc")
+    .limit(2);
+
+// =============================================================
+// startShow
+// =============================================================
 
 export const startShow = functions
   .region("us-central1")
@@ -19,7 +40,7 @@ export const startShow = functions
       throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
     }
 
-    const { showId } = data as { showId: string };
+    const { showId } = (data ?? {}) as { showId?: string };
     if (!showId) {
       throw new functions.https.HttpsError("invalid-argument", "showId es requerido");
     }
@@ -28,17 +49,16 @@ export const startShow = functions
     const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
 
     await db.runTransaction(async (tx) => {
+      // ── lecturas ──
       const showSnap = await tx.get(showRef);
       if (!showSnap.exists) {
         throw new functions.https.HttpsError("not-found", "Show no encontrado");
       }
-
       const show = showSnap.data()!;
 
       if (show.sellerId !== callerId) {
         throw new functions.https.HttpsError("permission-denied", "No eres el dueño del show");
       }
-
       if (!["scheduled", "draft"].includes(show.status)) {
         throw new functions.https.HttpsError(
           "failed-precondition",
@@ -46,45 +66,33 @@ export const startShow = functions
         );
       }
 
-      // Buscar el primer producto (sortOrder 0)
-      const firstProductSnap = await db
-        .collection(COLLECTIONS.SHOW_PRODUCTS(showId))
-        .where("auctionStatus", "==", "waiting")
-        .orderBy("sortOrder", "asc")
-        .limit(1)
-        .get();
-
-      if (firstProductSnap.empty) {
+      const firstSnap = await tx.get(nextWaitingQuery(showId));
+      if (firstSnap.empty) {
         throw new functions.https.HttpsError(
           "failed-precondition",
-          "El show no tiene productos. Agrega al menos uno antes de iniciar."
+          "El show no tiene subastas. Agrega al menos una antes de iniciar."
         );
       }
 
-      const firstProduct = firstProductSnap.docs[0];
-      const firstProductData = firstProduct.data();
-      const timerSeconds = (firstProductData.timerSeconds as number) ?? 30;
-      const now = admin.firestore.Timestamp.now();
+      // ── escrituras ──
+      const first = firstSnap.docs[0];
+      const firstData = first.data();
+      const timerS = (firstData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
+      const now = Timestamp.now();
 
-      const auctionEndsAt = admin.firestore.Timestamp.fromMillis(
-        now.toMillis() + timerSeconds * 1000
-      );
-
-      // Iniciar show
       tx.update(showRef, {
         status: "live",
         startedAt: now,
-        currentAuctionId: firstProduct.id,
-        currentAuctionIndex: firstProductData.sortOrder ?? 0,
+        currentAuctionId: first.id,
+        currentAuctionIndex: firstData.sortOrder ?? 0,
         updatedAt: now,
       });
 
-      // Activar primer producto
-      tx.update(firstProduct.ref, {
-        auctionStatus: "active",
-        currentBidUsd: firstProductData.startingPriceUsd,
-        auctionStartedAt: now,
-        auctionEndsAt,
+      tx.update(first.ref, {
+        status: "active",
+        currentBidUsd: firstData.startingPriceUsd,
+        startsAt: now,
+        endsAt: Timestamp.fromMillis(now.toMillis() + timerS * 1000),
         updatedAt: now,
       });
     });
@@ -94,55 +102,69 @@ export const startShow = functions
   });
 
 // =============================================================
-// CLOUD FUNCTION: endShow (callable)
-// Termina el show manualmente antes de que agoten los productos
+// endShow
 // =============================================================
+// Cancela las subastas que quedaron en cola. La que esté activa se
+// deja cerrar sola: si alguien ya pujó, merece su orden.
 
 export const endShow = functions
   .region("us-central1")
-  .runWith({ timeoutSeconds: 30 })
+  .runWith({ timeoutSeconds: 60 })
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
     }
 
-    const { showId } = data as { showId: string };
+    const { showId } = (data ?? {}) as { showId?: string };
+    if (!showId) {
+      throw new functions.https.HttpsError("invalid-argument", "showId es requerido");
+    }
+
     const callerId = context.auth.uid;
+    const [showSnap, userSnap] = await Promise.all([
+      db.doc(`${COLLECTIONS.SHOWS}/${showId}`).get(),
+      db.doc(`${COLLECTIONS.USERS}/${callerId}`).get(),
+    ]);
 
-    const userSnap = await db.doc(`${COLLECTIONS.USERS}/${callerId}`).get();
-    const userRole = userSnap.data()?.role;
-
-    const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
-    const showSnap = await showRef.get();
     if (!showSnap.exists) {
       throw new functions.https.HttpsError("not-found", "Show no encontrado");
     }
 
-    const show = showSnap.data()!;
-    const isOwner = show.sellerId === callerId;
-    const isAdmin = userRole === "admin";
-
+    const isOwner = showSnap.data()!.sellerId === callerId;
+    const isAdmin = userSnap.data()?.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new functions.https.HttpsError("permission-denied", "Sin permiso para terminar el show");
     }
 
-    const now = admin.firestore.Timestamp.now();
-    await showRef.update({
+    const now = Timestamp.now();
+
+    const pending = await db
+      .collection(COLLECTIONS.AUCTIONS)
+      .where("showId", "==", showId)
+      .where("status", "==", "waiting")
+      .get();
+
+    const batch = db.batch();
+    batch.update(showSnap.ref, {
       status: "ended",
       endedAt: now,
       currentAuctionId: null,
       updatedAt: now,
     });
+    pending.docs.forEach((d) =>
+      batch.update(d.ref, { status: "cancelled", endedAt: now, updatedAt: now })
+    );
+    await batch.commit();
 
-    return { success: true };
+    functions.logger.info("Show terminado", { showId, canceladas: pending.size });
+    return { success: true, cancelled: pending.size };
   });
 
 // =============================================================
-// CLOUD FUNCTION: skipProduct (callable)
-// El vendedor salta un producto durante el show
+// skipAuction
 // =============================================================
 
-export const skipProduct = functions
+export const skipAuction = functions
   .region("us-central1")
   .runWith({ timeoutSeconds: 30 })
   .https.onCall(async (data, context) => {
@@ -150,31 +172,46 @@ export const skipProduct = functions
       throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
     }
 
-    const { showId, productId } = data as { showId: string; productId: string };
+    const { showId, auctionId } = (data ?? {}) as { showId?: string; auctionId?: string };
+    if (!showId || !auctionId) {
+      throw new functions.https.HttpsError("invalid-argument", "showId y auctionId son requeridos");
+    }
+
     const callerId = context.auth.uid;
     const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
-    const productRef = db.doc(`${COLLECTIONS.SHOW_PRODUCTS(showId)}/${productId}`);
-    const now = admin.firestore.Timestamp.now();
+    const auctionRef = db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`);
 
     await db.runTransaction(async (tx) => {
-      const [showSnap, productSnap] = await Promise.all([
+      // ── lecturas ──
+      const [showSnap, auctionSnap] = await Promise.all([
         tx.get(showRef),
-        tx.get(productRef),
+        tx.get(auctionRef),
       ]);
 
-      if (!showSnap.exists || !productSnap.exists) {
-        throw new functions.https.HttpsError("not-found", "Show o producto no encontrado");
+      if (!showSnap.exists || !auctionSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Show o subasta no encontrada");
       }
-
       if (showSnap.data()!.sellerId !== callerId) {
         throw new functions.https.HttpsError("permission-denied", "No eres el dueño");
       }
 
-      tx.update(productRef, {
-        auctionStatus: "skipped",
-        auctionEndedAt: now,
-        updatedAt: now,
-      });
+      const auction = auctionSnap.data()!;
+      if (auction.showId !== showId) {
+        throw new functions.https.HttpsError("invalid-argument", "La subasta no es de este show");
+      }
+      // Con pujas encima no se salta: alguien ya puso plata.
+      if (auction.currentBidderId) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          "No puedes saltar una subasta que ya tiene pujas"
+        );
+      }
+
+      const nextSnap = await tx.get(nextWaitingQuery(showId));
+      const now = Timestamp.now();
+
+      // ── escrituras ──
+      tx.update(auctionRef, { status: "skipped", endedAt: now, updatedAt: now });
 
       const msgRef = db.collection(COLLECTIONS.SHOW_MESSAGES(showId)).doc();
       tx.set(msgRef, {
@@ -183,39 +220,38 @@ export const skipProduct = functions
         authorId: "system",
         authorName: "Sistema",
         type: "system",
-        text: `⏭ El vendedor saltó "${productSnap.data()!.title}"`,
+        text: `⏭ El vendedor saltó "${auction.title}"`,
         createdAt: now,
       });
 
-      // Avanzar al siguiente (read-only en la transacción: hacemos get separado)
-      const nextSnap = await db
-        .collection(COLLECTIONS.SHOW_PRODUCTS(showId))
-        .where("auctionStatus", "==", "waiting")
-        .orderBy("sortOrder", "asc")
-        .limit(1)
-        .get();
+      // La saltada puede ser la misma que devuelve la query si estaba
+      // en waiting; en ese caso no hay siguiente real.
+      const next = nextSnap.docs.find((d) => d.id !== auctionId);
 
-      if (nextSnap.empty) {
-        tx.update(showRef, { status: "ended", endedAt: now, currentAuctionId: null, updatedAt: now });
+      if (!next) {
+        tx.update(showRef, {
+          status: "ended",
+          endedAt: now,
+          currentAuctionId: null,
+          updatedAt: now,
+        });
         return;
       }
 
-      const next = nextSnap.docs[0];
       const nextData = next.data();
-      const timerS = (nextData.timerSeconds as number) ?? 30;
-      const endsAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + timerS * 1000);
+      const timerS = (nextData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
 
       tx.update(next.ref, {
-        auctionStatus: "active",
+        status: "active",
         currentBidUsd: nextData.startingPriceUsd,
-        auctionStartedAt: now,
-        auctionEndsAt: endsAt,
+        startsAt: now,
+        endsAt: Timestamp.fromMillis(now.toMillis() + timerS * 1000),
         updatedAt: now,
       });
 
       tx.update(showRef, {
         currentAuctionId: next.id,
-        currentAuctionIndex: nextData.sortOrder,
+        currentAuctionIndex: nextData.sortOrder ?? 0,
         updatedAt: now,
       });
     });

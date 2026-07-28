@@ -1,185 +1,155 @@
 "use client";
 import { useEffect, useState } from "react";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "../store/authStore";
+import { db } from "../lib/firebase";
+import { AuctionCard, AuctionCardData } from "../components/auction/AuctionCard";
 
-interface Show { id:string; sellerName:string; title:string; status:string; viewerCount:number; totalProducts:number; coverImageURL?:string; }
-interface Auction { id:string; title:string; imageURL:string; currentBidUsd:number; sellerName:string; sellerId:string; endsAt:any; bidsCount:number; status:string; }
-
-const CATS = ["Para Ti","Seguidos","Moda","Electronica","Calzado","Joyas","Hogar","Deportes"];
-
-function useCountdown(endsAt: any) {
-  const [text, setText] = useState("");
-  useEffect(() => {
-    const tick = () => {
-      if (!endsAt) return;
-      const ms = (endsAt.toMillis?.() ?? new Date(endsAt).getTime()) - Date.now();
-      if (ms <= 0) { setText("Finalizada"); return; }
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      if (h > 0) setText(`${h}h ${m}m`);
-      else setText(`${m}m ${s}s`);
-    };
-    tick();
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [endsAt]);
-  return text;
+interface Show {
+  id: string; sellerName?: string; title?: string; status?: string;
+  viewerCount?: number; totalProducts?: number; coverImageURL?: string;
 }
 
-function AuctionCard({ auction, onClick }: { auction: Auction; onClick: () => void }) {
-  const countdown = useCountdown(auction.endsAt);
-  const isUrgent = countdown.includes("m") && !countdown.includes("h") && parseInt(countdown) < 10;
-  return (
-    <div onClick={onClick} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, overflow:"hidden", cursor:"pointer", display:"flex", flexDirection:"column" }}>
-      <div style={{ position:"relative", paddingBottom:"70%", overflow:"hidden" }}>
-        <img src={auction.imageURL} alt={auction.title} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }}/>
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(transparent 40%,rgba(8,8,24,0.95))" }}/>
-        {/* Timer */}
-        <div style={{ position:"absolute", bottom:8, left:8, background: isUrgent ? "rgba(255,45,45,0.9)" : "rgba(8,8,24,0.85)", border:`1px solid ${isUrgent?"rgba(255,45,45,0.4)":"rgba(168,85,247,0.2)"}`, borderRadius:8, padding:"3px 8px" }}>
-          <span style={{ fontSize:"0.65rem", fontWeight:800, color:"#fff", fontVariantNumeric:"tabular-nums" }}>⏱ {countdown}</span>
-        </div>
-        {/* Bids */}
-        <div style={{ position:"absolute", top:8, right:8, background:"rgba(8,8,24,0.8)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:8, padding:"3px 8px" }}>
-          <span style={{ fontSize:"0.6rem", fontWeight:700, color:"rgba(255,255,255,0.6)" }}>{auction.bidsCount} pujas</span>
-        </div>
-      </div>
-      <div style={{ padding:"10px 12px 12px" }}>
-        <div style={{ fontSize:"0.75rem", fontWeight:800, color:"#fff", lineHeight:1.3, marginBottom:6, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{auction.title}</div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div>
-            <div style={{ fontSize:"0.58rem", color:"rgba(255,255,255,0.3)", fontWeight:600, letterSpacing:"0.06em", textTransform:"uppercase" }}>Puja actual</div>
-            <div style={{ fontSize:"1rem", fontWeight:900, color:"#fff", letterSpacing:"-0.02em" }}>${(auction.currentBidUsd ?? 0).toFixed(2)}</div>
-          </div>
-          <div style={{ background:"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))", border:"1px solid rgba(168,85,247,0.25)", borderRadius:8, padding:"5px 12px" }}>
-            <span style={{ fontSize:"0.7rem", fontWeight:800, color:"#fff" }}>Pujar</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const CATEGORIAS = ["Para Ti", "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar", "Deportes"];
 
 export default function Home() {
-  const [shows, setShows] = useState<Show[]>([]);
-  const [auctions, setAuctions] = useState<Auction[]>([]);
-  const [cat, setCat] = useState("Para Ti");
   const router = useRouter();
-  const { profile } = useAuthStore();
+  const [shows, setShows] = useState<Show[]>([]);
+  const [auctions, setAuctions] = useState<AuctionCardData[]>([]);
+  const [cat, setCat] = useState("Para Ti");
+  const [cargando, setCargando] = useState(true);
 
+  // Los onSnapshot llevan callback de error a propósito: sin él, una
+  // regla que deniegue o un índice que falte fallan en silencio y la
+  // pantalla se queda cargando para siempre sin decir por qué.
   useEffect(() => {
-    const q = query(collection(db,"shows"), where("status","in",["live","scheduled"]), orderBy("viewerCount","desc"));
-    return onSnapshot(q, snap => setShows(snap.docs.map(d => ({id:d.id,...d.data()} as Show))));
+    const q = query(collection(db, "shows"), where("status", "==", "live"), orderBy("viewerCount", "desc"), limit(6));
+    return onSnapshot(q,
+      s => setShows(s.docs.map(d => ({ id: d.id, ...d.data() } as Show))),
+      e => console.error("No se pudieron cargar los shows:", e.code, e.message));
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db,"auctions"), where("status","==","active"));
-    return onSnapshot(q, snap => setAuctions(snap.docs.map(d => ({id:d.id,...d.data()} as Auction))));
+    const q = query(collection(db, "auctions"), where("status", "==", "active"));
+    return onSnapshot(q,
+      s => {
+        setAuctions(s.docs.map(d => ({ id: d.id, ...d.data() } as AuctionCardData)));
+        setCargando(false);
+      },
+      e => { console.error("No se pudieron cargar las subastas:", e.code, e.message); setCargando(false); });
   }, []);
 
-  const live = shows.filter(s => s.status==="live");
-  const soon = shows.filter(s => s.status==="scheduled");
+  const visibles = auctions
+    .filter(a => cat === "Para Ti" || (a as any).category === cat)
+    .sort((a, b) => {
+      const ms = (v: any) => v?.toMillis?.() ?? new Date(v ?? 0).getTime();
+      return ms(a.endsAt) - ms(b.endsAt);
+    });
 
   return (
-    <div style={{ minHeight:"100vh", background:"#080818", fontFamily:"'Inter',-apple-system,sans-serif", maxWidth:480, margin:"0 auto", paddingBottom:90 }}>
+    <div className="lv-app">
 
-      <div style={{ position:"fixed", top:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, height:250, background:"radial-gradient(ellipse 80% 60% at 50% 0%, rgba(168,85,247,0.08) 0%, transparent 70%)", pointerEvents:"none", zIndex:0 }}/>
+      {/* Barra superior */}
+      <header className="lv-topbar">
+        <span className="lv-wordmark">Liveroo</span>
+        <div style={{ flex: 1 }}/>
+        <button className="lv-icon-btn" onClick={() => router.push("/auctions")} aria-label="Buscar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </button>
+        <button className="lv-icon-btn" onClick={() => router.push("/notifications")} aria-label="Notificaciones">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+      </header>
 
-      {/* Header */}
-      <div style={{ padding:"16px 20px 0", display:"flex", alignItems:"center", gap:10, position:"relative", zIndex:1 }}>
-        <div style={{ fontSize:"1.7rem", fontWeight:900, letterSpacing:"-0.04em", background:"linear-gradient(135deg,#00c8ff,#a855f7,#e040fb)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", filter:"drop-shadow(0 0 12px rgba(168,85,247,0.4))", cursor:"pointer" }}>
-          Liveroo
-        </div>
-        <div style={{ flex:1 }}/>
-        <button onClick={() => router.push("/search")} style={{ width:40, height:40, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </button>
-        <button onClick={() => router.push("/notifications")} style={{ width:40, height:40, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", position:"relative" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <div style={{ position:"absolute", top:8, right:8, width:7, height:7, borderRadius:"50%", background:"#ff2d2d", boxShadow:"0 0 6px #ff2d2d", border:"1.5px solid #080818" }}/>
-        </button>
-        <button onClick={() => router.push("/wallet")} style={{ background:"rgba(168,85,247,0.1)", border:"1px solid rgba(168,85,247,0.2)", borderRadius:20, padding:"7px 12px", display:"flex", alignItems:"center", gap:5, cursor:"pointer" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></svg>
-          <span style={{ fontSize:"0.72rem", fontWeight:700, color:"#a855f7" }}>Billetera</span>
-        </button>
-      </div>
-
-      {/* Categories */}
-      <div style={{ display:"flex", gap:8, padding:"16px 20px 0", overflowX:"auto", scrollbarWidth:"none", position:"relative", zIndex:1 }}>
-        {CATS.map(c => (
-          <button key={c} onClick={() => setCat(c)} style={{ background:cat===c?"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))":"rgba(13,13,32,0.8)", border:`1px solid ${cat===c?"rgba(168,85,247,0.4)":"rgba(168,85,247,0.08)"}`, color:"#fff", borderRadius:20, padding:"8px 18px", fontSize:"0.78rem", fontWeight:cat===c?700:400, cursor:"pointer", whiteSpace:"nowrap", fontFamily:"inherit", flexShrink:0 }}>{c}</button>
+      {/* Categorías */}
+      <div className="lv-chips">
+        {CATEGORIAS.map(c => (
+          <button key={c} onClick={() => setCat(c)} className={`lv-chip${cat === c ? " lv-chip--active" : ""}`}>
+            {c}
+          </button>
         ))}
       </div>
 
-      {/* Live Shows */}
-      {live.length > 0 && (
-        <div style={{ padding:"24px 20px 0", position:"relative", zIndex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
-            <div style={{ width:8, height:8, borderRadius:"50%", background:"#ff2d2d", boxShadow:"0 0 10px #ff2d2d" }}/>
-            <span style={{ fontSize:"0.7rem", fontWeight:800, color:"rgba(255,255,255,0.5)", letterSpacing:"0.12em", textTransform:"uppercase" }}>En vivo ahora</span>
-            <span style={{ fontSize:"0.7rem", color:"rgba(255,255,255,0.2)", fontWeight:600 }}>{live.length} shows</span>
+      {/* Shows en vivo */}
+      {shows.length > 0 && (
+        <>
+          <div className="lv-section">
+            <h2 className="lv-section__title">
+              <span className="lv-badge lv-badge--live"><i className="lv-dot"/> EN VIVO</span>
+              {shows.length} {shows.length === 1 ? "show" : "shows"}
+            </h2>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {live.map(show => (
-              <div key={show.id} onClick={() => router.push(`/shows/${show.id}`)} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:18, overflow:"hidden", cursor:"pointer", boxShadow:"0 4px 24px rgba(0,0,0,0.3)" }}>
-                <div style={{ position:"relative", paddingBottom:"70%", background:"linear-gradient(135deg,#0d0d20,#12122a)", overflow:"hidden" }}>
-                  {show.coverImageURL ? <img src={show.coverImageURL} alt={show.title} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }}/> : <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ width:36, height:36, background:"rgba(168,85,247,0.12)", border:"1px solid rgba(168,85,247,0.2)", borderRadius:10 }}/></div>}
-                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:"60%", background:"linear-gradient(transparent,rgba(8,8,24,0.95))" }}/>
-                  <div style={{ position:"absolute", top:10, left:10, background:"rgba(229,62,62,0.92)", borderRadius:8, padding:"3px 8px", display:"flex", alignItems:"center", gap:4 }}>
-                    <div style={{ width:4, height:4, background:"#fff", borderRadius:"50%" }}/>
-                    <span style={{ fontSize:"0.6rem", fontWeight:800, color:"#fff" }}>LIVE {show.viewerCount>0&&`• ${show.viewerCount>=1000?`${((show.viewerCount ?? 0)/1000).toFixed(1)}K`:show.viewerCount}`}</span>
-                  </div>
+          <div className="lv-pad" style={{ display:"flex", gap:12, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+            {shows.map(show => (
+              <article
+                key={show.id}
+                onClick={() => router.push(`/shows/${show.id}`)}
+                className="lv-card"
+                style={{ minWidth: 176, flexShrink: 0 }}
+              >
+                <div className="lv-card__media" style={{ aspectRatio: "3 / 4" }}>
+                  {show.coverImageURL
+                    ? <img src={show.coverImageURL} alt={show.title ?? ""}/>
+                    : <div style={{ width:"100%", height:"100%", background:"var(--surface-3)" }}/>}
+                  <span className="lv-badge lv-badge--live lv-badge--float" style={{ top:8, left:8 }}>
+                    <i className="lv-dot"/> LIVE
+                  </span>
+                  {(show.viewerCount ?? 0) > 0 && (
+                    <span className="lv-badge lv-badge--float" style={{ top:8, right:8 }}>
+                      {show.viewerCount} viendo
+                    </span>
+                  )}
                 </div>
-                <div style={{ padding:"10px 12px 14px" }}>
+                <div className="lv-card__body">
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
-                    <div style={{ width:18, height:18, background:"linear-gradient(135deg,#00c8ff,#a855f7)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <span style={{ fontSize:"0.48rem", fontWeight:900, color:"#fff" }}>{show.sellerName[0]}</span>
-                    </div>
-                    <span style={{ fontSize:"0.68rem", color:"rgba(255,255,255,0.5)", fontWeight:600, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{show.sellerName}</span>
+                    <span className="lv-avatar" style={{ width:20, height:20, fontSize:"0.6rem" }}>
+                      {(show.sellerName ?? "?")[0]}
+                    </span>
+                    <span className="lv-dim" style={{ fontSize:"0.72rem", fontWeight:600, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                      {show.sellerName}
+                    </span>
                   </div>
-                  <div style={{ fontSize:"0.8rem", fontWeight:800, color:"#fff", lineHeight:1.3, marginBottom:5, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{show.title}</div>
-                  <div style={{ fontSize:"0.63rem", color:"rgba(255,255,255,0.25)" }}>{show.totalProducts} productos</div>
+                  <h3 className="lv-card__title" style={{ minHeight:0, marginBottom:0 }}>{show.title}</h3>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      {/* Auctions */}
-      {auctions.length > 0 && (
-        <div style={{ padding:"28px 20px 0", position:"relative", zIndex:1 }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <div style={{ width:8, height:8, borderRadius:"50%", background:"#a855f7", boxShadow:"0 0 10px #a855f7" }}/>
-              <span style={{ fontSize:"0.7rem", fontWeight:800, color:"rgba(255,255,255,0.5)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Subastas activas</span>
-              <span style={{ fontSize:"0.7rem", color:"rgba(255,255,255,0.2)", fontWeight:600 }}>{auctions.length}</span>
+      {/* Subastas */}
+      <div className="lv-section">
+        <h2 className="lv-section__title">Subastas activas</h2>
+        <button className="lv-section__link" onClick={() => router.push("/auctions")}>Ver todas →</button>
+      </div>
+
+      <div className="lv-pad">
+        {cargando ? (
+          <div className="lv-grid">
+            {[0,1,2,3].map(i => <div key={i} className="lv-skel" style={{ aspectRatio:"1 / 1.42" }}/>)}
+          </div>
+        ) : visibles.length === 0 ? (
+          <div className="lv-empty">
+            <div className="lv-empty__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <path d="M14 11l-8 8M9 6l9 9M3 21h6M12.5 3.5l8 8"/>
+              </svg>
             </div>
-            <button onClick={() => router.push("/auctions")} style={{ background:"none", border:"none", color:"rgba(168,85,247,0.6)", fontSize:"0.72rem", fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-              Ver todas →
-            </button>
+            <div className="lv-empty__title">
+              {cat === "Para Ti" ? "Todavía no hay subastas activas" : `Nada en ${cat}`}
+            </div>
+            <div className="lv-empty__text">Vuelve pronto o publica la tuya.</div>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-            {auctions.slice(0,6).map(auction => (
-              <AuctionCard key={auction.id} auction={auction} onClick={() => router.push(`/auctions/${auction.id}`)}/>
-            ))}
+        ) : (
+          <div className="lv-grid">
+            {visibles.slice(0, 8).map(a => <AuctionCard key={a.id} auction={a}/>)}
           </div>
-        </div>
-      )}
-
-      {/* Upcoming Shows */}
-
-      {shows.length===0 && auctions.length===0 && (
-        <div style={{ padding:"80px 20px", textAlign:"center", position:"relative", zIndex:1 }}>
-          <div style={{ width:64, height:64, background:"rgba(168,85,247,0.08)", border:"1px solid rgba(168,85,247,0.15)", borderRadius:20, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.4)" strokeWidth="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          </div>
-          <div style={{ fontSize:"0.92rem", fontWeight:700, color:"rgba(255,255,255,0.3)", marginBottom:6 }}>No hay actividad ahora</div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

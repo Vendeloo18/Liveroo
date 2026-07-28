@@ -10,7 +10,9 @@ import { Timestamp } from "firebase/firestore";
 
 export type UserRole = "buyer" | "seller" | "admin";
 
-export type SellerStatus = "pending" | "approved" | "suspended";
+// "none" = todavía no ha pedido ser vendedor. El campo siempre está
+// presente: las reglas exigen que exista para que nadie nazca aprobado.
+export type SellerStatus = "none" | "pending" | "approved" | "suspended";
 
 export interface UserProfile {
   uid: string;

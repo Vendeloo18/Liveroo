@@ -9,80 +9,110 @@ interface Props {
   max?: number;
 }
 
+// Los límites de aquí son los mismos que hacen cumplir storage.rules
+// (solo imágenes, hasta 5 MB): el cliente avisa temprano, el servidor decide.
+const MAX_BYTES = 5 * 1024 * 1024;
+
 export function ImageUploader({ images, onChange, path, max = 5 }: Props) {
   const { upload, uploading, progress } = useUpload();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
 
-  const handleFiles = async (files: FileList | null) => {
+  const subir = async (files: FileList | null) => {
     if (!files) return;
     setError("");
-    const remaining = max - images.length;
-    if (remaining <= 0) { setError(`Máximo ${max} fotos`); return; }
-    const toUpload = Array.from(files).slice(0, remaining);
-    for (const file of toUpload) {
-      if (!file.type.startsWith("image/")) { setError("Solo imágenes"); continue; }
-      if (file.size > 5 * 1024 * 1024) { setError("Máximo 5MB por imagen"); continue; }
+
+    const quedan = max - images.length;
+    if (quedan <= 0) { setError(`Ya tienes el máximo de ${max} fotos`); return; }
+
+    let acumuladas = [...images];
+    for (const file of Array.from(files).slice(0, quedan)) {
+      if (!file.type.startsWith("image/")) { setError("Solo se aceptan imágenes"); continue; }
+      if (file.size > MAX_BYTES) { setError(`"${file.name}" pesa más de 5 MB`); continue; }
       try {
-        const filename = `${path}/${Date.now()}_${file.name.replace(/\s/g,"_")}`;
-        const url = await upload(file, filename);
-        onChange([...images, url]);
-      } catch(e) { setError("Error subiendo imagen"); }
+        const nombre = `${path}/${Date.now()}_${file.name.replace(/\s/g, "_")}`;
+        const url = await upload(file, nombre);
+        // Se acumula en una variable local: onChange con `images` dentro
+        // del bucle perdería todas menos la última.
+        acumuladas = [...acumuladas, url];
+        onChange(acumuladas);
+      } catch {
+        setError("No se pudo subir la imagen");
+      }
     }
+
+    if (inputRef.current) inputRef.current.value = "";
   };
 
-  const removeImage = (idx: number) => {
-    onChange(images.filter((_,i) => i !== idx));
-  };
+  const quitar = (i: number) => onChange(images.filter((_, idx) => idx !== i));
 
   return (
-    <div style={{ marginBottom:16 }}>
-      {/* Image grid */}
-      <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:8 }}>
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
         {images.map((url, i) => (
-          <div key={i} style={{ position:"relative", width:80, height:80, borderRadius:10, overflow:"hidden", border:"1px solid rgba(168,85,247,0.2)" }}>
-            <img src={url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+          <div key={url} style={{ position: "relative", width: 78, height: 78, borderRadius: 12, overflow: "hidden", border: "1px solid var(--line)" }}>
+            <img src={url} alt={`Foto ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+            {i === 0 && (
+              <span className="lv-badge lv-badge--accent" style={{ position: "absolute", bottom: 4, left: 4, fontSize: "0.55rem", padding: "2px 6px" }}>
+                Portada
+              </span>
+            )}
             <button
-              onClick={() => removeImage(i)}
-              style={{ position:"absolute", top:4, right:4, width:20, height:20, background:"rgba(255,45,45,0.9)", border:"none", borderRadius:"50%", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:"0.7rem", lineHeight:1, fontWeight:900 }}
-            >×</button>
+              type="button"
+              onClick={() => quitar(i)}
+              aria-label={`Quitar foto ${i + 1}`}
+              style={{
+                position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%",
+                background: "rgba(11,11,13,0.72)", color: "#fff", fontSize: "0.85rem", lineHeight: 1,
+                fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              ×
+            </button>
           </div>
         ))}
 
-        {/* Add button */}
         {images.length < max && (
           <button
+            type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            style={{ width:80, height:80, background:"rgba(168,85,247,0.06)", border:`2px dashed ${uploading?"rgba(168,85,247,0.4)":"rgba(168,85,247,0.2)"}`, borderRadius:10, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:uploading?"not-allowed":"pointer", gap:4 }}
+            style={{
+              width: 78, height: 78, borderRadius: 12, background: "var(--surface-2)",
+              border: "1.5px dashed var(--line-strong)", display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 5, color: "var(--ink-3)",
+            }}
           >
             {uploading ? (
               <>
-                <div style={{ fontSize:"0.72rem", fontWeight:700, color:"#a855f7" }}>{progress}%</div>
-                <div style={{ width:40, height:3, background:"rgba(168,85,247,0.1)", borderRadius:2 }}>
-                  <div style={{ width:`${progress}%`, height:"100%", background:"#a855f7", borderRadius:2, transition:"width 0.2s" }}/>
-                </div>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--ink)" }}>{progress}%</span>
+                <span style={{ width: 38, height: 3, background: "var(--surface-3)", borderRadius: 2, overflow: "hidden" }}>
+                  <span style={{ display: "block", width: `${progress}%`, height: "100%", background: "var(--ink)", transition: "width 0.2s" }}/>
+                </span>
               </>
             ) : (
               <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.6)" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                <span style={{ fontSize:"0.55rem", color:"rgba(168,85,247,0.6)", fontWeight:600 }}>Foto</span>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                <span style={{ fontSize: "0.58rem", fontWeight: 700 }}>Foto</span>
               </>
             )}
           </button>
         )}
       </div>
 
-      {error && <div style={{ fontSize:"0.72rem", color:"#ff8080", marginBottom:4 }}>{error}</div>}
-      <div style={{ fontSize:"0.62rem", color:"rgba(255,255,255,0.25)" }}>{images.length}/{max} fotos · Máx 5MB c/u</div>
+      {error && <div style={{ fontSize: "0.74rem", color: "var(--live)", fontWeight: 600, marginBottom: 4 }}>{error}</div>}
+      <div className="lv-dim" style={{ fontSize: "0.7rem" }}>
+        {images.length}/{max} fotos · máximo 5 MB cada una{images.length > 0 ? " · la primera es la portada" : ""}
+      </div>
 
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
         multiple
-        style={{ display:"none" }}
-        onChange={e => handleFiles(e.target.files)}
+        style={{ display: "none" }}
+        onChange={e => subir(e.target.files)}
       />
     </div>
   );

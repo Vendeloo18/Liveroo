@@ -71,7 +71,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         displayName,
         whatsapp: whatsapp ?? null,
         role: "buyer",
-        sellerStatus: undefined,
+        // "none" y no undefined: las reglas exigen el campo presente, y
+        // Firestore rechaza valores undefined al escribir.
+        sellerStatus: "none",
         ratingAvg: 0,
         ratingCount: 0,
         totalSales: 0,
@@ -99,9 +101,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           uid: user.uid,
           email: user.email ?? "",
           displayName: user.displayName ?? "Usuario",
+          avatar: user.photoURL ?? null,
           whatsapp: null,
           role: "buyer",
-          sellerStatus: undefined,
+          sellerStatus: "none",
           ratingAvg: 0,
           ratingCount: 0,
           totalSales: 0,

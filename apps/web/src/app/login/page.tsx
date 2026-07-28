@@ -3,192 +3,151 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
 
-type Screen = "signup" | "login" | "email-signup";
+type Modo = "entrar" | "crear";
 
 export default function AuthPage() {
-  const [screen, setScreen] = useState<Screen>("signup");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signUp, signInWithGoogle, error, clearError } = useAuthStore();
   const router = useRouter();
+  const { signIn, signUp, signInWithGoogle, error, clearError, profile } = useAuthStore();
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault(); clearError(); setLoading(true);
-    try { await signUp({ email, password, displayName: name }); router.push("/onboarding"); }
-    catch {} finally { setLoading(false); }
+  const [modo, setModo] = useState<Modo>("crear");
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [clave, setClave] = useState("");
+  const [verClave, setVerClave] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+
+  // Si ya hay sesión, no tiene sentido quedarse aquí
+  useEffect(() => { if (profile) router.replace("/"); }, [profile, router]);
+
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearError();
+    setOcupado(true);
+    try {
+      if (modo === "crear") {
+        await signUp({ email, password: clave, displayName: nombre.trim() });
+        router.push("/onboarding");
+      } else {
+        await signIn(email, clave);
+        router.push("/");
+      }
+    } catch { /* el store ya expone el error */ }
+    finally { setOcupado(false); }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); clearError(); setLoading(true);
-    try { await signIn(email, password); router.push("/"); }
-    catch {} finally { setLoading(false); }
-  };
-
-
-  const handleGoogle = async () => {
-    clearError(); setLoading(true);
+  const conGoogle = async () => {
+    clearError();
+    setOcupado(true);
     try { await signInWithGoogle(); router.push("/"); }
-    catch {} finally { setLoading(false); }
+    catch { /* idem */ }
+    finally { setOcupado(false); }
   };
 
-  const inp: React.CSSProperties = {
-    width:"100%", background:"rgba(255,255,255,0.04)",
-    border:"1px solid rgba(168,85,247,0.15)",
-    borderRadius:14, padding:"14px 16px",
-    color:"#fff", fontSize:"0.92rem",
-    fontFamily:"'Inter',-apple-system,sans-serif",
-    outline:"none", transition:"border-color 0.2s",
-  };
+  const puedeEnviar = !!email.trim() && clave.length >= 6 && (modo === "entrar" || !!nombre.trim());
 
-  const lbl: React.CSSProperties = {
-    fontSize:"0.62rem", fontWeight:700,
-    color:"rgba(255,255,255,0.4)",
-    letterSpacing:"0.1em", textTransform:"uppercase",
-    marginBottom:8, display:"block",
-  };
+  return (
+    <div className="lv-app" style={{ paddingBottom: 32 }}>
 
-  if (screen === "signup") return (
-    <div style={{ minHeight:"100vh", background:"#080818", display:"flex", flexDirection:"column", fontFamily:"'Inter',-apple-system,sans-serif", position:"relative", overflow:"hidden" }}>
+      <div className="lv-pad" style={{ paddingTop: 40 }}>
+        <div className="lv-wordmark" style={{ fontSize: "2rem" }}>Liveroo</div>
+        <p className="lv-muted" style={{ fontSize: "0.92rem", lineHeight: 1.5, marginTop: 8, maxWidth: 300 }}>
+          Subastas en vivo de Venezuela. Puja, gana y coordina con el vendedor.
+        </p>
+      </div>
 
-      {/* Background effects */}
-      <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 100% 60% at 50% -10%, rgba(168,85,247,0.15) 0%, transparent 60%)", pointerEvents:"none" }}/>
-      <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", background:"rgba(0,200,255,0.04)", top:-100, right:-100, filter:"blur(60px)", pointerEvents:"none" }}/>
-      <div style={{ position:"absolute", width:300, height:300, borderRadius:"50%", background:"rgba(224,64,251,0.04)", bottom:-80, left:-80, filter:"blur(60px)", pointerEvents:"none" }}/>
+      <div className="lv-pad" style={{ paddingTop: 22 }}>
 
-      {/* Grid pattern */}
-      <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(168,85,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(168,85,247,0.03) 1px, transparent 1px)", backgroundSize:"40px 40px", pointerEvents:"none" }}/>
+        {/* Google primero: es como entra casi todo el mundo */}
+        <button
+          onClick={conGoogle}
+          disabled={ocupado}
+          className="lv-btn lv-btn--outline lv-btn--block lv-btn--lg"
+          style={{ marginBottom: 16 }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.82 6.05l3.66 2.84c.87-2.6 3.3-4.51 6.16-4.51z"/>
+          </svg>
+          Continuar con Google
+        </button>
 
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 28px", position:"relative", zIndex:1 }}>
-
-        {/* Logo */}
-        <div style={{ marginBottom:12, textAlign:"center" }}>
-          <div style={{ fontSize:"4rem", fontWeight:900, letterSpacing:"-0.05em", lineHeight:1, background:"linear-gradient(135deg, #00c8ff 0%, #a855f7 50%, #e040fb 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", filter:"drop-shadow(0 0 30px rgba(168,85,247,0.5))", marginBottom:6 }}>
-            Liveroo
-          </div>
-          <div style={{ fontSize:"0.68rem", color:"rgba(255,255,255,0.25)", letterSpacing:"0.25em", textTransform:"uppercase" }}>
-            Subastas en vivo · Venezuela
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "var(--line)" }}/>
+          <span className="lv-dim" style={{ fontSize: "0.72rem", fontWeight: 600 }}>o con tu correo</span>
+          <div style={{ flex: 1, height: 1, background: "var(--line)" }}/>
         </div>
 
-        {/* Live indicator */}
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:40, background:"rgba(255,45,45,0.08)", border:"1px solid rgba(255,45,45,0.15)", borderRadius:100, padding:"6px 16px" }}>
-          <div style={{ width:6, height:6, borderRadius:"50%", background:"#ff2d2d", boxShadow:"0 0 8px #ff2d2d" }}/>
-          <span style={{ fontSize:"0.7rem", color:"rgba(255,255,255,0.5)", fontWeight:600, letterSpacing:"0.06em" }}>14 shows activos ahora mismo</span>
-        </div>
-
-        {/* Buttons */}
-        <div style={{ width:"100%", maxWidth:380, display:"flex", flexDirection:"column", gap:12, marginBottom:24 }}>
-          {[
-            { label:"Continuar con Google", onClick: handleGoogle },
-            { label:"Continuar con Apple", onClick: undefined },
-            { label:"Continuar con Correo", onClick: () => setScreen("email-signup") },
-          ].map((btn, i) => (
-            <button key={i} onClick={btn.onClick} style={{ width:"100%", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(168,85,247,0.15)", borderRadius:16, padding:"15px 20px", fontSize:"0.92rem", fontWeight:700, color:"#fff", cursor:"pointer", fontFamily:"inherit", letterSpacing:"0.01em", transition:"all 0.2s", backdropFilter:"blur(10px)" }}>
-              {btn.label}
+        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+          {([["crear", "Crear cuenta"], ["entrar", "Ya tengo cuenta"]] as [Modo, string][]).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => { setModo(v); clearError(); }}
+              className={`lv-chip${modo === v ? " lv-chip--active" : ""}`}
+              style={{ flex: 1 }}
+            >
+              {label}
             </button>
           ))}
         </div>
 
-        <p style={{ fontSize:"0.82rem", color:"rgba(255,255,255,0.25)", marginBottom:12 }}>¿Ya tienes cuenta?</p>
-
-        <button onClick={() => setScreen("login")} style={{ width:"100%", maxWidth:380, background:"rgba(168,85,247,0.1)", border:"1px solid rgba(168,85,247,0.2)", borderRadius:16, padding:"15px", fontSize:"0.92rem", fontWeight:800, color:"#fff", cursor:"pointer", fontFamily:"inherit", marginBottom:32 }}>
-          Iniciar Sesión
-        </button>
-
-        <p style={{ fontSize:"0.62rem", color:"rgba(255,255,255,0.15)", textAlign:"center", lineHeight:1.8, maxWidth:300 }}>
-          Al continuar aceptas nuestros <u>Términos de Uso</u> y <u>Política de Privacidad</u>
-        </p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ minHeight:"100vh", background:"#080818", display:"flex", flexDirection:"column", fontFamily:"'Inter',-apple-system,sans-serif", position:"relative", overflow:"hidden" }}>
-      <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 80% 50% at 50% 0%, rgba(168,85,247,0.1) 0%, transparent 60%)", pointerEvents:"none" }}/>
-
-      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px 28px", position:"relative", zIndex:1 }}>
-
-        {/* Logo small */}
-        <div style={{ fontSize:"2rem", fontWeight:900, letterSpacing:"-0.04em", background:"linear-gradient(135deg,#00c8ff,#a855f7,#e040fb)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", filter:"drop-shadow(0 0 15px rgba(168,85,247,0.4))", marginBottom:32 }}>
-          Liveroo
-        </div>
-
-        <div style={{ width:"100%", maxWidth:380, background:"rgba(13,13,32,0.8)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:24, padding:"32px 28px", backdropFilter:"blur(20px)" }}>
-
-          {/* Back */}
-          <button onClick={() => { setScreen("signup"); clearError(); }} style={{ width:38, height:38, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", marginBottom:24 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          </button>
-
-          <h1 style={{ fontSize:"1.7rem", fontWeight:900, color:"#fff", marginBottom:8, letterSpacing:"-0.03em" }}>
-            {screen === "login" ? "Bienvenido de vuelta" : "Crea tu cuenta"}
-          </h1>
-          <p style={{ fontSize:"0.8rem", color:"rgba(255,255,255,0.35)", marginBottom:28, lineHeight:1.6 }}>
-            {screen === "login" ? "Ingresa para seguir pujando en vivo" : "Únete y empieza a pujar en vivo"}
-          </p>
-
-          <form onSubmit={screen === "login" ? handleLogin : handleSignup} style={{ display:"flex", flexDirection:"column", gap:0 }}>
-            {screen === "email-signup" && (
-              <div style={{ marginBottom:16 }}>
-                <label style={lbl}>Nombre completo</label>
-                <input style={inp} type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre" required/>
-              </div>
-            )}
-
-            <div style={{ marginBottom:16 }}>
-              <label style={lbl}>Correo electrónico</label>
-              <input style={inp} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" required/>
+        <form onSubmit={enviar}>
+          {modo === "crear" && (
+            <div className="lv-field">
+              <label className="lv-field__label" htmlFor="nombre">Tu nombre</label>
+              <input
+                id="nombre" className="lv-input" value={nombre} autoComplete="name"
+                onChange={e => setNombre(e.target.value)} placeholder="Como quieres que te vean"
+              />
             </div>
+          )}
 
-            <div style={{ marginBottom: screen==="login" ? 8 : 28 }}>
-              <label style={lbl}>Contraseña</label>
-              <div style={{ position:"relative" }}>
-                <input style={{ ...inp, paddingRight:50 }} type={showPassword?"text":"password"} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required minLength={6}/>
-                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"rgba(255,255,255,0.3)", cursor:"pointer", fontSize:"0.75rem", fontWeight:600, fontFamily:"inherit" }}>
-                  {showPassword ? "Ocultar" : "Ver"}
-                </button>
-              </div>
-            </div>
+          <div className="lv-field">
+            <label className="lv-field__label" htmlFor="email">Correo</label>
+            <input
+              id="email" className="lv-input" type="email" inputMode="email" autoComplete="email"
+              value={email} onChange={e => setEmail(e.target.value)} placeholder="tucorreo@ejemplo.com"
+            />
+          </div>
 
-            {screen === "login" && (
-              <button type="button" style={{ background:"none", border:"none", color:"#a855f7", fontSize:"0.78rem", fontWeight:600, textAlign:"right", marginBottom:24, cursor:"pointer", fontFamily:"inherit" }}>
-                ¿Olvidaste tu contraseña?
+          <div className="lv-field">
+            <label className="lv-field__label" htmlFor="clave">Contraseña</label>
+            <div style={{ position: "relative" }}>
+              <input
+                id="clave" className="lv-input" type={verClave ? "text" : "password"}
+                autoComplete={modo === "crear" ? "new-password" : "current-password"}
+                value={clave} onChange={e => setClave(e.target.value)}
+                placeholder="Mínimo 6 caracteres" style={{ paddingRight: 62 }}
+              />
+              <button
+                type="button"
+                onClick={() => setVerClave(v => !v)}
+                aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", fontSize: "0.74rem", fontWeight: 700 }}
+              >
+                {verClave ? "Ocultar" : "Ver"}
               </button>
+            </div>
+            {modo === "crear" && clave.length > 0 && clave.length < 6 && (
+              <div className="lv-field__hint">Te faltan {6 - clave.length} caracteres</div>
             )}
-
-            {error && (
-              <div style={{ background:"rgba(255,45,45,0.08)", border:"1px solid rgba(255,45,45,0.2)", borderRadius:12, padding:"12px 16px", fontSize:"0.8rem", color:"#ff8080", marginBottom:16, lineHeight:1.5 }}>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading} style={{ width:"100%", background: loading ? "rgba(168,85,247,0.3)" : "linear-gradient(135deg,#00c8ff,#a855f7,#e040fb)", border:"none", borderRadius:14, padding:"15px", fontSize:"0.92rem", fontWeight:900, color:"#fff", cursor: loading ? "not-allowed" : "pointer", fontFamily:"inherit", letterSpacing:"0.02em", boxShadow: loading ? "none" : "0 0 30px rgba(168,85,247,0.3)", transition:"all 0.2s" }}>
-              {loading ? "Cargando..." : screen === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
-            </button>
-          </form>
-
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0" }}>
-            <div style={{ flex:1, height:1, background:"rgba(168,85,247,0.1)" }}/>
-            <span style={{ fontSize:"0.65rem", color:"rgba(255,255,255,0.2)", letterSpacing:"0.08em" }}>O CONTINÚA CON</span>
-            <div style={{ flex:1, height:1, background:"rgba(168,85,247,0.1)" }}/>
           </div>
 
-          <div style={{ display:"flex", gap:10, marginBottom:20 }}>
-            {["Google","Apple"].map(s => (
-              <button key={s} onClick={s==="Google" ? handleGoogle : undefined} style={{ flex:1, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:12, padding:"12px", fontSize:"0.82rem", fontWeight:600, color:"rgba(255,255,255,0.6)", cursor:"pointer", fontFamily:"inherit" }}>{s}</button>
-            ))}
-          </div>
+          {error && <div className="lv-note lv-note--bad" style={{ marginBottom: 14 }}>{error}</div>}
 
-          <p style={{ textAlign:"center", fontSize:"0.8rem", color:"rgba(255,255,255,0.3)" }}>
-            {screen === "login" ? "¿Sin cuenta? " : "¿Ya tienes cuenta? "}
-            <button onClick={() => { setScreen(screen==="login"?"email-signup":"login"); clearError(); }} style={{ background:"none", border:"none", color:"#a855f7", fontWeight:700, cursor:"pointer", fontSize:"inherit", fontFamily:"inherit" }}>
-              {screen === "login" ? "Regístrate gratis" : "Iniciar Sesión"}
-            </button>
-          </p>
-        </div>
+          <button type="submit" className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !puedeEnviar}>
+            {ocupado ? "Un momento…" : modo === "crear" ? "Crear mi cuenta" : "Entrar"}
+          </button>
+        </form>
+
+        <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", marginTop: 18 }}>
+          Tu correo y tu teléfono no son públicos: solo los ve el vendedor con quien cierres una compra.
+        </p>
+
+        <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 18 }} onClick={() => router.push("/")}>
+          Ver subastas sin entrar
+        </button>
       </div>
     </div>
   );

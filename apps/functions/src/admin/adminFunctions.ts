@@ -4,6 +4,9 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+// Timestamp/FieldValue desde el subpath modular: el namespace
+// admin.firestore.* no sobrevive al envoltorio del emulador.
+import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS, CONFIG_DOCS, EXCHANGE_RATE_DOCS } from "../constants";
 
@@ -32,7 +35,7 @@ export const approveSeller = functions
     await assertAdmin(context.auth.uid);
 
     const { sellerUid } = data as { sellerUid: string };
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
 
     await db.doc(`${COLLECTIONS.USERS}/${sellerUid}`).update({
       role: "seller",
@@ -57,7 +60,7 @@ export const suspendSeller = functions
     await assertAdmin(context.auth.uid);
 
     const { sellerUid } = data as { sellerUid: string };
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
 
     await db.doc(`${COLLECTIONS.USERS}/${sellerUid}`).update({
       sellerStatus: "suspended",
@@ -82,7 +85,7 @@ export const updateExchangeRate = functions
       throw new functions.https.HttpsError("invalid-argument", "Tasa inválida");
     }
 
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
     const rateRef = db.doc(`${COLLECTIONS.EXCHANGE_RATES}/${EXCHANGE_RATE_DOCS.CURRENT}`);
 
     await rateRef.set({
@@ -118,7 +121,7 @@ export const updateCommissionConfig = functions
       throw new functions.https.HttpsError("invalid-argument", "Porcentaje debe ser 0-100");
     }
 
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
     await db.doc(`${COLLECTIONS.CONFIG}/${CONFIG_DOCS.COMMISSION}`).set({
       mode,
       platformFeePct,
@@ -130,47 +133,41 @@ export const updateCommissionConfig = functions
   });
 
 // --------------------------------------------------
-// generateAgoraToken (callable - para el vendedor broadcaster)
-// En producción usar Agora Token Server; aquí generamos
-// un placeholder. Integrar con Agora Token Builder.
+// generateAgoraToken (callable — token de transmisión)
 // --------------------------------------------------
+// TODAVÍA NO IMPLEMENTADA. Antes declaraba
+// runWith({ secrets: ["AGORA_APP_ID", "AGORA_APP_CERTIFICATE"] }),
+// y como esos secrets no existen en el proyecto, hacían fallar el
+// despliegue COMPLETO de functions — no solo el de esta.
+//
+// Se deja sin secrets para que el resto pueda desplegarse, y falla con
+// un mensaje claro en vez de devolver un token nulo que el cliente
+// interpretaba como válido.
+//
+// Para terminarla:
+//   1. firebase functions:secrets:set AGORA_APP_ID
+//   2. firebase functions:secrets:set AGORA_APP_CERTIFICATE
+//   3. pnpm --filter functions add agora-token
+//   4. Devolver aquí RtcTokenBuilder.buildTokenWithUid(...) y volver a
+//      declarar los secrets en runWith.
 
 export const generateAgoraToken = functions
   .region("us-central1")
-  .runWith({ secrets: ["AGORA_APP_ID", "AGORA_APP_CERTIFICATE"] })
   .https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "No autenticado");
 
-    const { showId, role } = data as { showId: string; role: "publisher" | "subscriber" };
+    const { showId, role } = (data ?? {}) as { showId?: string; role?: "publisher" | "subscriber" };
+    if (!showId) throw new functions.https.HttpsError("invalid-argument", "showId es requerido");
 
-    // Verificar que el show existe y el caller tiene acceso
     const showSnap = await db.doc(`${COLLECTIONS.SHOWS}/${showId}`).get();
     if (!showSnap.exists) throw new functions.https.HttpsError("not-found", "Show no encontrado");
 
-    const show = showSnap.data()!;
-    if (role === "publisher" && show.sellerId !== context.auth.uid) {
+    if (role === "publisher" && showSnap.data()!.sellerId !== context.auth.uid) {
       throw new functions.https.HttpsError("permission-denied", "Solo el vendedor puede transmitir");
     }
 
-    // ⚠️  INTEGRAR CON AGORA TOKEN BUILDER:
-    // const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
-    // const appId = process.env.AGORA_APP_ID;
-    // const appCertificate = process.env.AGORA_APP_CERTIFICATE;
-    // const channelName = show.agoraChannelName;
-    // const uid = 0;
-    // const expirationTimeInSeconds = 3600;
-    // const currentTimestamp = Math.floor(Date.now() / 1000);
-    // const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
-    // const agoraRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
-    // const token = RtcTokenBuilder.buildTokenWithUid(
-    //   appId, appCertificate, channelName, uid, agoraRole, privilegeExpiredTs
-    // );
-
-    // Por ahora devolver channel name para que el cliente pueda conectar sin token
-    // en modo de prueba (Agora permite esto con APP_ID solo en modo testing)
-    return {
-      channelName: show.agoraChannelName,
-      token: null, // reemplazar con token real
-      appId: process.env.AGORA_APP_ID ?? "TU_AGORA_APP_ID",
-    };
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "La generación de tokens de Agora todavía no está configurada en este proyecto."
+    );
   });

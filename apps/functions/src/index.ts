@@ -7,10 +7,13 @@ admin.initializeApp();
 
 // Auction engine
 export { onPendingBidCreated } from "./auction/onPendingBidCreated";
-export { closeExpiredAuctions } from "./auction/closeExpiredAuctions";
+export { closeExpiredAuctions, closeAuctionNow } from "./auction/closeExpiredAuctions";
 
 // Show controls
-export { startShow, endShow, skipProduct } from "./shows/showControls";
+export { startShow, endShow, skipAuction } from "./shows/showControls";
+
+// Users
+export { syncPublicProfile } from "./users/syncPublicProfile";
 
 // Notifications
 export { notifyShowStartingSoon } from "./notifications/notifyShowStartingSoon";

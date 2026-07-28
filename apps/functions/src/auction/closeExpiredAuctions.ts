@@ -1,255 +1,340 @@
 // =============================================================
-// CLOUD FUNCTION: closeExpiredAuctions
+// CLOUD FUNCTIONS: cierre de subastas
 // =============================================================
-// Corre cada 10 segundos vía Cloud Scheduler / Pub-Sub.
-// Busca productos con auctionStatus = 'active' cuyo
-// auctionEndsAt ya pasó y los cierra atómicamente.
+// closeExpiredAuctions — barrido programado (cada minuto)
+// closeAuctionNow      — callable, cierre inmediato al vencer el timer
 //
-// Flujo de cierre:
-//   1. Congela la tasa de cambio actual
-//   2. Calcula monto en Bs
+// Ambas terminan en el mismo closeOneAuction(), que es la única
+// autoridad sobre quién ganó. El callable existe porque Cloud
+// Scheduler no baja de 1 minuto y una subasta en vivo dura 30s:
+// cuando al cliente se le acaba el reloj, pide el cierre y el
+// servidor revalida todo desde cero. El barrido queda de red de
+// seguridad para lo que nadie esté mirando.
+//
+// Flujo de cierre (transacción atómica):
+//   1. Re-verifica que siga activa y vencida (idempotencia)
+//   2. Congela la tasa de cambio y calcula el monto en Bs
 //   3. Crea la Orden
-//   4. Actualiza el producto (sold / unsold)
-//   5. Lanza FCM al ganador
-//   6. Inicia el siguiente producto del show (si hay)
+//   4. Marca la subasta sold / unsold
+//   5. Si es de un show, activa la siguiente de la cola
+//   6. FCM al ganador (después del commit, nunca dentro)
 // =============================================================
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+// Timestamp/FieldValue desde el subpath modular: el namespace
+// admin.firestore.* no sobrevive al envoltorio del emulador.
+import { Timestamp } from "firebase-admin/firestore";
 import { db, messaging } from "../firebase";
 import {
   COLLECTIONS,
   CONFIG_DOCS,
   EXCHANGE_RATE_DOCS,
+  DEFAULT_LIVE_TIMER_S,
+  AuctionMode,
   CommissionMode,
 } from "../constants";
+
+interface WonNotice {
+  winnerId: string;
+  orderId: string;
+  title: string;
+  finalUsd: number;
+}
+
+const BATCH_LIMIT = 20;
+const SWEEP_BUDGET_MS = 50_000; // margen dentro del timeout de 540s
+const SWEEP_INTERVAL_MS = 5_000;
+
+// --------------------------------------------------
+// Barrido programado
+// --------------------------------------------------
+// Corre cada minuto. Si hay un show en vivo, sigue barriendo cada
+// 5s durante el resto del minuto para no dejar subastas de 30s
+// colgadas. Si no hay nada en vivo, hace una pasada y se va — así
+// no pagamos por una función encendida las 24 horas.
 
 export const closeExpiredAuctions = functions
   .region("us-central1")
   .runWith({ timeoutSeconds: 540, memory: "512MB" })
-  .pubsub.schedule("every 10 seconds")
+  .pubsub.schedule("every 1 minutes")
   .onRun(async () => {
-    const now = admin.firestore.Timestamp.now();
+    const startedAt = Date.now();
+    let totalClosed = await sweep();
 
-    // Buscar todos los productos activos cuyo timer ya expiró
-    const expiredSnap = await db
-      .collectionGroup("products")
-      .where("auctionStatus", "==", "active")
-      .where("auctionEndsAt", "<=", now)
-      .limit(20) // procesar en lotes
-      .get();
+    while (Date.now() - startedAt < SWEEP_BUDGET_MS) {
+      const liveShows = await db
+        .collection(COLLECTIONS.SHOWS)
+        .where("status", "==", "live")
+        .limit(1)
+        .get();
+      if (liveShows.empty) break;
 
-    if (expiredSnap.empty) return;
+      await delay(SWEEP_INTERVAL_MS);
+      totalClosed += await sweep();
+    }
 
-    functions.logger.info(`Cerrando ${expiredSnap.size} subasta(s) expirada(s)`);
-
-    // Leer configuración (tasa de cambio y comisión) una sola vez
-    const [rateSnap, commissionSnap] = await Promise.all([
-      db.doc(`${COLLECTIONS.EXCHANGE_RATES}/${EXCHANGE_RATE_DOCS.CURRENT}`).get(),
-      db.doc(`${COLLECTIONS.CONFIG}/${CONFIG_DOCS.COMMISSION}`).get(),
-    ]);
-
-    const currentRate = (rateSnap.data()?.usdToBs as number) ?? 36;
-    const commissionMode = (commissionSnap.data()?.mode as CommissionMode) ?? "seller_collects";
-    const platformFeePct = (commissionSnap.data()?.platformFeePct as number) ?? 10;
-
-    // Procesar cada subasta expirada en paralelo (con su propia transacción)
-    await Promise.allSettled(
-      expiredSnap.docs.map((productDoc) =>
-        closeOneAuction({
-          productDoc,
-          currentRate,
-          commissionMode,
-          platformFeePct,
-          now,
-        })
-      )
-    );
+    if (totalClosed > 0) {
+      functions.logger.info(`Barrido: ${totalClosed} subasta(s) cerrada(s)`);
+    }
+    return null;
   });
 
 // --------------------------------------------------
-// Cierra una subasta específica (transacción atómica)
+// Cierre inmediato pedido por el cliente
+// --------------------------------------------------
+// No confía en el cliente: solo le hace caso si el servidor
+// también ve la subasta vencida. Sirve para que en un show en vivo
+// el ganador se anuncie al instante en vez de esperar al barrido.
+
+export const closeAuctionNow = functions
+  .region("us-central1")
+  .runWith({ timeoutSeconds: 30 })
+  .https.onCall(async (data) => {
+    const { auctionId } = (data ?? {}) as { auctionId?: string };
+    if (!auctionId) {
+      throw new functions.https.HttpsError("invalid-argument", "auctionId es requerido");
+    }
+
+    const auctionRef = db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`);
+    const snap = await auctionRef.get();
+    if (!snap.exists) {
+      throw new functions.https.HttpsError("not-found", "Subasta no encontrada");
+    }
+
+    const auction = snap.data()!;
+    const now = Timestamp.now();
+    const endsAt = auction.endsAt as Timestamp | undefined;
+
+    // Todavía no vence: el reloj del cliente va adelantado. No es error.
+    if (auction.status !== "active" || !endsAt || now.toMillis() < endsAt.toMillis()) {
+      return { closed: false };
+    }
+
+    const cfg = await loadConfig();
+    await closeOneAuction({ auctionSnap: snap, ...cfg, now });
+    return { closed: true };
+  });
+
+// --------------------------------------------------
+
+async function sweep(): Promise<number> {
+  const now = Timestamp.now();
+
+  const expired = await db
+    .collection(COLLECTIONS.AUCTIONS)
+    .where("status", "==", "active")
+    .where("endsAt", "<=", now)
+    .limit(BATCH_LIMIT)
+    .get();
+
+  if (expired.empty) return 0;
+
+  const cfg = await loadConfig();
+
+  const results = await Promise.allSettled(
+    expired.docs.map((auctionSnap) => closeOneAuction({ auctionSnap, ...cfg, now }))
+  );
+
+  return results.filter((r) => r.status === "fulfilled").length;
+}
+
+async function loadConfig() {
+  const [rateSnap, commissionSnap] = await Promise.all([
+    db.doc(`${COLLECTIONS.EXCHANGE_RATES}/${EXCHANGE_RATE_DOCS.CURRENT}`).get(),
+    db.doc(`${COLLECTIONS.CONFIG}/${CONFIG_DOCS.COMMISSION}`).get(),
+  ]);
+
+  const currentRate = rateSnap.data()?.usdToBs as number | undefined;
+  if (!currentRate) {
+    // Sin tasa no se puede congelar el precio en Bs de forma honesta.
+    functions.logger.error(
+      "exchangeRates/current no existe o no tiene usdToBs — las órdenes quedarán sin monto en Bs"
+    );
+  }
+
+  return {
+    currentRate: currentRate ?? null,
+    commissionMode: (commissionSnap.data()?.mode as CommissionMode) ?? "seller_collects",
+    platformFeePct: (commissionSnap.data()?.platformFeePct as number) ?? 10,
+  };
+}
+
+// --------------------------------------------------
+// Cierra una subasta. Idempotente: si otra ejecución llegó
+// primero, la re-lectura dentro de la transacción la frena.
 // --------------------------------------------------
 
 async function closeOneAuction(params: {
-  productDoc: admin.firestore.QueryDocumentSnapshot;
-  currentRate: number;
+  auctionSnap: admin.firestore.DocumentSnapshot;
+  currentRate: number | null;
   commissionMode: CommissionMode;
   platformFeePct: number;
-  now: admin.firestore.Timestamp;
+  now: Timestamp;
 }) {
-  const { productDoc, currentRate, commissionMode, platformFeePct, now } = params;
-  const product = productDoc.data();
-  const productRef = productDoc.ref;
+  const { auctionSnap, currentRate, commissionMode, platformFeePct, now } = params;
+  const auctionRef = auctionSnap.ref;
+  const auctionId = auctionRef.id;
 
-  // Extraer showId del path: shows/{showId}/products/{productId}
-  const showId = productRef.parent.parent!.id;
-  const productId = productRef.id;
-  const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
+  // La transacción devuelve a quién hay que notificar (o null). No se usa
+  // una variable de cierre: TypeScript no puede saber que el callback corrió.
+  let notify: WonNotice | null = null;
 
   try {
-    await db.runTransaction(async (tx) => {
-      // Re-leer el producto para garantizar idempotencia
-      const freshProduct = (await tx.get(productRef)).data()!;
+    notify = await db.runTransaction(async (tx): Promise<WonNotice | null> => {
+      // ════ TODAS LAS LECTURAS PRIMERO ════
+      // Firestore rechaza cualquier lectura posterior a una escritura.
 
-      // Doble chequeo: si ya no está active, alguien más lo procesó
-      if (freshProduct.auctionStatus !== "active") return;
+      const fresh = await tx.get(auctionRef);
+      if (!fresh.exists) return null;
+      const auction = fresh.data()!;
 
-      // Re-chequear que el timer sí expiró (puede haber race con una puja que extendió)
-      const auctionEndsAt = freshProduct.auctionEndsAt as admin.firestore.Timestamp;
-      if (now.toMillis() < auctionEndsAt.toMillis()) {
-        // El timer fue extendido por una puja reciente; no cerrar aún
-        return;
+      if (auction.status !== "active") return null; // ya la cerró otro
+
+      const endsAt = auction.endsAt as Timestamp | undefined;
+      if (!endsAt || now.toMillis() < endsAt.toMillis()) {
+        return null; // una puja extendió el timer entre el query y la transacción
       }
 
-      const hasWinner = !!freshProduct.currentBidderId;
+      const mode = (auction.mode as AuctionMode) ?? "standalone";
+      const showId = (auction.showId as string | null) ?? null;
+      const hasWinner = !!auction.currentBidderId;
+
+      const sellerSnap = hasWinner
+        ? await tx.get(db.doc(`${COLLECTIONS.USERS}/${auction.sellerId}`))
+        : null;
+
+      // Siguiente de la cola del show (si esto es parte de un show)
+      const nextSnap =
+        mode === "live" && showId
+          ? await tx.get(
+              db
+                .collection(COLLECTIONS.AUCTIONS)
+                .where("showId", "==", showId)
+                .where("status", "==", "waiting")
+                .orderBy("sortOrder", "asc")
+                .limit(1)
+            )
+          : null;
+
+      // ════ A PARTIR DE AQUÍ, SOLO ESCRITURAS ════
 
       if (hasWinner) {
-        // ── SUBASTA GANADA ──────────────────────────────────────────
-        const finalBidUsd = freshProduct.currentBidUsd as number;
-        const frozenRate = currentRate;
-        const finalBidBs = Math.round(finalBidUsd * frozenRate * 100) / 100;
-        const commissionUsd = Math.round((finalBidUsd * platformFeePct) / 100 * 100) / 100;
+        const finalUsd = auction.currentBidUsd as number;
+        const finalBs = currentRate ? Math.round(finalUsd * currentRate * 100) / 100 : null;
+        const commissionUsd = Math.round(((finalUsd * platformFeePct) / 100) * 100) / 100;
         const sellerReceivesUsd =
           commissionMode === "platform_collects"
-            ? Math.round((finalBidUsd - commissionUsd) * 100) / 100
-            : finalBidUsd; // vendedor cobra directo; plataforma solo registra
+            ? Math.round((finalUsd - commissionUsd) * 100) / 100
+            : finalUsd; // el vendedor cobra directo; la plataforma solo registra
 
-        // Actualizar producto
-        tx.update(productRef, {
-          auctionStatus: "sold",
-          auctionEndedAt: now,
-          winnerUid: freshProduct.currentBidderId,
-          winnerName: freshProduct.currentBidderName,
-          finalBidUsd,
-          frozenExchangeRate: frozenRate,
-          finalBidBs,
+        const orderRef = db.collection(COLLECTIONS.ORDERS).doc();
+
+        tx.update(auctionRef, {
+          status: "sold",
+          endedAt: now,
+          winnerId: auction.currentBidderId,
+          winnerName: auction.currentBidderName,
+          finalPriceUsd: finalUsd,
+          finalPriceBs: finalBs,
+          frozenExchangeRate: currentRate,
+          orderId: orderRef.id,
           updatedAt: now,
         });
 
-        // Crear orden
-        const orderRef = db.collection(COLLECTIONS.ORDERS).doc();
-        const sellerSnap = await tx.get(db.doc(`${COLLECTIONS.USERS}/${freshProduct.sellerId}`));
-        const sellerData = sellerSnap.data() ?? {};
-
         tx.set(orderRef, {
           id: orderRef.id,
+          auctionId,
           showId,
-          productId,
-          buyerId: freshProduct.currentBidderId,
-          buyerName: freshProduct.currentBidderName,
+          productTitle: auction.title ?? "",
+          productImageURL: auction.imageURL ?? auction.imageURLs?.[0] ?? null,
+
+          buyerId: auction.currentBidderId,
+          buyerName: auction.currentBidderName,
           buyerWhatsapp: null,
-          sellerId: freshProduct.sellerId,
-          sellerName: freshProduct.sellerName,
-          sellerWhatsapp: sellerData.whatsapp ?? null,
-          // Montos
-          bidAmountUsd: finalBidUsd,
-          frozenExchangeRate: frozenRate,
-          bidAmountBs: finalBidBs,
-          // Comisión
+          sellerId: auction.sellerId,
+          sellerName: auction.sellerName,
+          sellerWhatsapp: sellerSnap?.data()?.whatsapp ?? null,
+
+          bidAmountUsd: finalUsd,
+          frozenExchangeRate: currentRate,
+          bidAmountBs: finalBs,
+
           commissionMode,
           platformFeePct,
           commissionUsd,
           sellerReceivesUsd,
-          // Estado
+
           status: "pending_payment",
           paymentMethod: null,
           paymentReference: null,
           paymentConfirmedAt: null,
           paymentConfirmedBy: null,
           whatsappMessageSent: false,
-          // Rating
+
           ratingGiven: null,
           ratingComment: null,
           ratingAt: null,
-          // Meta
+
           createdAt: now,
           updatedAt: now,
         });
 
-        // Mensaje de sistema en chat
-        const msgRef = db.collection(COLLECTIONS.SHOW_MESSAGES(showId)).doc();
-        tx.set(msgRef, {
-          id: msgRef.id,
-          showId,
-          authorId: "system",
-          authorName: "Sistema",
-          type: "auction_won",
-          text: `🏆 ¡${freshProduct.currentBidderName} ganó por $${finalBidUsd.toFixed(2)}!`,
-          createdAt: now,
-        });
+        if (showId) {
+          writeSystemMessage(
+            tx, showId,
+            `🏆 ¡${auction.currentBidderName} ganó "${auction.title}" por ${formatUsd(finalUsd)}!`,
+            "auction_won", now
+          );
+        }
 
-        // ── Avanzar al siguiente producto ───────────────────────────
-        await advanceToNextProduct({ tx, showRef, showId, currentIndex: product.sortOrder, now });
+        // Avanzar la cola del show antes de salir
+        if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, now });
 
-        // ── FCM al ganador (fuera de tx, pero lo encolamos) ─────────
-        // No puede estar en la transacción; lo hacemos post-commit
-        // Guardamos el uid para disparar después
-        setTimeout(() => {
-          sendAuctionWonNotification({
-            winnerId: freshProduct.currentBidderId,
-            showId,
-            productId,
-            orderId: orderRef.id,
-            productTitle: freshProduct.title,
-            finalBidUsd,
-          });
-        }, 0);
-      } else {
-        // ── SIN GANADOR ──────────────────────────────────────────────
-        tx.update(productRef, {
-          auctionStatus: "unsold",
-          auctionEndedAt: now,
-          updatedAt: now,
-        });
-
-        const msgRef = db.collection(COLLECTIONS.SHOW_MESSAGES(showId)).doc();
-        tx.set(msgRef, {
-          id: msgRef.id,
-          showId,
-          authorId: "system",
-          authorName: "Sistema",
-          type: "system",
-          text: `❌ ${freshProduct.title} quedó sin ganador.`,
-          createdAt: now,
-        });
-
-        await advanceToNextProduct({ tx, showRef, showId, currentIndex: product.sortOrder, now });
+        return {
+          winnerId: auction.currentBidderId as string,
+          orderId: orderRef.id,
+          title: (auction.title as string) ?? "",
+          finalUsd,
+        };
       }
+
+      // ── sin ganador ──
+      tx.update(auctionRef, { status: "unsold", endedAt: now, updatedAt: now });
+
+      if (showId) {
+        writeSystemMessage(tx, showId, `❌ "${auction.title}" quedó sin ganador.`, "system", now);
+      }
+
+      if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, now });
+
+      return null;
     });
   } catch (err) {
-    functions.logger.error("Error cerrando subasta", {
-      showId,
-      productId,
-      error: err,
-    });
+    functions.logger.error("Error cerrando subasta", { auctionId, error: err });
+    throw err;
+  }
+
+  // Post-commit: ahora sí, la notificación
+  if (notify) {
+    await sendAuctionWonNotification({ ...notify, auctionId });
   }
 }
 
 // --------------------------------------------------
-// Avanza al siguiente producto del show
-// Si no hay más, cierra el show
+// Activa la siguiente subasta del show, o termina el show
 // --------------------------------------------------
 
-async function advanceToNextProduct(params: {
+function advanceShow(params: {
   tx: admin.firestore.Transaction;
-  showRef: admin.firestore.DocumentReference;
   showId: string;
-  currentIndex: number;
-  now: admin.firestore.Timestamp;
+  nextSnap: admin.firestore.QuerySnapshot | null;
+  now: Timestamp;
 }) {
-  const { tx, showRef, showId, currentIndex, now } = params;
+  const { tx, showId, nextSnap, now } = params;
+  const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
 
-  // Buscar el siguiente producto en espera
-  const nextProductSnap = await db
-    .collection(COLLECTIONS.SHOW_PRODUCTS(showId))
-    .where("auctionStatus", "==", "waiting")
-    .orderBy("sortOrder", "asc")
-    .limit(1)
-    .get();
-
-  if (nextProductSnap.empty) {
-    // No hay más productos → cerrar el show
+  if (!nextSnap || nextSnap.empty) {
     tx.update(showRef, {
       status: "ended",
       endedAt: now,
@@ -259,60 +344,67 @@ async function advanceToNextProduct(params: {
     return;
   }
 
-  const nextProduct = nextProductSnap.docs[0];
-  const nextProductRef = nextProduct.ref;
-  const nextData = nextProduct.data();
-  const timerSeconds = (nextData.timerSeconds as number) ?? 30;
+  const next = nextSnap.docs[0];
+  const nextData = next.data();
+  const timerS = (nextData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
 
-  const auctionEndsAt = admin.firestore.Timestamp.fromMillis(
-    now.toMillis() + timerSeconds * 1000
-  );
-
-  // Activar siguiente producto
-  tx.update(nextProductRef, {
-    auctionStatus: "active",
+  tx.update(next.ref, {
+    status: "active",
     currentBidUsd: nextData.startingPriceUsd,
-    auctionStartedAt: now,
-    auctionEndsAt,
+    startsAt: now,
+    endsAt: Timestamp.fromMillis(now.toMillis() + timerS * 1000),
     updatedAt: now,
   });
 
-  // Actualizar show con la referencia al nuevo producto
   tx.update(showRef, {
-    currentAuctionId: nextProduct.id,
-    currentAuctionIndex: nextData.sortOrder,
+    currentAuctionId: next.id,
+    currentAuctionIndex: nextData.sortOrder ?? 0,
     updatedAt: now,
   });
 }
 
 // --------------------------------------------------
-// FCM: ganaste la subasta
-// --------------------------------------------------
+
+function writeSystemMessage(
+  tx: admin.firestore.Transaction,
+  showId: string,
+  text: string,
+  type: string,
+  now: Timestamp
+) {
+  const ref = db.collection(COLLECTIONS.SHOW_MESSAGES(showId)).doc();
+  tx.set(ref, {
+    id: ref.id,
+    showId,
+    authorId: "system",
+    authorName: "Sistema",
+    type,
+    text,
+    createdAt: now,
+  });
+}
 
 async function sendAuctionWonNotification(params: {
   winnerId: string;
-  showId: string;
-  productId: string;
+  auctionId: string;
   orderId: string;
-  productTitle: string;
-  finalBidUsd: number;
+  title: string;
+  finalUsd: number;
 }) {
   try {
     const userSnap = await db.doc(`${COLLECTIONS.USERS}/${params.winnerId}`).get();
-    if (!userSnap.exists) return;
-    const fcmToken = userSnap.data()!.fcmToken as string | undefined;
+    const fcmToken = userSnap.data()?.fcmToken as string | undefined;
     if (!fcmToken) return;
 
     await messaging.send({
       token: fcmToken,
       notification: {
         title: "🏆 ¡Ganaste la subasta!",
-        body: `"${params.productTitle}" es tuyo por $${params.finalBidUsd.toFixed(2)}`,
+        body: `"${params.title}" es tuyo por ${formatUsd(params.finalUsd)}`,
       },
       data: {
         type: "auction_won",
-        showId: params.showId,
-        productId: params.productId,
+        auctionId: params.auctionId,
         orderId: params.orderId,
       },
       android: { priority: "high" },
@@ -321,4 +413,12 @@ async function sendAuctionWonNotification(params: {
   } catch (err) {
     functions.logger.warn("Error enviando FCM auction_won", err);
   }
+}
+
+function formatUsd(amount: number): string {
+  return `$${amount.toFixed(2)}`;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

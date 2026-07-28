@@ -2,14 +2,556 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================
+   SISTEMA VISUAL
+   =============================================================
+   Todo el color vive aquí. Para rebrandear (nombre nuevo, paleta
+   nueva) se cambian las variables de :root y nada más — ninguna
+   pantalla trae colores escritos a mano.
+   ============================================================= */
+
+:root {
+  /* ── Marca ────────────────────────────────────────────────
+     --accent es el color de "acción de dinero": pujar, vender,
+     ganar. Cambiar estos tres re-tiñe la app entera. */
+  --accent: #c6f24e;
+  --accent-ink: #10120a;      /* texto sobre el acento */
+  --accent-soft: #f2ffd1;
+
+  /* ── Tinta y superficies ──────────────────────────────── */
+  --ink: #0b0b0d;
+  --ink-2: #62626d;
+  --ink-3: #9a9aa6;
+  --ink-4: #c4c4cd;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f5f5f7;
+  --surface-3: #ebebef;
+  --line: #e6e6ea;
+  --line-strong: #d5d5dc;
+
+  /* ── Semánticos ───────────────────────────────────────── */
+  --live: #f5333f;
+  --urgent: #f5333f;
+  --ok: #14a44d;
+  --warn: #e8a300;
+
+  /* ── Forma ────────────────────────────────────────────── */
+  --r-card: 14px;
+  --r-btn: 12px;
+  --r-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(11, 11, 13, 0.04);
+  --shadow-pop: 0 8px 28px rgba(11, 11, 13, 0.12);
+  --shadow-bar: 0 -1px 0 var(--line);
+
+  --app-max: 480px;
+  --nav-h: 76px;
+}
+
+/* Superficies oscuras: la vista de show en vivo, donde el video
+   manda y la UI flota encima. Se invierten los tokens en vez de
+   escribir otra paleta. */
+.lv-dark {
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.66);
+  --ink-3: rgba(255, 255, 255, 0.42);
+  --ink-4: rgba(255, 255, 255, 0.24);
+  --bg: #0b0b0d;
+  --surface: #17171b;
+  --surface-2: #202026;
+  --surface-3: #2b2b33;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --shadow-card: none;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
+}
+
+body {
+  background: var(--surface-2);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; background: none; border: none; }
+button:disabled { cursor: not-allowed; }
+
+/* =============================================================
+   Contenedor
+   ============================================================= */
+
+.lv-app {
+  min-height: 100vh;
+  max-width: var(--app-max);
+  margin: 0 auto;
+  background: var(--bg);
+  padding-bottom: calc(var(--nav-h) + 16px);
+  position: relative;
+}
+
+.lv-pad { padding-left: 16px; padding-right: 16px; }
+
+/* =============================================================
+   Barra superior
+   ============================================================= */
+
+.lv-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.lv-topbar__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lv-wordmark {
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+
+/* Botón circular de icono (atrás, buscar, notificaciones) */
+.lv-icon-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  transition: background 0.15s ease;
+}
+.lv-icon-btn:active { background: var(--surface-3); }
+.lv-icon-btn--bare { background: none; }
+
+/* =============================================================
+   Botones
+   ============================================================= */
+
+.lv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--r-btn);
+  padding: 0 18px;
+  height: 46px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: transform 0.12s ease, opacity 0.15s ease, background 0.15s ease;
+}
+.lv-btn:active:not(:disabled) { transform: scale(0.975); }
+.lv-btn:disabled { opacity: 0.42; }
+
+.lv-btn--primary { background: var(--ink); color: var(--bg); }
+.lv-btn--accent  { background: var(--accent); color: var(--accent-ink); }
+.lv-btn--soft    { background: var(--surface-2); color: var(--ink); }
+.lv-btn--outline { background: none; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.lv-btn--danger  { background: var(--live); color: #fff; }
+
+.lv-btn--block { width: 100%; }
+.lv-btn--sm { height: 36px; padding: 0 14px; font-size: 0.8rem; border-radius: 10px; }
+.lv-btn--lg { height: 54px; font-size: 1rem; }
+
+/* =============================================================
+   Chips de filtro
+   ============================================================= */
+
+.lv-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 12px 16px;
+}
+.lv-chips::-webkit-scrollbar { display: none; }
+
+.lv-chip {
+  flex-shrink: 0;
+  border-radius: var(--r-pill);
+  padding: 9px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.lv-chip--active {
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+/* =============================================================
+   Tarjetas de producto
+   ============================================================= */
+
+.lv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.lv-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.14s ease;
+}
+.lv-card:active { transform: scale(0.985); }
+
+.lv-card__media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.lv-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lv-card__body { padding: 10px 12px 12px; }
+
+.lv-card__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.13rem;
+  margin-bottom: 8px;
+}
+
+.lv-card__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* =============================================================
+   Precio y etiquetas
+   ============================================================= */
+
+.lv-eyebrow {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.lv-price {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.lv-price--xl { font-size: 2rem; }
+
+.lv-muted { color: var(--ink-2); }
+.lv-dim { color: var(--ink-3); }
+
+/* =============================================================
+   Insignias sobre la imagen
+   ============================================================= */
+
+.lv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.lv-badge--float {
+  position: absolute;
+  background: rgba(11, 11, 13, 0.72);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+.lv-badge--live { background: var(--live); color: #fff; }
+.lv-badge--urgent { background: var(--urgent); color: #fff; }
+.lv-badge--accent { background: var(--accent); color: var(--accent-ink); }
+.lv-badge--soft { background: var(--surface-2); color: var(--ink-2); }
+
+.lv-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: lv-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lv-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* =============================================================
+   Encabezado de sección
+   ============================================================= */
+
+.lv-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 16px 12px;
+}
+
+.lv-section__title {
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lv-section__link {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+/* =============================================================
+   Formularios
+   ============================================================= */
+
+.lv-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-btn);
+  padding: 13px 14px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.lv-input::placeholder { color: var(--ink-3); font-weight: 400; }
+.lv-input:focus { border-color: var(--ink); background: var(--surface); }
+
+.lv-field { margin-bottom: 14px; }
+.lv-field__label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+  letter-spacing: -0.005em;
+}
+.lv-field__hint { font-size: 0.72rem; color: var(--ink-3); margin-top: 6px; }
+
+/* =============================================================
+   Paneles
+   ============================================================= */
+
+.lv-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px;
+}
+.lv-panel--flat { background: var(--surface-2); border-color: transparent; }
+
+.lv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.lv-row:last-child { border-bottom: none; }
+
+.lv-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+
+/* =============================================================
+   Avisos
+   ============================================================= */
+
+.lv-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: var(--r-card);
+  padding: 13px 14px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.lv-note--ok { background: color-mix(in srgb, var(--ok) 10%, transparent); color: var(--ok); }
+.lv-note--bad { background: color-mix(in srgb, var(--live) 9%, transparent); color: var(--live); }
+.lv-note--warn { background: color-mix(in srgb, var(--warn) 12%, transparent); color: #8a6200; }
+
+/* =============================================================
+   Vacío
+   ============================================================= */
+
+.lv-empty {
+  padding: 72px 24px;
+  text-align: center;
+}
+.lv-empty__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  color: var(--ink-3);
+}
+.lv-empty__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 4px;
+}
+.lv-empty__text { font-size: 0.82rem; color: var(--ink-3); }
+
+/* =============================================================
+   Barra inferior
+   ============================================================= */
+
+.lv-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--app-max);
+  height: var(--nav-h);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-bar);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding-top: 9px;
+  z-index: 100;
+}
+
+.lv-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+  color: var(--ink-3);
+  transition: color 0.15s ease;
+}
+.lv-nav__item--active { color: var(--ink); }
+.lv-nav__label { font-size: 0.6rem; font-weight: 700; letter-spacing: -0.01em; }
+
+/* El botón central de vender resalta como en cualquier marketplace */
+.lv-nav__sell {
+  width: 40px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =============================================================
+   Carga
+   ============================================================= */
+
+.lv-skel {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: lv-shimmer 1.3s ease infinite;
+  border-radius: var(--r-card);
+}
+
+@keyframes lv-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

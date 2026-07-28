@@ -6,6 +6,9 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+// Timestamp/FieldValue desde el subpath modular: el namespace
+// admin.firestore.* no sobrevive al envoltorio del emulador.
+import { Timestamp } from "firebase-admin/firestore";
 import { db, messaging } from "../firebase";
 import { COLLECTIONS } from "../constants";
 
@@ -13,11 +16,11 @@ export const notifyShowStartingSoon = functions
   .region("us-central1")
   .pubsub.schedule("every 1 minutes")
   .onRun(async () => {
-    const now = admin.firestore.Timestamp.now();
-    const fiveMinutesFromNow = admin.firestore.Timestamp.fromMillis(
+    const now = Timestamp.now();
+    const fiveMinutesFromNow = Timestamp.fromMillis(
       now.toMillis() + 5 * 60 * 1000
     );
-    const sixMinutesFromNow = admin.firestore.Timestamp.fromMillis(
+    const sixMinutesFromNow = Timestamp.fromMillis(
       now.toMillis() + 6 * 60 * 1000
     );
 

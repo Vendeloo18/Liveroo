@@ -1,172 +1,261 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
+import {
+  collection, collectionGroup, query, where, orderBy, limit, onSnapshot, documentId, getDocs,
+} from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+import { useCountdown } from "../../hooks/useCountdown";
 
-type Tab = "compras" | "pujas" | "guardados";
+type Tab = "pujas" | "compras";
+
+interface MiPuja {
+  auctionId: string;
+  ultimoMonto: number;
+  cuando: any;
+}
+
+interface Subasta {
+  id: string; title?: string; imageURL?: string; imageURLs?: string[];
+  currentBidUsd?: number; currentBidderId?: string; status?: string;
+  endsAt?: any; winnerId?: string; finalPriceUsd?: number; orderId?: string;
+}
+
+interface Orden {
+  id: string; productTitle?: string; productImageURL?: string;
+  bidAmountUsd?: number; bidAmountBs?: number; status?: string;
+  sellerName?: string; createdAt?: any;
+}
+
+const ESTADO_ORDEN: Record<string, { texto: string; clase: string }> = {
+  pending_payment: { texto: "Pago pendiente", clase: "lv-badge--soft" },
+  payment_confirmed: { texto: "Pago confirmado", clase: "lv-badge--accent" },
+  shipped: { texto: "Enviado", clase: "lv-badge--accent" },
+  delivered: { texto: "Entregado", clase: "lv-badge--accent" },
+  cancelled: { texto: "Cancelada", clase: "lv-badge--live" },
+  disputed: { texto: "En disputa", clase: "lv-badge--live" },
+};
+
+function FilaPuja({ subasta, monto, uid, onClick }: { subasta: Subasta; monto: number; uid: string; onClick: () => void }) {
+  const { texto, vencida } = useCountdown(subasta.endsAt);
+  const activa = subasta.status === "active" && !vencida;
+  const voyGanando = subasta.currentBidderId === uid;
+  const gane = subasta.status === "sold" && subasta.winnerId === uid;
+
+  const estado = activa
+    ? (voyGanando ? { t: "Vas ganando", c: "lv-badge--accent" } : { t: "Te superaron", c: "lv-badge--live" })
+    : gane
+      ? { t: "Ganaste", c: "lv-badge--accent" }
+      : subasta.status === "sold" ? { t: "No ganaste", c: "lv-badge--soft" }
+      : { t: "Cerrada sin venta", c: "lv-badge--soft" };
+
+  const foto = subasta.imageURL ?? subasta.imageURLs?.[0];
+
+  return (
+    <button className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={onClick}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
+          {foto && <img src={foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {subasta.title ?? "Subasta"}
+          </div>
+          <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
+            Pujaste ${monto.toFixed(2)} · ahora ${(subasta.currentBidUsd ?? 0).toFixed(2)}
+          </div>
+          <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 6 }}>
+            <span className={`lv-badge ${estado.c}`}>{estado.t}</span>
+            {activa && <span className="lv-dim" style={{ fontSize: "0.68rem" }}>{texto}</span>}
+          </div>
+        </div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </button>
+  );
+}
 
 export default function ActivityPage() {
   const { profile } = useAuthStore();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("pujas");
-  const [bids, setBids] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+
+  const [misPujas, setMisPujas] = useState<MiPuja[]>([]);
+  const [subastas, setSubastas] = useState<Record<string, Subasta>>({});
+  const [ordenes, setOrdenes] = useState<Orden[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Historial real de pujas: la subcolección /auctions/*/bids que solo
+  // escribe el motor. /pendingBids son solicitudes efímeras, no historial.
+  useEffect(() => {
+    if (!profile) { setCargando(false); return; }
+    const q = query(
+      collectionGroup(db, "bids"),
+      where("bidderId", "==", profile.uid),
+      orderBy("placedAt", "desc"),
+      limit(60)
+    );
+    return onSnapshot(q, s => {
+      // Una subasta puede tener varias pujas mías: se muestra la última
+      const porSubasta = new Map<string, MiPuja>();
+      s.docs.forEach(d => {
+        const b = d.data();
+        if (!b.auctionId || porSubasta.has(b.auctionId)) return;
+        porSubasta.set(b.auctionId, { auctionId: b.auctionId, ultimoMonto: b.amountUsd, cuando: b.placedAt });
+      });
+      setMisPujas(Array.from(porSubasta.values()));
+      setCargando(false);
+    }, e => {
+      setError(e.code === "failed-precondition"
+        ? "Falta desplegar el índice de pujas. Corre: firebase deploy --only firestore:indexes"
+        : `No se pudo cargar tu actividad (${e.code})`);
+      setCargando(false);
+    });
+  }, [profile]);
+
+  // Las subastas referidas por esas pujas, en lotes de 10 (límite de "in")
+  useEffect(() => {
+    const ids = misPujas.map(p => p.auctionId).filter(id => !subastas[id]);
+    if (ids.length === 0) return;
+    let cancelado = false;
+    (async () => {
+      const nuevas: Record<string, Subasta> = {};
+      for (let i = 0; i < ids.length; i += 10) {
+        const lote = ids.slice(i, i + 10);
+        const snap = await getDocs(query(collection(db, "auctions"), where(documentId(), "in", lote)));
+        snap.docs.forEach(d => { nuevas[d.id] = { id: d.id, ...d.data() } as Subasta; });
+      }
+      if (!cancelado) setSubastas(prev => ({ ...prev, ...nuevas }));
+    })().catch(() => undefined);
+    return () => { cancelado = true; };
+  }, [misPujas, subastas]);
 
   useEffect(() => {
     if (!profile) return;
-    const u1 = onSnapshot(
-      query(collection(db,"pendingBids"), where("bidderId","==",profile.uid), orderBy("submittedAt","desc")),
-      s => setBids(s.docs.map(d => ({id:d.id,...d.data()})))
-    );
-    const u2 = onSnapshot(
-      query(collection(db,"orders"), where("buyerId","==",profile.uid), orderBy("createdAt","desc")),
-      s => setOrders(s.docs.map(d => ({id:d.id,...d.data()})))
-    );
-    return () => { u1(); u2(); };
+    const q = query(collection(db, "orders"), where("buyerId", "==", profile.uid), orderBy("createdAt", "desc"));
+    return onSnapshot(q,
+      s => setOrdenes(s.docs.map(d => ({ id: d.id, ...d.data() } as Orden))),
+      e => console.error("No se pudieron cargar tus órdenes:", e.code));
   }, [profile]);
 
-  const statusColor = (s:string) => ({
-    pending:"#F5C518", active:"#F5C518", won:"#4ade80", lost:"rgba(255,255,255,0.3)",
-    paid:"#4ade80", delivered:"#4ade80", cancelled:"#ff6b6b"
-  }[s] ?? "#888");
+  const pujasOrdenadas = useMemo(() => {
+    const ms = (v: any) => v?.toMillis?.() ?? 0;
+    return [...misPujas].sort((a, b) => ms(b.cuando) - ms(a.cuando));
+  }, [misPujas]);
 
-  const statusLabel = (s:string) => ({
-    pending:"Pendiente", active:"Activa", won:"Ganada", lost:"Superada",
-    paid:"Pagado", delivered:"Entregado", cancelled:"Cancelado"
-  }[s] ?? s);
-
-  const handleBidClick = async (bid: any) => {
-    if (bid.auctionId) {
-      // Verificar si la subasta sigue activa
-      const aDoc = await getDoc(doc(db,"auctions",bid.auctionId));
-      if (aDoc.exists()) {
-        router.push(`/auctions/${bid.auctionId}`);
-        return;
-      }
-      // Si es de un show en vivo
-      if (bid.showId) {
-        router.push(`/shows/${bid.showId}`);
-        return;
-      }
-    }
-    if (bid.showId) {
-      router.push(`/shows/${bid.showId}`);
-    }
-  };
-
-  return (
-    <div style={{minHeight:"100vh",background:"#080818",backgroundImage:"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(168,85,247,0.05) 0%, transparent 60%)",fontFamily:"'Inter',-apple-system,sans-serif",maxWidth:480,margin:"0 auto",paddingBottom:90}}>
-
-      <div style={{padding:"20px 20px 0"}}>
-        <h1 style={{fontSize:"1.6rem",fontWeight:900,color:"#fff",letterSpacing:"-0.04em",marginBottom:4}}>Actividad</h1>
-        <p style={{fontSize:"0.78rem",color:"rgba(255,255,255,0.35)",marginBottom:20}}>Compras, pujas y guardados</p>
-
-        {/* Tabs */}
-        <div style={{display:"flex",gap:8,marginBottom:24}}>
-          {([
-            {id:"compras",label:"Compras",count:orders.length},
-            {id:"pujas",label:"Pujas",count:bids.length},
-            {id:"guardados",label:"Guardados",count:0},
-          ] as {id:Tab,label:string,count:number}[]).map(t => (
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{background:tab===t.id?"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))":"rgba(13,13,32,0.9)",border:`1px solid ${tab===t.id?"rgba(168,85,247,0.35)":"rgba(168,85,247,0.08)"}`,borderRadius:20,padding:"8px 16px",fontSize:"0.78rem",fontWeight:700,color:tab===t.id?"#fff":"rgba(255,255,255,0.4)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>
-              {t.label}
-              {t.count>0 && <span style={{background:tab===t.id?"rgba(168,85,247,0.3)":"rgba(255,255,255,0.1)",borderRadius:20,padding:"1px 7px",fontSize:"0.68rem",fontWeight:800}}>{t.count}</span>}
-            </button>
-          ))}
+  if (!profile) {
+    return (
+      <div className="lv-app">
+        <header className="lv-topbar"><h1 className="lv-topbar__title">Actividad</h1></header>
+        <div className="lv-empty">
+          <div className="lv-empty__title">Entra para ver tu actividad</div>
+          <div className="lv-empty__text">Ahí quedan tus pujas y tus compras.</div>
+          <button className="lv-btn lv-btn--primary" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>
+            Entrar
+          </button>
         </div>
       </div>
+    );
+  }
 
-      <div style={{padding:"0 20px"}}>
+  return (
+    <div className="lv-app">
+      <header className="lv-topbar">
+        <h1 className="lv-topbar__title" style={{ fontSize: "1.15rem", fontWeight: 850 }}>Actividad</h1>
+      </header>
 
-        {/* PUJAS */}
-        {tab==="pujas" && (
-          <div>
-            {bids.length===0 ? (
-              <div style={{textAlign:"center",padding:"60px 0"}}>
-                <div style={{width:56,height:56,background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.12)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.4)" strokeWidth="1.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                </div>
-                <div style={{fontSize:"0.88rem",fontWeight:700,color:"rgba(255,255,255,0.25)",marginBottom:6}}>Sin pujas aún</div>
-                <div style={{fontSize:"0.75rem",color:"rgba(255,255,255,0.15)",marginBottom:20}}>Explora subastas activas</div>
-                <button onClick={()=>router.push("/")} style={{background:"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))",border:"1px solid rgba(168,85,247,0.25)",borderRadius:20,padding:"10px 24px",fontSize:"0.82rem",fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-                  Ver subastas
-                </button>
-              </div>
-            ) : bids.map((bid, i) => (
-              <div
-                key={bid.id}
-                onClick={() => handleBidClick(bid)}
-                style={{background:"rgba(13,13,32,0.9)",border:"1px solid rgba(168,85,247,0.1)",borderRadius:16,padding:"16px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:14,transition:"border-color 0.15s"}}
-              >
-                {/* Icon */}
-                <div style={{width:44,height:44,background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.15)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={statusColor(bid.status)} strokeWidth="2" strokeLinecap="round">
-                    {bid.status==="won" ? <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/> : <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>}
-                  </svg>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:"0.92rem",fontWeight:800,color:"#fff",marginBottom:3}}>
-                    ${bid.amountUsd?.toFixed(2)} USD
-                  </div>
-                  <div style={{fontSize:"0.7rem",color:"rgba(255,255,255,0.35)"}}>
-                    {bid.submittedAt?.toDate?.()?.toLocaleString("es-VE") ?? ""}
-                  </div>
-                  {bid.auctionId && (
-                    <div style={{fontSize:"0.65rem",color:"rgba(168,85,247,0.5)",marginTop:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
-                      ID: {bid.auctionId}
-                    </div>
-                  )}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                  <div style={{fontSize:"0.65rem",fontWeight:800,color:statusColor(bid.status),textTransform:"uppercase",letterSpacing:"0.06em",background:`rgba(${bid.status==="won"?"74,222,128":bid.status==="lost"?"255,255,255":"245,197,24"},0.06)`,padding:"4px 10px",borderRadius:20,border:`1px solid rgba(${bid.status==="won"?"74,222,128":bid.status==="lost"?"255,255,255":"245,197,24"},0.15)`}}>
-                    {statusLabel(bid.status)}
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="lv-chips">
+        {([["pujas", `Mis pujas${pujasOrdenadas.length ? ` (${pujasOrdenadas.length})` : ""}`],
+           ["compras", `Mis compras${ordenes.length ? ` (${ordenes.length})` : ""}`]] as [Tab, string][]).map(([v, label]) => (
+          <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
+        ))}
+      </div>
 
-        {/* COMPRAS */}
-        {tab==="compras" && (
-          <div>
-            {orders.length===0 ? (
-              <div style={{textAlign:"center",padding:"60px 0"}}>
-                <div style={{width:56,height:56,background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.12)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.4)" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
-                <div style={{fontSize:"0.88rem",fontWeight:700,color:"rgba(255,255,255,0.25)",marginBottom:6}}>Sin compras aún</div>
-                <div style={{fontSize:"0.75rem",color:"rgba(255,255,255,0.15)"}}>Gana una subasta para ver tus órdenes aquí</div>
-              </div>
-            ) : orders.map(order => (
-              <div key={order.id} onClick={()=>router.push(`/orders/${order.id}`)} style={{background:"rgba(13,13,32,0.9)",border:"1px solid rgba(168,85,247,0.1)",borderRadius:16,padding:"16px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:44,height:44,background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.15)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:"0.92rem",fontWeight:800,color:"#fff",marginBottom:3,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{order.productTitle ?? "Orden"}</div>
-                  <div style={{fontSize:"0.7rem",color:"rgba(255,255,255,0.35)"}}>${order.amountUsd?.toFixed(2)} · {order.createdAt?.toDate?.()?.toLocaleDateString("es-VE")??""}</div>
-                </div>
-                <div style={{fontSize:"0.65rem",fontWeight:800,color:statusColor(order.status),textTransform:"uppercase",letterSpacing:"0.06em",background:"rgba(168,85,247,0.06)",padding:"4px 10px",borderRadius:20}}>
-                  {statusLabel(order.status)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {error && <div className="lv-pad"><div className="lv-note lv-note--bad">{error}</div></div>}
 
-        {/* GUARDADOS */}
-        {tab==="guardados" && (
-          <div style={{textAlign:"center",padding:"60px 0"}}>
-            <div style={{width:56,height:56,background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.12)",borderRadius:16,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(168,85,247,0.4)" strokeWidth="1.5" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <div className="lv-pad">
+        {tab === "pujas" && (
+          cargando ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {[0,1,2].map(i => <div key={i} className="lv-skel" style={{ height: 76 }}/>)}
             </div>
-            <div style={{fontSize:"0.88rem",fontWeight:700,color:"rgba(255,255,255,0.25)",marginBottom:6}}>Sin guardados aún</div>
-            <div style={{fontSize:"0.75rem",color:"rgba(255,255,255,0.15)"}}>Guarda subastas y shows para seguirlos</div>
-          </div>
+          ) : pujasOrdenadas.length === 0 ? (
+            <div className="lv-empty">
+              <div className="lv-empty__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d="M14 11l-8 8M9 6l9 9M3 21h6M12.5 3.5l8 8"/>
+                </svg>
+              </div>
+              <div className="lv-empty__title">Todavía no has pujado</div>
+              <div className="lv-empty__text">Cuando pujes, aquí ves si vas ganando.</div>
+              <button className="lv-btn lv-btn--accent" style={{ marginTop: 16 }} onClick={() => router.push("/auctions")}>
+                Ver subastas
+              </button>
+            </div>
+          ) : (
+            <section className="lv-panel" style={{ padding: "2px 16px" }}>
+              {pujasOrdenadas.map(p => {
+                const s = subastas[p.auctionId];
+                if (!s) return <div key={p.auctionId} className="lv-skel" style={{ height: 68, margin: "10px 0" }}/>;
+                return (
+                  <FilaPuja
+                    key={p.auctionId}
+                    subasta={s}
+                    monto={p.ultimoMonto}
+                    uid={profile.uid}
+                    onClick={() => router.push(s.orderId ? `/orders/${s.orderId}` : `/auctions/${p.auctionId}`)}
+                  />
+                );
+              })}
+            </section>
+          )
+        )}
+
+        {tab === "compras" && (
+          ordenes.length === 0 ? (
+            <div className="lv-empty">
+              <div className="lv-empty__icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <path d="M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z"/>
+                </svg>
+              </div>
+              <div className="lv-empty__title">Aún no has ganado nada</div>
+              <div className="lv-empty__text">Cuando ganes una subasta, tu orden aparece aquí.</div>
+            </div>
+          ) : (
+            <section className="lv-panel" style={{ padding: "2px 16px" }}>
+              {ordenes.map(o => {
+                const e = ESTADO_ORDEN[o.status ?? ""] ?? { texto: o.status ?? "—", clase: "lv-badge--soft" };
+                return (
+                  <button key={o.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/orders/${o.id}`)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
+                        {o.productImageURL && <img src={o.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {o.productTitle ?? "Producto"}
+                        </div>
+                        <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
+                          ${o.bidAmountUsd?.toFixed(2)}
+                          {o.bidAmountBs ? ` · Bs ${o.bidAmountBs.toFixed(2)}` : ""}
+                          {o.sellerName ? ` · ${o.sellerName}` : ""}
+                        </div>
+                        <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>{e.texto}</span>
+                      </div>
+                    </div>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </button>
+                );
+              })}
+            </section>
+          )
         )}
       </div>
     </div>

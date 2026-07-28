@@ -6,6 +6,9 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+// Timestamp/FieldValue desde el subpath modular: el namespace
+// admin.firestore.* no sobrevive al envoltorio del emulador.
+import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS } from "../constants";
 
@@ -33,7 +36,7 @@ export const onRatingCreated = functions
       tx.update(sellerRef, {
         ratingCount: newCount,
         ratingAvg: newAvg,
-        updatedAt: admin.firestore.Timestamp.now(),
+        updatedAt: Timestamp.now(),
       });
     });
   });
@@ -56,7 +59,7 @@ export const onOrderDelivered = functions
 
     const orderId = change.after.id;
     const buyerId = after.buyerId as string;
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
 
     // Notificar al comprador para que califique
     try {

@@ -1,94 +1,166 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+
+interface Prefs { shows: boolean; pujas: boolean; ordenes: boolean; promo: boolean }
+
+const POR_DEFECTO: Prefs = { shows: true, pujas: true, ordenes: true, promo: false };
+
+const AVISOS: [keyof Prefs, string, string][] = [
+  ["pujas", "Te superaron en una puja", "Para que puedas volver a pujar a tiempo"],
+  ["ordenes", "Cambios en tus órdenes", "Pago confirmado, envío y entrega"],
+  ["shows", "Shows por empezar", "De los vendedores que sigues"],
+  ["promo", "Novedades y promociones", "Ofertas y anuncios de Liveroo"],
+];
+
+function Interruptor({ activo, onChange, label }: { activo: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={activo}
+      aria-label={label}
+      onClick={onChange}
+      style={{
+        width: 46, height: 27, borderRadius: 999, flexShrink: 0, position: "relative",
+        background: activo ? "var(--ink)" : "var(--surface-3)", transition: "background 0.2s",
+      }}
+    >
+      <span style={{
+        position: "absolute", top: 3, left: activo ? 22 : 3, width: 21, height: 21,
+        borderRadius: "50%", background: "var(--bg)", transition: "left 0.2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+      }}/>
+    </button>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { profile } = useAuthStore();
-  const [notifications, setNotifications] = useState({ shows:true, pujas:true, ordenes:true, promo:false });
-  const [currency, setCurrency] = useState("usd");
-  const [saved, setSaved] = useState(false);
+  const { profile, signOut } = useAuthStore();
 
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const [prefs, setPrefs] = useState<Prefs>(POR_DEFECTO);
+  const [moneda, setMoneda] = useState<"usd" | "bs">("usd");
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
-  const Toggle = ({ value, onChange }: { value:boolean; onChange:()=>void }) => (
-    <div onClick={onChange} style={{ width:44, height:24, borderRadius:12, background:value?"linear-gradient(135deg,#a855f7,#e040fb)":"rgba(255,255,255,0.1)", position:"relative", cursor:"pointer", transition:"background 0.2s", flexShrink:0, border:`1px solid ${value?"rgba(168,85,247,0.4)":"rgba(255,255,255,0.08)"}` }}>
-      <div style={{ width:18, height:18, borderRadius:"50%", background:"#fff", position:"absolute", top:2, left:value?22:2, transition:"left 0.2s", boxShadow:"0 1px 4px rgba(0,0,0,0.3)" }}/>
-    </div>
-  );
+  // Se hidrata con lo que el usuario ya tenía guardado
+  useEffect(() => {
+    if (!profile) return;
+    const p = (profile as any).notifPrefs as Partial<Prefs> | undefined;
+    if (p) setPrefs({ ...POR_DEFECTO, ...p });
+    const m = (profile as any).currencyPref;
+    if (m === "usd" || m === "bs") setMoneda(m);
+  }, [profile]);
+
+  // Antes este botón solo mostraba "Guardado" sin escribir nada.
+  const guardar = async () => {
+    if (!profile) return;
+    setOcupado(true);
+    setAviso(null);
+    try {
+      await updateDoc(doc(db, "users", profile.uid), {
+        notifPrefs: prefs,
+        currencyPref: moneda,
+        updatedAt: serverTimestamp(),
+      });
+      setAviso({ tipo: "ok", texto: "Preferencias guardadas" });
+    } catch (e: any) {
+      setAviso({ tipo: "bad", texto: e?.message ?? "No se pudieron guardar" });
+    } finally {
+      setOcupado(false);
+      setTimeout(() => setAviso(null), 4000);
+    }
+  };
+
+  if (!profile) {
+    return (
+      <div className="lv-app">
+        <header className="lv-topbar">
+          <button className="lv-icon-btn" onClick={() => router.push("/account")} aria-label="Atrás">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          </button>
+          <h1 className="lv-topbar__title">Ajustes</h1>
+        </header>
+        <div className="lv-empty">
+          <div className="lv-empty__title">Entra para cambiar tus ajustes</div>
+          <button className="lv-btn lv-btn--primary" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>Entrar</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight:"100vh", background:"#080818", backgroundImage:"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(168,85,247,0.05) 0%, transparent 60%)", fontFamily:"'Inter',-apple-system,sans-serif", maxWidth:480, margin:"0 auto", paddingBottom:90 }}>
-      <div style={{ padding:"20px 20px 0" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:24 }}>
-          <button onClick={() => router.push("/account")} style={{ width:38, height:38, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          </button>
-          <h1 style={{ fontSize:"1.4rem", fontWeight:900, color:"#fff", letterSpacing:"-0.03em" }}>Configuración</h1>
-        </div>
+    <div className="lv-app">
+      <header className="lv-topbar">
+        <button className="lv-icon-btn" onClick={() => router.push("/account")} aria-label="Atrás">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <h1 className="lv-topbar__title">Ajustes</h1>
+      </header>
 
-        {/* Notifications */}
-        <div style={{ fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Notificaciones</div>
-        <div style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, marginBottom:20, overflow:"hidden" }}>
-          {[
-            { key:"shows", label:"Shows por empezar", sub:"5 minutos antes de que inicie" },
-            { key:"pujas", label:"Te superaron en una puja", sub:"Cuando alguien puja más que tú" },
-            { key:"ordenes", label:"Actualizaciones de órdenes", sub:"Confirmaciones y entregas" },
-            { key:"promo", label:"Promociones y novedades", sub:"Ofertas y nuevos vendedores" },
-          ].map((item, i) => (
-            <div key={item.key} style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:14, borderBottom: i<3 ? "1px solid rgba(168,85,247,0.06)" : "none" }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:"0.85rem", fontWeight:700, color:"#fff", marginBottom:2 }}>{item.label}</div>
-                <div style={{ fontSize:"0.68rem", color:"rgba(255,255,255,0.35)" }}>{item.sub}</div>
+      <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
+        {aviso && <div className={`lv-note lv-note--${aviso.tipo}`}>{aviso.texto}</div>}
+
+        <section className="lv-panel" style={{ padding: "2px 16px" }}>
+          <div className="lv-eyebrow" style={{ padding: "14px 0 2px" }}>Avisarme cuando…</div>
+          {AVISOS.map(([clave, titulo, detalle]) => (
+            <div key={clave} className="lv-row">
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "0.86rem", fontWeight: 650 }}>{titulo}</div>
+                <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 1 }}>{detalle}</div>
               </div>
-              <Toggle value={(notifications as any)[item.key]} onChange={() => setNotifications(prev => ({ ...prev, [item.key]:!(prev as any)[item.key] }))}/>
+              <Interruptor
+                activo={prefs[clave]}
+                label={titulo}
+                onChange={() => setPrefs(p => ({ ...p, [clave]: !p[clave] }))}
+              />
             </div>
           ))}
-        </div>
+        </section>
 
-        {/* Currency */}
-        <div style={{ fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Moneda preferida</div>
-        <div style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, marginBottom:20, overflow:"hidden" }}>
-          {[
-            { id:"usd", label:"USD — Dólar americano", sub:"Precios mostrados en dólares" },
-            { id:"bs", label:"Bs — Bolívares", sub:"Precios mostrados en bolívares" },
-            { id:"both", label:"Ambas monedas", sub:"Muestra USD y Bs simultáneamente" },
-          ].map((opt, i) => (
-            <div key={opt.id} onClick={() => setCurrency(opt.id)} style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:14, borderBottom: i<2 ? "1px solid rgba(168,85,247,0.06)" : "none", cursor:"pointer" }}>
-              <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${currency===opt.id?"#a855f7":"rgba(255,255,255,0.2)"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                {currency===opt.id && <div style={{ width:8, height:8, borderRadius:"50%", background:"#a855f7" }}/>}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:"0.85rem", fontWeight:700, color:"#fff", marginBottom:2 }}>{opt.label}</div>
-                <div style={{ fontSize:"0.68rem", color:"rgba(255,255,255,0.35)" }}>{opt.sub}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <section className="lv-panel">
+          <div className="lv-eyebrow" style={{ marginBottom: 10 }}>Mostrar precios en</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {([["usd", "Dólares"], ["bs", "Bolívares"]] as const).map(([v, label]) => (
+              <button key={v} onClick={() => setMoneda(v)} className={`lv-chip${moneda === v ? " lv-chip--active" : ""}`} style={{ flex: 1 }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.5, marginTop: 10 }}>
+            Las pujas siempre se hacen en dólares. Los bolívares se calculan con la tasa
+            del momento y se congelan al cerrar la subasta.
+          </p>
+        </section>
 
-        {/* Account info */}
-        <div style={{ fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:12 }}>Cuenta</div>
-        <div style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, marginBottom:20, overflow:"hidden" }}>
-          {[
-            { label:"Correo electrónico", val: profile?.email ?? "—" },
-            { label:"Nombre", val: profile?.displayName ?? "—" },
-            { label:"Rol", val: profile?.role ?? "buyer" },
-          ].map((row, i) => (
-            <div key={row.label} style={{ padding:"14px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom: i<2 ? "1px solid rgba(168,85,247,0.06)" : "none" }}>
-              <span style={{ fontSize:"0.82rem", color:"rgba(255,255,255,0.4)" }}>{row.label}</span>
-              <span style={{ fontSize:"0.82rem", fontWeight:600, color:"#fff" }}>{row.val}</span>
-            </div>
-          ))}
-        </div>
+        <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado} onClick={guardar}>
+          {ocupado ? "Guardando…" : "Guardar preferencias"}
+        </button>
 
-        {/* Save */}
-        <button onClick={save} style={{ width:"100%", background: saved ? "rgba(74,222,128,0.1)" : "linear-gradient(135deg,#00c8ff,#a855f7,#e040fb)", border: saved ? "1px solid rgba(74,222,128,0.3)" : "none", borderRadius:14, padding:"14px", fontSize:"0.92rem", fontWeight:800, color: saved ? "#4ade80" : "#fff", cursor:"pointer", fontFamily:"inherit", boxShadow: saved ? "none" : "0 0 24px rgba(168,85,247,0.25)" }}>
-          {saved ? "Guardado" : "Guardar cambios"}
+        <section className="lv-panel" style={{ padding: "2px 16px" }}>
+          <div className="lv-row">
+            <span className="lv-muted" style={{ fontSize: "0.84rem" }}>Correo</span>
+            <strong style={{ fontSize: "0.82rem" }}>{profile.email}</strong>
+          </div>
+          <div className="lv-row">
+            <span className="lv-muted" style={{ fontSize: "0.84rem" }}>Cuenta</span>
+            <strong style={{ fontSize: "0.82rem" }}>
+              {profile.role === "admin" ? "Administrador" : profile.sellerStatus === "approved" ? "Vendedor" : "Comprador"}
+            </strong>
+          </div>
+        </section>
+
+        <button
+          className="lv-btn lv-btn--soft lv-btn--block"
+          style={{ color: "var(--live)" }}
+          onClick={async () => { if (confirm("¿Cerrar sesión?")) { await signOut(); router.push("/login"); } }}
+        >
+          Cerrar sesión
         </button>
       </div>
-      
     </div>
   );
 }

@@ -1,10 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Archivo } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../components/ui/AuthProvider";
 import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
 
-const inter = Inter({ subsets: ["latin"] });
+// Grotesca con pesos hasta 900 y cifras tabulares: los precios y los
+// contadores no bailan al cambiar de dígito.
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Liveroo — Subastas en vivo",
@@ -14,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#080818",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -23,7 +29,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+      <body className={archivo.className}>
         <AuthProvider>
           {children}
           <BottomNavWrapper/>

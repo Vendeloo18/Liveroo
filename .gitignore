@@ -13,3 +13,9 @@ ui-debug.log
 *.tsbuildinfo
 serviceAccountKey.json
 scripts/seedProd.js
+
+# Respaldos locales de Firestore
+backups/
+
+# Salida compilada de las functions (la regenera el predeploy)
+apps/functions/lib/

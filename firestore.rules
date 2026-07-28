@@ -1,8 +1,307 @@
 rules_version = '2';
+
+// =============================================================
+// LIVEROO — Reglas de seguridad de Firestore
+// =============================================================
+// Principio: el cliente NUNCA fija un precio ni cierra una subasta.
+// Solo puede pedir una puja creando un doc en /pendingBids; el resto
+// lo decide el motor (Cloud Functions), que ignora estas reglas.
+//
+// Todo lo que no esté explícitamente permitido aquí, queda denegado.
+// =============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // get() dentro de reglas no pasa por reglas: puede leer /users
+    // aunque el cliente no pueda.
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(uid())).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userDoc().role == 'admin';
+    }
+
+    function isApprovedSeller() {
+      return isSignedIn()
+        && userDoc().role in ['seller', 'admin']
+        && userDoc().sellerStatus == 'approved';
+    }
+
+    // La escritura solo toca las claves listadas (nada más se mueve)
+    function onlyChanges(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // ── /users — datos privados: email, teléfono, cédula ────────
+    // Solo los ve su dueño. Lo que el público necesita ver está
+    // duplicado en /publicProfiles.
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && (uid() == userId || isAdmin());
+      allow list: if isAdmin();
+
+      // Al registrarse nadie nace vendedor ni admin
+      allow create: if isSignedIn()
+        && uid() == userId
+        && request.resource.data.role == 'buyer'
+        && request.resource.data.sellerStatus == 'none';
+
+      // El rol, el estado de vendedor y las métricas las mueve el motor
+      allow update: if isSignedIn()
+        && uid() == userId
+        && onlyChanges([
+             'displayName', 'avatar', 'username', 'city', 'phone', 'whatsapp',
+             'cedula', 'shopName', 'sellerCat', 'fcmToken', 'onboardingDone',
+             'notifPrefs', 'currencyPref', 'updatedAt'
+           ]);
+
+      allow delete: if false;
+    }
+
+    // ── /publicProfiles — la cara pública de un usuario ─────────
+    // La mantiene sincronizada una Cloud Function. Nadie la escribe.
+
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── /auctions — subastas, en vivo y sueltas ─────────────────
+
+    match /auctions/{auctionId} {
+      allow read: if true;
+
+      // El vendedor publica su subasta. El precio de partida es suyo,
+      // pero no puede nacer con pujas ni con ganador puesto a mano.
+      allow create: if isApprovedSeller()
+        && request.resource.data.sellerId == uid()
+        && request.resource.data.mode in ['live', 'standalone']
+        && request.resource.data.bidsCount == 0
+        && request.resource.data.currentBidderId == null
+        && request.resource.data.currentBidUsd == request.resource.data.startingPriceUsd
+        && request.resource.data.startingPriceUsd is number
+        && request.resource.data.startingPriceUsd > 0
+        && request.resource.data.minIncrementUsd is number
+        && request.resource.data.minIncrementUsd > 0
+        && request.resource.data.winnerId == null
+        && request.resource.data.orderId == null
+        && (
+          // En vivo: nace en cola; la activa el motor cuando le toca
+          (request.resource.data.mode == 'live'
+            && request.resource.data.status == 'waiting'
+            && request.resource.data.showId is string)
+          ||
+          // Suelta: nace activa y con fecha de cierre en el futuro
+          (request.resource.data.mode == 'standalone'
+            && request.resource.data.status == 'active'
+            && request.resource.data.showId == null
+            && request.resource.data.endsAt is timestamp
+            && request.resource.data.endsAt > request.time)
+        );
+
+      // Se puede corregir la ficha solo mientras nadie haya pujado.
+      // El precio, el estado y el ganador quedan fuera del alcance.
+      allow update: if isApprovedSeller()
+        && resource.data.sellerId == uid()
+        && resource.data.bidsCount == 0
+        && resource.data.status in ['draft', 'waiting']
+        && onlyChanges([
+             'title', 'description', 'imageURL', 'imageURLs', 'category',
+             'startingPriceUsd', 'currentBidUsd', 'minIncrementUsd',
+             'timerSeconds', 'sortOrder', 'updatedAt'
+           ])
+        && request.resource.data.currentBidUsd == request.resource.data.startingPriceUsd;
+
+      allow delete: if isApprovedSeller()
+        && resource.data.sellerId == uid()
+        && resource.data.bidsCount == 0
+        && resource.data.status in ['draft', 'waiting'];
+
+      // Historial de pujas: público para leer, intocable para escribir
+      match /bids/{bidId} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+
+    // La pantalla de Actividad consulta las pujas del usuario con un
+    // collectionGroup, y esas consultas NO heredan la regla de arriba:
+    // necesitan una propia que cubra el grupo entero.
+    match /{path=**}/bids/{bidId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── /pendingBids — la única puerta para pujar ───────────────
+    // El cliente pide; el motor decide. Nadie puede editar su
+    // propia solicitud después de crearla.
+
+    match /pendingBids/{pendingBidId} {
+      allow get: if isSignedIn() && resource.data.bidderId == uid();
+      allow list: if isSignedIn() && resource.data.bidderId == uid();
+
+      allow create: if isSignedIn()
+        && request.resource.data.bidderId == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.auctionId is string
+        && request.resource.data.amountUsd is number
+        && request.resource.data.amountUsd > 0
+        && request.resource.data.amountUsd < 1000000;
+
+      allow update, delete: if false;
+    }
+
+    // ── /shows ─────────────────────────────────────────────────
+
+    match /shows/{showId} {
+      allow read: if true;
+
+      allow create: if isApprovedSeller()
+        && request.resource.data.sellerId == uid()
+        && request.resource.data.status in ['draft', 'scheduled'];
+
+      // status, startedAt, endedAt y currentAuctionId los mueve el motor:
+      // por eso el vendedor ya no puede escribir status:"live" a mano.
+      allow update: if (
+        isApprovedSeller()
+        && resource.data.sellerId == uid()
+        && onlyChanges([
+             'title', 'description', 'coverImageURL', 'category',
+             'scheduledAt', 'updatedAt'
+           ])
+      ) || (
+        // Contador de espectadores: solo suma de uno en uno. Es una
+        // métrica de vanidad; si se vuelve importante, la mueve una Function.
+        isSignedIn()
+        && onlyChanges(['viewerCount'])
+        && request.resource.data.viewerCount == resource.data.viewerCount + 1
+      );
+
+      allow delete: if isApprovedSeller()
+        && resource.data.sellerId == uid()
+        && resource.data.status in ['draft', 'scheduled'];
+
+      // Chat en vivo
+      match /messages/{messageId} {
+        allow read: if true;
+
+        allow create: if isSignedIn()
+          && request.resource.data.authorId == uid()
+          && request.resource.data.type == 'chat'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 300
+          && get(/databases/$(database)/documents/shows/$(showId)).data.status == 'live';
+
+        allow update: if false;
+        allow delete: if isAdmin()
+          || get(/databases/$(database)/documents/shows/$(showId)).data.sellerId == uid();
+      }
+    }
+
+    // ── /orders — las crea el motor al cerrar una subasta ───────
+    // La condición aplica documento por documento, así que una
+    // consulta sin filtrar por buyerId o sellerId falla entera.
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.buyerId == uid()
+        || resource.data.sellerId == uid()
+        || isAdmin()
+      );
+
+      allow create: if false;
+
+      allow update: if isSignedIn() && (
+        // El vendedor confirma el pago y despacha
+        (resource.data.sellerId == uid()
+          && onlyChanges([
+               'status', 'paymentMethod', 'paymentReference',
+               'paymentConfirmedAt', 'paymentConfirmedBy',
+               'whatsappMessageSent', 'trackingCode', 'updatedAt'
+             ])
+          && unchanged('bidAmountUsd')
+          && unchanged('commissionUsd'))
+        ||
+        // El comprador solo deja su contacto
+        (resource.data.buyerId == uid()
+          && onlyChanges(['buyerWhatsapp', 'updatedAt']))
+        ||
+        isAdmin()
+      );
+
+      allow delete: if false;
+    }
+
+    // ── /ratings — el comprador califica al vendedor ────────────
+
+    match /ratings/{ratingId} {
+      allow read: if true;
+
+      // Nombres de campo según onRatingCreated: toUid + score
+      allow create: if isSignedIn()
+        && request.resource.data.fromUid == uid()
+        && request.resource.data.score is int
+        && request.resource.data.score >= 1
+        && request.resource.data.score <= 5
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != uid();
+
+      allow update, delete: if false;
+    }
+
+    // ── Configuración — pública para leer, admin vía Function ───
+
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /exchangeRates/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Billetera — todavía sin backend, cerrada al cliente ─────
+    // Cuando se implemente, los movimientos los escribe una Function.
+
+    match /wallets/{userId} {
+      allow read: if isSignedIn() && uid() == userId;
+      allow write: if false;
+    }
+
+    match /walletTransactions/{txId} {
+      allow read: if isSignedIn() && resource.data.userId == uid();
+      allow write: if false;
+    }
+
+    match /deposits/{depositId} {
+      allow read: if isSignedIn() && resource.data.userId == uid();
+      allow write: if false;
+    }
+
+    // ── Cierre por defecto ──────────────────────────────────────
+    // No otorga nada: está para dejar constancia de que cualquier
+    // colección nueva nace denegada hasta que se le escriba su regla.
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

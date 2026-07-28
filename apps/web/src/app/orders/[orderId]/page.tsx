@@ -1,174 +1,281 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
+import { useAuthStore } from "../../../store/authStore";
 import { formatUsd, formatBs, buildWhatsappMessage, buildWhatsappLink } from "@subastas-ve/shared";
+
+const PASOS = [
+  { clave: "pending_payment", corto: "Pago" },
+  { clave: "payment_confirmed", corto: "Confirmado" },
+  { clave: "shipped", corto: "Enviado" },
+  { clave: "delivered", corto: "Entregado" },
+];
+
+const ESTADO: Record<string, { texto: string; detalle: string; clase: string }> = {
+  pending_payment: {
+    texto: "Pago pendiente", clase: "lv-badge--soft",
+    detalle: "Coordina el pago con el vendedor por WhatsApp. Él lo confirma aquí al recibirlo.",
+  },
+  payment_confirmed: {
+    texto: "Pago confirmado", clase: "lv-badge--accent",
+    detalle: "El vendedor confirmó tu pago. Espera el envío.",
+  },
+  shipped: {
+    texto: "Enviado", clase: "lv-badge--accent",
+    detalle: "Tu producto va en camino. Confirma cuando lo recibas.",
+  },
+  delivered: {
+    texto: "Entregado", clase: "lv-badge--accent",
+    detalle: "Transacción completada.",
+  },
+  cancelled: {
+    texto: "Cancelada", clase: "lv-badge--live",
+    detalle: "Esta orden fue cancelada.",
+  },
+  disputed: {
+    texto: "En disputa", clase: "lv-badge--live",
+    detalle: "Estamos revisando este caso.",
+  },
+};
 
 export default function OrderPage() {
   const { orderId } = useParams() as { orderId: string };
   const router = useRouter();
+  const { profile } = useAuthStore();
   const [order, setOrder] = useState<any>(null);
+
+  const [estrellas, setEstrellas] = useState(0);
+  const [comentario, setComentario] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [errorRating, setErrorRating] = useState<string | null>(null);
+  const [yaCalifique, setYaCalifique] = useState(false);
 
   useEffect(() => {
     return onSnapshot(doc(db, "orders", orderId), s => {
-      if (s.exists()) setOrder({ id: s.id, ...s.data() });
+      if (!s.exists()) return;
+      const o = { id: s.id, ...s.data() } as any;
+      setOrder(o);
+      if (o.ratingGiven != null) setYaCalifique(true);
     });
   }, [orderId]);
 
-  if (!order) return (
-    <div style={{ minHeight:"100vh", background:"#080818", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ fontSize:"0.88rem", color:"rgba(255,255,255,0.2)" }}>Cargando orden...</div>
-    </div>
-  );
-
-  const statusConfig: Record<string, { label:string; color:string; bg:string }> = {
-    pending_payment: { label:"Pago pendiente", color:"#F5C518", bg:"rgba(245,197,24,0.08)" },
-    payment_confirmed: { label:"Pago confirmado", color:"#00c8ff", bg:"rgba(0,200,255,0.08)" },
-    shipped: { label:"Enviado", color:"#a855f7", bg:"rgba(168,85,247,0.08)" },
-    delivered: { label:"Entregado", color:"#4ade80", bg:"rgba(74,222,128,0.08)" },
-    cancelled: { label:"Cancelado", color:"#ff4444", bg:"rgba(255,68,68,0.08)" },
+  const calificar = async () => {
+    if (!order || !profile || estrellas === 0) return;
+    setEnviando(true);
+    setErrorRating(null);
+    try {
+      // Nombres de campo según onRatingCreated: toUid + score
+      await addDoc(collection(db, "ratings"), {
+        fromUid: profile.uid,
+        fromName: profile.displayName ?? "",
+        toUid: order.sellerId,
+        orderId: order.id,
+        score: estrellas,
+        comment: comentario.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setYaCalifique(true);
+    } catch (e: any) {
+      setErrorRating(e?.message ?? "No se pudo enviar la calificación");
+    } finally {
+      setEnviando(false);
+    }
   };
 
-  const sc = statusConfig[order.status] ?? { label:order.status, color:"#888", bg:"rgba(255,255,255,0.04)" };
+  if (!order) {
+    return <div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">Cargando orden…</div></div></div>;
+  }
 
-  const whatsappMsg = buildWhatsappMessage({
+  const e = ESTADO[order.status] ?? { texto: order.status, detalle: "", clase: "lv-badge--soft" };
+  const paso = PASOS.findIndex(p => p.clave === order.status);
+  const soyComprador = profile?.uid === order.buyerId;
+
+  const mensaje = buildWhatsappMessage({
     buyerName: order.buyerName,
-    productTitle: `Orden #${order.id.slice(-6).toUpperCase()}`,
+    productTitle: order.productTitle ?? `Orden #${order.id.slice(-6).toUpperCase()}`,
     bidAmountUsd: order.bidAmountUsd,
     bidAmountBs: order.bidAmountBs,
     frozenRate: order.frozenExchangeRate,
     orderId: order.id,
     showTitle: "Liveroo",
   });
-
-  const whatsappLink = order.sellerWhatsapp
-    ? buildWhatsappLink(order.sellerWhatsapp, whatsappMsg)
-    : `https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`;
-
-  const STEPS = ["pending_payment","payment_confirmed","shipped","delivered"];
-  const currentStep = STEPS.indexOf(order.status);
+  const enlaceWhatsapp = order.sellerWhatsapp
+    ? buildWhatsappLink(order.sellerWhatsapp, mensaje)
+    : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
 
   return (
-    <div style={{ minHeight:"100vh", background:"#080818", backgroundImage:"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(168,85,247,0.05) 0%, transparent 60%)", fontFamily:"'Inter',-apple-system,sans-serif", maxWidth:480, margin:"0 auto", paddingBottom:40 }}>
-
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"20px 20px 0", marginBottom:24 }}>
-        <button onClick={() => router.push("/activity")} style={{ width:38, height:38, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    <div className="lv-app">
+      <header className="lv-topbar">
+        <button className="lv-icon-btn" onClick={() => router.push("/activity")} aria-label="Atrás">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         </button>
-        <div>
-          <h1 style={{ fontSize:"1.1rem", fontWeight:900, color:"#fff", letterSpacing:"-0.02em", lineHeight:1 }}>Orden #{order.id.slice(-6).toUpperCase()}</h1>
-          <div style={{ fontSize:"0.65rem", color:"rgba(255,255,255,0.3)", marginTop:2 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 className="lv-topbar__title" style={{ fontSize: "1rem" }}>Orden #{order.id.slice(-6).toUpperCase()}</h1>
+          <div className="lv-dim" style={{ fontSize: "0.7rem" }}>
             {order.createdAt?.toDate?.()?.toLocaleDateString("es-VE") ?? ""}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div style={{ padding:"0 20px" }}>
+      <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
 
-        {/* Status */}
-        <div style={{ background:sc.bg, border:`1px solid ${sc.color}30`, borderRadius:20, padding:"20px 24px", marginBottom:16, display:"flex", alignItems:"center", gap:16 }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:`${sc.color}20`, border:`1px solid ${sc.color}40`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            {order.status === "delivered" ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sc.color} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-            ) : order.status === "cancelled" ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sc.color} strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sc.color} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            )}
+        {/* Producto */}
+        <section className="lv-panel" style={{ display: "flex", gap: 13, alignItems: "center" }}>
+          <div style={{ width: 62, height: 62, borderRadius: 12, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
+            {order.productImageURL && <img src={order.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
           </div>
-          <div>
-            <div style={{ fontSize:"1rem", fontWeight:800, color:"#fff", marginBottom:4 }}>{sc.label}</div>
-            <div style={{ fontSize:"0.72rem", color:"rgba(255,255,255,0.4)", lineHeight:1.5 }}>
-              {order.status === "pending_payment" && "Coordina el pago con el vendedor por WhatsApp"}
-              {order.status === "payment_confirmed" && "Pago recibido · Esperando envío del producto"}
-              {order.status === "shipped" && "Producto en camino · Confirma al recibir"}
-              {order.status === "delivered" && "Transacción completada · Fondos liberados al vendedor"}
-              {order.status === "cancelled" && "Esta orden fue cancelada"}
-            </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "0.92rem", fontWeight: 750, lineHeight: 1.3 }}>{order.productTitle ?? "Producto"}</div>
+            <div className="lv-dim" style={{ fontSize: "0.76rem", marginTop: 3 }}>Vendido por {order.sellerName}</div>
+            <span className={`lv-badge ${e.clase}`} style={{ marginTop: 6 }}>{e.texto}</span>
           </div>
-        </div>
+        </section>
 
-        {/* Progress steps */}
+        {e.detalle && <div className="lv-note">{e.detalle}</div>}
+
+        {/* Progreso */}
         {order.status !== "cancelled" && (
-          <div style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, padding:"20px", marginBottom:16 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative" }}>
-              {/* Line */}
-              <div style={{ position:"absolute", top:14, left:"10%", right:"10%", height:2, background:"rgba(168,85,247,0.1)", zIndex:0 }}/>
-              <div style={{ position:"absolute", top:14, left:"10%", height:2, background:"linear-gradient(90deg,#00c8ff,#a855f7)", zIndex:1, width:`${Math.max(0, currentStep) / (STEPS.length-1) * 80}%`, transition:"width 0.3s" }}/>
-              {[
-                { label:"Pago", icon:"M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3z" },
-                { label:"Confirmado", icon:"M20 6L9 17l-5-5" },
-                { label:"Enviado", icon:"M5 12h14M12 5l7 7-7 7" },
-                { label:"Entregado", icon:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" },
-              ].map((step, i) => (
-                <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:6, zIndex:2, flex:1 }}>
-                  <div style={{ width:28, height:28, borderRadius:"50%", background: i <= currentStep ? "linear-gradient(135deg,#00c8ff,#a855f7)" : "rgba(255,255,255,0.05)", border:`1px solid ${i <= currentStep ? "transparent" : "rgba(168,85,247,0.15)"}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={i <= currentStep ? "#fff" : "rgba(255,255,255,0.2)"} strokeWidth="2.5" strokeLinecap="round">
-                      <path d={step.icon}/>
-                    </svg>
+          <section className="lv-panel">
+            <div style={{ display: "flex", position: "relative" }}>
+              <div style={{ position: "absolute", top: 13, left: "12%", right: "12%", height: 2, background: "var(--surface-3)" }}/>
+              <div style={{
+                position: "absolute", top: 13, left: "12%", height: 2, background: "var(--ink)",
+                width: `${Math.max(0, paso) / (PASOS.length - 1) * 76}%`, transition: "width 0.3s",
+              }}/>
+              {PASOS.map((p, i) => (
+                <div key={p.clave} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, position: "relative" }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: "50%",
+                    background: i <= paso ? "var(--ink)" : "var(--surface-2)",
+                    color: i <= paso ? "var(--bg)" : "var(--ink-4)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
                   </div>
-                  <div style={{ fontSize:"0.55rem", fontWeight:600, color: i <= currentStep ? "#fff" : "rgba(255,255,255,0.25)", textAlign:"center", letterSpacing:"0.04em" }}>{step.label}</div>
+                  <span style={{ fontSize: "0.58rem", fontWeight: 700, color: i <= paso ? "var(--ink)" : "var(--ink-3)", textAlign: "center" }}>
+                    {p.corto}
+                  </span>
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Montos */}
+        <section className="lv-panel">
+          <div className="lv-eyebrow" style={{ marginBottom: 4 }}>Detalle</div>
+          <div className="lv-row">
+            <span className="lv-muted" style={{ fontSize: "0.83rem" }}>Monto en dólares</span>
+            <strong>{formatUsd(order.bidAmountUsd)}</strong>
+          </div>
+          {order.bidAmountBs != null && (
+            <div className="lv-row">
+              <span className="lv-muted" style={{ fontSize: "0.83rem" }}>Monto en bolívares</span>
+              <strong>{formatBs(order.bidAmountBs)}</strong>
+            </div>
+          )}
+          {order.frozenExchangeRate != null && (
+            <div className="lv-row">
+              <span className="lv-muted" style={{ fontSize: "0.83rem" }}>Tasa congelada</span>
+              <strong>{order.frozenExchangeRate} Bs/$</strong>
+            </div>
+          )}
+          {order.commissionUsd != null && (
+            <div className="lv-row">
+              <span className="lv-muted" style={{ fontSize: "0.83rem" }}>Comisión de la plataforma</span>
+              <strong>{formatUsd(order.commissionUsd)}</strong>
+            </div>
+          )}
+        </section>
+
+        {order.bidAmountBs == null && (
+          <div className="lv-note lv-note--warn">
+            Esta orden se cerró sin tasa de cambio configurada, por eso no tiene monto en bolívares.
           </div>
         )}
 
-        {/* Order details */}
-        <div style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, padding:"20px", marginBottom:16 }}>
-          <div style={{ fontSize:"0.65rem", color:"rgba(255,255,255,0.4)", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:16 }}>Detalle de la orden</div>
-          {[
-            { label:"Vendedor", val: order.sellerName },
-            { label:"Monto USD", val: formatUsd(order.bidAmountUsd) },
-            { label:"Monto Bs", val: formatBs(order.bidAmountBs) },
-            { label:"Tasa congelada", val: `${order.frozenExchangeRate} Bs/USD` },
-            { label:"Comisión Liveroo", val: formatUsd(order.commissionAmountUsd ?? order.bidAmountUsd * 0.1) },
-          ].map(row => (
-            <div key={row.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:12, marginBottom:12, borderBottom:"1px solid rgba(168,85,247,0.06)" }}>
-              <span style={{ fontSize:"0.78rem", color:"rgba(255,255,255,0.4)" }}>{row.label}</span>
-              <span style={{ fontSize:"0.88rem", fontWeight:700, color:"#fff" }}>{row.val}</span>
-            </div>
-          ))}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ fontSize:"0.82rem", fontWeight:700, color:"rgba(255,255,255,0.6)" }}>Total pagado</span>
-            <span style={{ fontSize:"1.1rem", fontWeight:900, color:"#fff" }}>{formatUsd(order.bidAmountUsd)}</span>
-          </div>
-        </div>
-
-        {/* Escrow info */}
-        <div style={{ background: order.escrowReleasedAt ? "rgba(74,222,128,0.06)" : "rgba(168,85,247,0.06)", border:`1px solid ${order.escrowReleasedAt ? "rgba(74,222,128,0.15)" : "rgba(168,85,247,0.12)"}`, borderRadius:14, padding:"14px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={order.escrowReleasedAt ? "#4ade80" : "#a855f7"} strokeWidth="2" strokeLinecap="round">
-            {order.escrowReleasedAt
-              ? <path d="M20 6L9 17l-5-5"/>
-              : <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>
-            }
-          </svg>
-          <div>
-            <div style={{ fontSize:"0.78rem", fontWeight:700, color: order.escrowReleasedAt ? "#4ade80" : "#a855f7", marginBottom:2 }}>
-              {order.escrowReleasedAt ? "Fondos liberados" : "Fondos en custodia"}
-            </div>
-            <div style={{ fontSize:"0.68rem", color:"rgba(255,255,255,0.4)", lineHeight:1.5 }}>
-              {order.escrowReleasedAt
-                ? `Vendedor recibió ${formatUsd(order.sellerPaidAmountUsd)}`
-                : "Liveroo libera los fondos cuando confirmes la entrega"
-              }
-            </div>
-          </div>
-        </div>
-
-        {/* WhatsApp button */}
-        {order.status === "pending_payment" && (
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, width:"100%", background:"#25D366", border:"none", borderRadius:14, padding:"15px", fontSize:"0.92rem", fontWeight:800, color:"#fff", textDecoration:"none", marginBottom:12, boxShadow:"0 0 20px rgba(37,211,102,0.3)" }}>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff">
+        {/* WhatsApp */}
+        {["pending_payment", "payment_confirmed", "shipped"].includes(order.status) && (
+          <a
+            href={enlaceWhatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lv-btn lv-btn--block lv-btn--lg"
+            style={{ background: "#25D366", color: "#fff", textDecoration: "none" }}
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
             </svg>
-            Coordinar pago con vendedor
+            Coordinar por WhatsApp
           </a>
         )}
 
-        <button onClick={() => router.push("/activity")} style={{ width:"100%", background:"rgba(168,85,247,0.08)", border:"1px solid rgba(168,85,247,0.15)", borderRadius:14, padding:"13px", fontSize:"0.88rem", fontWeight:700, color:"#a855f7", cursor:"pointer", fontFamily:"inherit" }}>
+        {/* Calificación: el último paso del ciclo. onRatingCreated
+            recalcula el promedio del vendedor a partir de esto. */}
+        {order.status === "delivered" && soyComprador && (
+          <section className="lv-panel">
+            {yaCalifique ? (
+              <div className="lv-note lv-note--ok" style={{ justifyContent: "center" }}>
+                Gracias por calificar a {order.sellerName}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: "0.94rem", fontWeight: 750, marginBottom: 3 }}>
+                  ¿Cómo te fue con {order.sellerName}?
+                </div>
+                <p className="lv-dim" style={{ fontSize: "0.76rem", marginBottom: 14 }}>
+                  Tu calificación es pública y afecta su reputación.
+                </p>
+
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setEstrellas(n)}
+                      aria-label={`${n} ${n === 1 ? "estrella" : "estrellas"}`}
+                      aria-pressed={n <= estrellas}
+                      style={{
+                        width: 46, height: 46, borderRadius: 12,
+                        background: n <= estrellas ? "var(--accent)" : "var(--surface-2)",
+                        color: n <= estrellas ? "var(--accent-ink)" : "var(--ink-4)",
+                        fontSize: "1.15rem", fontWeight: 800,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "background 0.15s ease",
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  className="lv-input"
+                  rows={2}
+                  maxLength={300}
+                  value={comentario}
+                  onChange={ev => setComentario(ev.target.value)}
+                  placeholder="Un comentario (opcional)"
+                  style={{ resize: "none", marginBottom: 12 }}
+                  aria-label="Comentario"
+                />
+
+                {errorRating && <div className="lv-note lv-note--bad" style={{ marginBottom: 12 }}>{errorRating}</div>}
+
+                <button
+                  className="lv-btn lv-btn--accent lv-btn--block"
+                  disabled={estrellas === 0 || enviando}
+                  onClick={calificar}
+                >
+                  {enviando ? "Enviando…" : "Enviar calificación"}
+                </button>
+              </>
+            )}
+          </section>
+        )}
+
+        <button className="lv-btn lv-btn--soft lv-btn--block" onClick={() => router.push("/activity")}>
           Ver todas mis órdenes
         </button>
       </div>

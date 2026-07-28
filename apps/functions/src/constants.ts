@@ -3,17 +3,17 @@
 
 export const COLLECTIONS = {
   USERS: "users",
+  PUBLIC_PROFILES: "publicProfiles",
   SHOWS: "shows",
+  AUCTIONS: "auctions",
   ORDERS: "orders",
   RATINGS: "ratings",
   PENDING_BIDS: "pendingBids",
   EXCHANGE_RATES: "exchangeRates",
   CONFIG: "config",
 
-  SHOW_PRODUCTS: (showId: string) => `shows/${showId}/products`,
+  AUCTION_BIDS: (auctionId: string) => `auctions/${auctionId}/bids`,
   SHOW_MESSAGES: (showId: string) => `shows/${showId}/messages`,
-  PRODUCT_BIDS: (showId: string, productId: string) =>
-    `shows/${showId}/products/${productId}/bids`,
 } as const;
 
 export const CONFIG_DOCS = {
@@ -24,10 +24,28 @@ export const EXCHANGE_RATE_DOCS = {
   CURRENT: "current",
 } as const;
 
-// Tipos (duplicados de shared para functions)
-export type AuctionStatus = "waiting" | "active" | "sold" | "unsold" | "skipped";
+// --------------------------------------------------
+// Modelo unificado de subastas
+// --------------------------------------------------
+// Una subasta es siempre un documento en /auctions.
+//   mode="live"       → pertenece a un show (showId != null), timer corto,
+//                       la activa el motor cuando le llega el turno.
+//   mode="standalone" → subasta suelta tipo eBay, nace activa, dura días.
+// Las dos comparten el mismo motor de pujas y el mismo cierre.
+
+export type AuctionMode = "live" | "standalone";
+
+export type AuctionStatus =
+  | "waiting"   // en cola dentro de un show, aún no le toca
+  | "active"    // aceptando pujas
+  | "sold"      // cerrada con ganador
+  | "unsold"    // cerrada sin pujas
+  | "skipped"   // el vendedor la saltó en vivo
+  | "cancelled";
+
 export type ShowStatus = "draft" | "scheduled" | "live" | "ended" | "cancelled";
 export type CommissionMode = "platform_collects" | "seller_collects";
+
 export type OrderStatus =
   | "pending_payment"
   | "payment_confirmed"
@@ -40,4 +58,21 @@ export type BidRejectedReason =
   | "too_low"
   | "auction_closed"
   | "own_bid"
+  | "not_found"
+  | "show_not_live"
   | "race_condition";
+
+// --------------------------------------------------
+// Anti-sniping
+// --------------------------------------------------
+// Si entra una puja faltando poco para el cierre, se extiende el timer
+// para que nadie gane disparando en el último segundo.
+// En vivo el ritmo es de segundos; en subastas sueltas, de minutos.
+
+export const ANTI_SNIPE = {
+  live: { thresholdS: 10, extendToS: 30 },
+  standalone: { thresholdS: 120, extendToS: 120 },
+} as const;
+
+// Timer por defecto si una subasta de show no define timerSeconds
+export const DEFAULT_LIVE_TIMER_S = 30;

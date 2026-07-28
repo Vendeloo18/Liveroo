@@ -1,159 +1,178 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { collection, query, where, orderBy, getDocs, limit } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { AuctionCard, AuctionCardData } from "../../components/auction/AuctionCard";
 
-type Tab = "shows" | "sellers";
+type Tab = "subastas" | "shows" | "vendedores";
 
-function SearchContent() {
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">Cargando…</div></div></div>}>
+      <Buscador/>
+    </Suspense>
+  );
+}
+
+function Buscador() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchParams.get("q") ?? "");
-  const [tab, setTab] = useState<Tab>("shows");
-  const [shows, setShows] = useState<any[]>([]);
-  const [sellers, setSellers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const params = useSearchParams();
 
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q) { setSearch(q); doSearch(q); }
+  const [termino, setTermino] = useState(params.get("q") ?? "");
+  const [tab, setTab] = useState<Tab>("subastas");
+  const [subastas, setSubastas] = useState<AuctionCardData[]>([]);
+  const [shows, setShows] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [buscado, setBuscado] = useState(false);
+
+  // Firestore no hace búsqueda de texto: se traen candidatos y se filtra
+  // en el cliente. Sirve a esta escala; con miles de docs habría que
+  // meter un buscador aparte (Algolia, Typesense o similar).
+  const buscar = useCallback(async (t: string) => {
+    const q = t.trim().toLowerCase();
+    if (!q) return;
+    setCargando(true);
+    setBuscado(true);
+    try {
+      const [snapSub, snapShows, snapVend] = await Promise.all([
+        getDocs(query(collection(db, "auctions"), where("status", "==", "active"), limit(100))),
+        getDocs(query(collection(db, "shows"), where("status", "in", ["live", "scheduled", "ended"]), orderBy("viewerCount", "desc"), limit(40))),
+        getDocs(query(collection(db, "publicProfiles"), where("role", "==", "seller"), limit(60))),
+      ]);
+
+      setSubastas(snapSub.docs.map(d => ({ id: d.id, ...d.data() } as AuctionCardData))
+        .filter(a => a.title?.toLowerCase().includes(q) || a.sellerName?.toLowerCase().includes(q)));
+
+      setShows(snapShows.docs.map(d => ({ id: d.id, ...d.data() }) as any)
+        .filter(s => s.title?.toLowerCase().includes(q) || s.sellerName?.toLowerCase().includes(q)));
+
+      setVendedores(snapVend.docs.map(d => ({ id: d.id, ...d.data() }) as any)
+        .filter(v => v.displayName?.toLowerCase().includes(q) || v.shopName?.toLowerCase().includes(q) || v.username?.toLowerCase().includes(q)));
+    } catch (e) {
+      console.error("búsqueda:", e);
+    } finally {
+      setCargando(false);
+    }
   }, []);
 
-  const doSearch = async (term: string) => {
-    if (!term.trim()) return;
-    setLoading(true);
-    setSearched(true);
-    try {
-      const showsSnap = await getDocs(query(collection(db,"shows"), where("status","in",["live","scheduled","ended"]), orderBy("viewerCount","desc"), limit(20)));
-      const allShows = showsSnap.docs.map(d => ({id:d.id,...d.data()})) as any[];
-      setShows(allShows.filter((s:any) => s.title?.toLowerCase().includes(term.toLowerCase()) || s.sellerName?.toLowerCase().includes(term.toLowerCase())));
+  useEffect(() => {
+    const q = params.get("q");
+    if (q) { setTermino(q); buscar(q); }
+  }, [params, buscar]);
 
-      const sellersSnap = await getDocs(query(collection(db,"users"), where("role","==","seller"), limit(50)));
-      const allSellers = sellersSnap.docs.map(d => ({id:d.id,...d.data()})) as any[];
-      setSellers(allSellers.filter((s:any) => s.displayName?.toLowerCase().includes(term.toLowerCase())));
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
-  };
-
-  const handleSearch = () => doSearch(search);
-
-  const statusColor = (s:string) => ({ live:"#ff2d2d", scheduled:"#F5C518", ended:"rgba(255,255,255,0.2)" }[s] ?? "#888");
-  const statusLabel = (s:string) => ({ live:"En vivo", scheduled:"Programado", ended:"Finalizado" }[s] ?? s);
+  const total = subastas.length + shows.length + vendedores.length;
 
   return (
-    <div style={{ minHeight:"100vh", background:"#080818", backgroundImage:"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(168,85,247,0.05) 0%, transparent 60%)", fontFamily:"'Inter',-apple-system,sans-serif", maxWidth:480, margin:"0 auto", paddingBottom:90 }}>
+    <div className="lv-app">
+      <header className="lv-topbar">
+        <button className="lv-icon-btn" onClick={() => router.back()} aria-label="Atrás">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <h1 className="lv-topbar__title">Buscar</h1>
+      </header>
 
-      <div style={{ padding:"20px 20px 0", marginBottom:20 }}>
-        <h1 style={{ fontSize:"1.4rem", fontWeight:900, color:"#fff", letterSpacing:"-0.03em", marginBottom:16 }}>Buscar</h1>
-        <div style={{ display:"flex", gap:10 }}>
-          <div style={{ flex:1, display:"flex", alignItems:"center", gap:10, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.15)", borderRadius:14, padding:"12px 16px" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input autoFocus value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key==="Enter" && handleSearch()} placeholder="Shows, vendedores..." style={{ flex:1, background:"none", border:"none", outline:"none", color:"#fff", fontSize:"0.9rem", fontFamily:"inherit" }}/>
-            {search && <button onClick={() => { setSearch(""); setSearched(false); setShows([]); setSellers([]); }} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.3)", fontSize:"1.2rem", lineHeight:1, padding:0 }}>×</button>}
+      <div className="lv-pad" style={{ paddingTop: 14 }}>
+        <form onSubmit={e => { e.preventDefault(); buscar(termino); }}>
+          <div style={{ position: "relative" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round"
+                 style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+              <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              className="lv-input"
+              style={{ paddingLeft: 38 }}
+              value={termino}
+              onChange={e => setTermino(e.target.value)}
+              placeholder="Producto, show o vendedor"
+              autoFocus
+              aria-label="Buscar"
+            />
           </div>
-          <button onClick={handleSearch} disabled={!search.trim()||loading} style={{ background:!search.trim()?"rgba(168,85,247,0.2)":"linear-gradient(135deg,#00c8ff,#a855f7,#e040fb)", border:"none", borderRadius:14, padding:"0 18px", fontSize:"0.82rem", fontWeight:800, color:"#fff", cursor:!search.trim()?"not-allowed":"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
-            {loading?"...":"Buscar"}
-          </button>
-        </div>
+        </form>
       </div>
 
-      {searched && (
-        <div style={{ display:"flex", gap:8, padding:"0 20px", marginBottom:20 }}>
-          {([{id:"shows",label:`Shows (${shows.length})`},{id:"sellers",label:`Vendedores (${sellers.length})`}] as {id:Tab,label:string}[]).map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ background:tab===t.id?"linear-gradient(135deg,rgba(0,200,255,0.15),rgba(168,85,247,0.2))":"rgba(13,13,32,0.9)", border:`1px solid ${tab===t.id?"rgba(168,85,247,0.35)":"rgba(168,85,247,0.08)"}`, borderRadius:20, padding:"8px 18px", fontSize:"0.78rem", fontWeight:700, color:tab===t.id?"#fff":"rgba(255,255,255,0.4)", cursor:"pointer", fontFamily:"inherit" }}>
-              {t.label}
-            </button>
+      {buscado && (
+        <div className="lv-chips">
+          {([["subastas", `Subastas (${subastas.length})`],
+             ["shows", `Shows (${shows.length})`],
+             ["vendedores", `Vendedores (${vendedores.length})`]] as [Tab, string][]).map(([v, label]) => (
+            <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
           ))}
         </div>
       )}
 
-      <div style={{ padding:"0 20px" }}>
-        {!searched && (
-          <div>
-            <div style={{ fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:14 }}>Búsquedas populares</div>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:28 }}>
-              {["Nike","iPhone","Oro 18k","PlayStation","Adidas","Samsung","Joyas","Ropa"].map(tag => (
-                <button key={tag} onClick={() => { setSearch(tag); doSearch(tag); }} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:20, padding:"8px 16px", fontSize:"0.8rem", fontWeight:600, color:"rgba(255,255,255,0.6)", cursor:"pointer", fontFamily:"inherit" }}>{tag}</button>
-              ))}
+      <div className="lv-pad" style={{ paddingTop: 8 }}>
+        {!buscado ? (
+          <div className="lv-empty">
+            <div className="lv-empty__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
             </div>
-            <div style={{ fontSize:"0.72rem", fontWeight:700, color:"rgba(255,255,255,0.4)", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:14 }}>Categorías populares</div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              {[{name:"Moda y Ropa",viewers:2610},{name:"Electronica",viewers:1840},{name:"Calzado",viewers:1520},{name:"Joyas y Relojes",viewers:980}].map(cat => (
-                <div key={cat.name} onClick={() => router.push("/categories")} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:14, padding:"14px 16px", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <div style={{ fontSize:"0.82rem", fontWeight:700, color:"#fff" }}>{cat.name}</div>
-                  <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                    <div style={{ width:5, height:5, borderRadius:"50%", background:"#ff2d2d" }}/>
-                    <span style={{ fontSize:"0.65rem", color:"rgba(255,255,255,0.4)" }}>{(cat.viewers/1000).toFixed(1)}K</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="lv-empty__title">¿Qué estás buscando?</div>
+            <div className="lv-empty__text">Escribe un producto, un show o el nombre de un vendedor.</div>
           </div>
-        )}
-
-        {searched && !loading && tab==="shows" && (
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {shows.length===0 ? (
-              <div style={{ textAlign:"center", padding:"40px 0" }}>
-                <div style={{ fontSize:"0.88rem", color:"rgba(255,255,255,0.2)", marginBottom:8 }}>Sin resultados para "{search}"</div>
-              </div>
-            ) : shows.map(show => (
-              <div key={show.id} onClick={() => router.push(`/shows/${show.id}`)} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, overflow:"hidden", display:"flex", alignItems:"center", cursor:"pointer" }}>
-                <div style={{ width:70, height:70, flexShrink:0, overflow:"hidden" }}>
-                  {show.coverImageURL ? <img src={show.coverImageURL} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : <div style={{ width:"100%", height:"100%", background:"rgba(168,85,247,0.08)" }}/>}
-                </div>
-                <div style={{ flex:1, padding:"12px 14px", minWidth:0 }}>
-                  <div style={{ fontSize:"0.88rem", fontWeight:800, color:"#fff", marginBottom:4, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{show.title}</div>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:"0.72rem", color:"rgba(255,255,255,0.4)" }}>{show.sellerName}</span>
-                    <span style={{ fontSize:"0.68rem", fontWeight:700, color:statusColor(show.status) }}>{statusLabel(show.status)}</span>
-                  </div>
-                </div>
-                {show.status==="live" && (
-                  <div style={{ padding:"0 14px", flexShrink:0 }}>
-                    <div style={{ background:"rgba(255,45,45,0.15)", border:"1px solid rgba(255,45,45,0.25)", borderRadius:20, padding:"4px 10px" }}>
-                      <span style={{ fontSize:"0.62rem", fontWeight:700, color:"#ff2d2d" }}>{show.viewerCount} viendo</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+        ) : cargando ? (
+          <div className="lv-grid">
+            {[0,1,2,3].map(i => <div key={i} className="lv-skel" style={{ aspectRatio: "1 / 1.42" }}/>)}
           </div>
-        )}
-
-        {searched && !loading && tab==="sellers" && (
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {sellers.length===0 ? (
-              <div style={{ textAlign:"center", padding:"40px 0" }}>
-                <div style={{ fontSize:"0.88rem", color:"rgba(255,255,255,0.2)" }}>Sin vendedores para "{search}"</div>
-              </div>
-            ) : sellers.map(seller => (
-              <div key={seller.id} onClick={() => router.push(`/seller/${seller.id}`)} style={{ background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.1)", borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"center", gap:14, cursor:"pointer" }}>
-                <div style={{ width:48, height:48, borderRadius:"50%", background:"linear-gradient(135deg,#00c8ff,#a855f7)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:"1.1rem", fontWeight:900, color:"#fff" }}>
-                  {seller.displayName?.[0]?.toUpperCase()}
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:"0.92rem", fontWeight:800, color:"#fff", marginBottom:2 }}>{seller.displayName}</div>
-                  <div style={{ fontSize:"0.72rem", color:"rgba(255,255,255,0.4)" }}>{seller.totalSales??0} ventas · {seller.ratingAvg?.toFixed(1)??"0.0"}★</div>
-                </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-              </div>
-            ))}
+        ) : total === 0 ? (
+          <div className="lv-empty">
+            <div className="lv-empty__title">Nada para «{termino}»</div>
+            <div className="lv-empty__text">Prueba con otra palabra.</div>
           </div>
-        )}
+        ) : (
+          <>
+            {tab === "subastas" && (
+              subastas.length === 0
+                ? <div className="lv-empty"><div className="lv-empty__title">Sin subastas con ese nombre</div></div>
+                : <div className="lv-grid">{subastas.map(a => <AuctionCard key={a.id} auction={a}/>)}</div>
+            )}
 
-        {loading && <div style={{ textAlign:"center", padding:"40px 0", fontSize:"0.88rem", color:"rgba(255,255,255,0.2)" }}>Buscando...</div>}
+            {tab === "shows" && (
+              shows.length === 0
+                ? <div className="lv-empty"><div className="lv-empty__title">Sin shows con ese nombre</div></div>
+                : <section className="lv-panel" style={{ padding: "2px 16px" }}>
+                    {shows.map(s => (
+                      <button key={s.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/shows/${s.id}`)}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: "0.86rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                          <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>{s.sellerName} · {s.viewerCount ?? 0} viendo</div>
+                          {s.status === "live" && <span className="lv-badge lv-badge--live" style={{ marginTop: 5 }}><i className="lv-dot"/> EN VIVO</span>}
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </button>
+                    ))}
+                  </section>
+            )}
+
+            {tab === "vendedores" && (
+              vendedores.length === 0
+                ? <div className="lv-empty"><div className="lv-empty__title">Sin vendedores con ese nombre</div></div>
+                : <section className="lv-panel" style={{ padding: "2px 16px" }}>
+                    {vendedores.map(v => (
+                      <button key={v.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/seller/${v.id}`)}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                          {v.avatar
+                            ? <img className="lv-avatar" src={v.avatar} alt=""/>
+                            : <span className="lv-avatar">{(v.displayName ?? "?")[0].toUpperCase()}</span>}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: "0.86rem", fontWeight: 700 }}>{v.shopName || v.displayName}</div>
+                            <div className="lv-dim" style={{ fontSize: "0.73rem" }}>
+                              {v.ratingAvg ? `${v.ratingAvg.toFixed(1)}★ · ` : ""}{v.totalSales ?? 0} ventas
+                            </div>
+                          </div>
+                        </div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </button>
+                    ))}
+                  </section>
+            )}
+          </>
+        )}
       </div>
     </div>
-  );
-}
-
-export default function SearchPage() {
-  return (
-    <Suspense>
-      <SearchContent/>
-    </Suspense>
   );
 }

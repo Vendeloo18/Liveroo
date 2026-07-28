@@ -1,19 +1,58 @@
 {
   "indexes": [
     {
-      "collectionGroup": "products",
-      "queryScope": "COLLECTION_GROUP",
+      "_comment": "Motor: barrido de subastas vencidas (closeExpiredAuctions)",
+      "collectionGroup": "auctions",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "auctionStatus", "order": "ASCENDING" },
-        { "fieldPath": "auctionEndsAt", "order": "ASCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "endsAt", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "products",
+      "_comment": "Motor: siguiente subasta en la cola de un show",
+      "collectionGroup": "auctions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "auctionStatus", "order": "ASCENDING" },
+        { "fieldPath": "showId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "sortOrder", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "_comment": "Panel del vendedor: sus subastas",
+      "collectionGroup": "auctions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comment": "Home y buscador: subastas activas por categoría",
+      "collectionGroup": "auctions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "endsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "_comment": "Home y buscador: shows por audiencia",
+      "collectionGroup": "shows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "viewerCount", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
@@ -25,19 +64,12 @@
       ]
     },
     {
-      "collectionGroup": "shows",
+      "_comment": "Actividad del comprador: sus pujas",
+      "collectionGroup": "pendingBids",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "scheduledAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "orders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "sellerId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "bidderId", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
       ]
     },
     {
@@ -49,17 +81,38 @@
       ]
     },
     {
-      "collectionGroup": "messages",
+      "collectionGroup": "orders",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
+      "_comment": "Actividad del comprador: todas sus pujas, en cualquier subasta",
       "collectionGroup": "bids",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "bidderId", "order": "ASCENDING" },
+        { "fieldPath": "placedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comment": "Perfil del vendedor: sus calificaciones",
+      "collectionGroup": "ratings",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "placedAt", "order": "DESCENDING" }
+        { "fieldPath": "toUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "_comment": "Buscador: vendedores por reputación",
+      "collectionGroup": "publicProfiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "ratingAvg", "order": "DESCENDING" }
       ]
     }
   ],

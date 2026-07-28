@@ -1,74 +1,102 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
-const CATEGORIES = [
-  { name:"Moda y Ropa", viewers:2610, icon:"👗", color:"rgba(236,72,153,0.15)", border:"rgba(236,72,153,0.25)", filter:"moda" },
-  { name:"Electronica", viewers:1840, icon:"💻", color:"rgba(0,200,255,0.1)", border:"rgba(0,200,255,0.2)", filter:"electronica" },
-  { name:"Calzado", viewers:1520, icon:"👟", color:"rgba(168,85,247,0.1)", border:"rgba(168,85,247,0.2)", filter:"calzado" },
-  { name:"Joyas y Relojes", viewers:980, icon:"💍", color:"rgba(234,179,8,0.1)", border:"rgba(234,179,8,0.2)", filter:"joyas" },
-  { name:"Hogar", viewers:925, icon:"🏠", color:"rgba(34,197,94,0.1)", border:"rgba(34,197,94,0.2)", filter:"hogar" },
-  { name:"Colecciones", viewers:812, icon:"🏆", color:"rgba(249,115,22,0.1)", border:"rgba(249,115,22,0.2)", filter:"colecciones" },
-  { name:"Autos y Motos", viewers:741, icon:"🚗", color:"rgba(239,68,68,0.1)", border:"rgba(239,68,68,0.2)", filter:"autos" },
-  { name:"Deportes", viewers:665, icon:"⚽", color:"rgba(14,165,233,0.1)", border:"rgba(14,165,233,0.2)", filter:"deportes" },
-  { name:"Arte", viewers:590, icon:"🎨", color:"rgba(168,85,247,0.1)", border:"rgba(168,85,247,0.2)", filter:"arte" },
-  { name:"Juguetes", viewers:467, icon:"🎮", color:"rgba(236,72,153,0.1)", border:"rgba(236,72,153,0.2)", filter:"juguetes" },
-  { name:"Comida", viewers:390, icon:"🍕", color:"rgba(249,115,22,0.1)", border:"rgba(249,115,22,0.2)", filter:"comida" },
-  { name:"Mascotas", viewers:210, icon:"🐾", color:"rgba(34,197,94,0.1)", border:"rgba(34,197,94,0.2)", filter:"mascotas" },
+// El nombre tiene que ser idéntico al que guarda /auctions.category,
+// porque es el que viaja como filtro a /auctions?cat=
+const CATEGORIAS = [
+  { nombre: "Moda y Ropa", icono: "👗" },
+  { nombre: "Electronica", icono: "💻" },
+  { nombre: "Calzado", icono: "👟" },
+  { nombre: "Joyas y Relojes", icono: "💍" },
+  { nombre: "Hogar", icono: "🏠" },
+  { nombre: "Colecciones", icono: "🏆" },
+  { nombre: "Autos y Motos", icono: "🚗" },
+  { nombre: "Deportes", icono: "⚽" },
+  { nombre: "Arte", icono: "🎨" },
+  { nombre: "Juguetes", icono: "🎮" },
+  { nombre: "Comida", icono: "🍕" },
+  { nombre: "Mascotas", icono: "🐾" },
 ];
 
-function formatViewers(n: number) {
-  return n >= 1000 ? `${(n/1000).toFixed(1)}K` : `${n}`;
-}
-
 export default function CategoriesPage() {
-  const [search, setSearch] = useState("");
   const router = useRouter();
-  const filtered = CATEGORIES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  const [busqueda, setBusqueda] = useState("");
+  const [conteo, setConteo] = useState<Record<string, number>>({});
+  const [cargando, setCargando] = useState(true);
+
+  // Los conteos salen de las subastas activas de verdad. Antes esta
+  // pantalla mostraba audiencias inventadas ("2.6K viendo").
+  useEffect(() => {
+    const q = query(collection(db, "auctions"), where("status", "==", "active"));
+    return onSnapshot(q, s => {
+      const c: Record<string, number> = {};
+      s.docs.forEach(d => {
+        const cat = d.data().category;
+        if (cat) c[cat] = (c[cat] ?? 0) + 1;
+      });
+      setConteo(c);
+      setCargando(false);
+    }, () => setCargando(false));
+  }, []);
+
+  const visibles = useMemo(() => {
+    const t = busqueda.trim().toLowerCase();
+    const lista = t ? CATEGORIAS.filter(c => c.nombre.toLowerCase().includes(t)) : CATEGORIAS;
+    // Las que tienen algo primero
+    return [...lista].sort((a, b) => (conteo[b.nombre] ?? 0) - (conteo[a.nombre] ?? 0));
+  }, [busqueda, conteo]);
 
   return (
-    <div style={{ minHeight:"100vh", background:"#080818", backgroundImage:"radial-gradient(ellipse 80% 40% at 50% 0%, rgba(168,85,247,0.05) 0%, transparent 60%)", fontFamily:"'Inter',-apple-system,sans-serif", maxWidth:480, margin:"0 auto", paddingBottom:90 }}>
+    <div className="lv-app">
+      <header className="lv-topbar">
+        <button className="lv-icon-btn" onClick={() => router.push("/")} aria-label="Atrás">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <h1 className="lv-topbar__title">Categorías</h1>
+      </header>
 
-      <div style={{ padding:"20px 16px 0" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-          <button onClick={() => router.push("/")} style={{ width:38, height:38, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          </button>
-          <h1 style={{ fontSize:"1.4rem", fontWeight:900, color:"#fff", letterSpacing:"-0.03em" }}>Categorías</h1>
-        </div>
-
-        <div style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(13,13,32,0.9)", border:"1px solid rgba(168,85,247,0.12)", borderRadius:14, padding:"12px 16px", marginBottom:24 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar categoría..." style={{ flex:1, background:"none", border:"none", outline:"none", color:"#fff", fontSize:"0.88rem", fontFamily:"inherit" }}/>
-        </div>
+      <div className="lv-pad" style={{ paddingTop: 14 }}>
+        <input
+          className="lv-input"
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar categoría"
+          aria-label="Buscar categoría"
+        />
       </div>
 
-      <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-        {filtered.map((cat) => (
-          <div
-            key={cat.name}
-            onClick={() => router.push(`/search?q=${cat.filter}`)}
-            style={{ background:cat.color, border:`1px solid ${cat.border}`, borderRadius:16, padding:"16px 12px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", minHeight:110, gap:8 }}
-          >
-            <div style={{ fontSize:"2rem", lineHeight:1, filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }}>
-              {cat.icon}
-            </div>
-            <div style={{ fontSize:"0.72rem", fontWeight:800, color:"#fff", lineHeight:1.3, textAlign:"center" }}>
-              {cat.name}
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <div style={{ width:5, height:5, borderRadius:"50%", background:"#ff2d2d", boxShadow:"0 0 6px #ff2d2d" }}/>
-              <span style={{ fontSize:"0.6rem", fontWeight:600, color:"rgba(255,255,255,0.5)" }}>{formatViewers(cat.viewers)}</span>
-            </div>
+      <div className="lv-pad" style={{ paddingTop: 16 }}>
+        <div className="lv-grid">
+          {visibles.map(c => {
+            const n = conteo[c.nombre] ?? 0;
+            return (
+              <button
+                key={c.nombre}
+                onClick={() => router.push(`/auctions?cat=${encodeURIComponent(c.nombre)}`)}
+                className="lv-panel"
+                style={{ textAlign: "left", padding: "16px 14px" }}
+              >
+                <div style={{ fontSize: "1.7rem", lineHeight: 1, marginBottom: 10 }} aria-hidden="true">{c.icono}</div>
+                <div style={{ fontSize: "0.88rem", fontWeight: 750, letterSpacing: "-0.015em", marginBottom: 3 }}>
+                  {c.nombre}
+                </div>
+                <div className="lv-dim" style={{ fontSize: "0.73rem" }}>
+                  {cargando ? "…" : n === 0 ? "Sin subastas" : `${n} ${n === 1 ? "subasta" : "subastas"}`}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {visibles.length === 0 && (
+          <div className="lv-empty">
+            <div className="lv-empty__title">Ninguna categoría con ese nombre</div>
           </div>
-        ))}
+        )}
       </div>
-
-      {filtered.length === 0 && (
-        <div style={{ textAlign:"center", padding:"60px 20px" }}>
-          <p style={{ color:"rgba(255,255,255,0.2)", fontSize:"0.88rem" }}>No se encontraron categorías</p>
-        </div>
-      )}
     </div>
   );
 }
