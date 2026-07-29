@@ -411,6 +411,21 @@ export default function SellerPage() {
       <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
         {aviso && <div className={`lv-note lv-note--${aviso.tipo}`}>{aviso.texto}</div>}
 
+        {/* El motor copia sellerWhatsapp a cada orden. Sin número, el
+            ganador se queda sin forma de contactar al vendedor. */}
+        {!(profile as any).whatsapp && (
+          <button className="lv-note lv-note--warn" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push("/account/edit")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div>
+              <strong>Agrega tu WhatsApp antes de publicar.</strong> Es por donde te
+              escribe quien gane. Toca aquí.
+            </div>
+          </button>
+        )}
+
         {/* Métricas */}
         <div className="lv-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           {[["Activas", activas.length], ["Vendidas", vendidas.length], ["En cola", enCola.length]].map(([l, v]) => (

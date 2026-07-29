@@ -51,8 +51,22 @@ export default function AccountPage() {
 
       <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
 
+        {/* Sin WhatsApp el comprador que gane no tiene cómo escribirle */}
+        {profile.sellerStatus === "approved" && !(profile as any).whatsapp && (
+          <button className="lv-note lv-note--warn" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push("/account/edit")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div>
+              <strong>Falta tu WhatsApp.</strong> Quien gane tus subastas no tiene cómo
+              contactarte para pagar. Toca aquí para agregarlo.
+            </div>
+          </button>
+        )}
+
         {/* Perfil */}
-        <section className="lv-panel" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <button className="lv-panel" style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left" }} onClick={() => router.push("/account/edit")}>
           {(profile as any).avatar
             ? <img className="lv-avatar" style={{ width: 56, height: 56 }} src={(profile as any).avatar} alt=""/>
             : <span className="lv-avatar" style={{ width: 56, height: 56, fontSize: "1.3rem", background: "var(--ink)", color: "var(--bg)" }}>
@@ -69,7 +83,10 @@ export default function AccountPage() {
               <span className={`lv-badge ${etiqueta.clase}`} style={{ marginTop: 7 }}>{etiqueta.texto}</span>
             )}
           </div>
-        </section>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </button>
 
         {/* Métricas */}
         <div className="lv-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
