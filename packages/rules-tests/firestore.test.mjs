@@ -418,6 +418,43 @@ describe("Órdenes", () => {
     );
   });
 
+  test("el vendedor NO puede darse por entregado a sí mismo", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "orders", "orden1"), {
+        id: "orden1", buyerId: BUYER, sellerId: SELLER,
+        bidAmountUsd: 35, commissionUsd: 3.5, status: "shipped",
+      });
+    });
+    await assertFails(
+      updateDoc(doc(as(SELLER), "orders", "orden1"), { status: "delivered" })
+    );
+  });
+
+  test("el comprador sí confirma que recibió, y eso habilita calificar", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "orders", "orden1"), {
+        id: "orden1", buyerId: BUYER, sellerId: SELLER,
+        bidAmountUsd: 35, commissionUsd: 3.5, status: "shipped",
+      });
+    });
+    await assertSucceeds(
+      updateDoc(doc(as(BUYER), "orders", "orden1"), { status: "delivered" })
+    );
+  });
+
+  test("el comprador no puede saltarse pasos", async () => {
+    // orden1 sigue en pending_payment: no se puede ir directo a delivered
+    await assertFails(
+      updateDoc(doc(as(BUYER), "orders", "orden1"), { status: "delivered" })
+    );
+  });
+
+  test("nadie ajeno a la orden mueve su estado", async () => {
+    await assertFails(
+      updateDoc(doc(as(OTHER_BUYER), "orders", "orden1"), { status: "payment_confirmed" })
+    );
+  });
+
   test("pero no puede rebajarse la comisión", async () => {
     await assertFails(
       updateDoc(doc(as(SELLER), "orders", "orden1"), { commissionUsd: 0 })

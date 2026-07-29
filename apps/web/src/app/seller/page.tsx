@@ -18,6 +18,15 @@ const DURACIONES: [string, string][] = [
   ["6", "6 horas"], ["24", "1 día"], ["72", "3 días"], ["168", "7 días"],
 ];
 
+const ESTADO_ORDEN: Record<string, { texto: string; clase: string }> = {
+  pending_payment: { texto: "Esperando pago", clase: "lv-badge--soft" },
+  payment_confirmed: { texto: "Por enviar", clase: "lv-badge--soft" },
+  shipped: { texto: "Enviado", clase: "lv-badge--soft" },
+  delivered: { texto: "Entregado", clase: "lv-badge--accent" },
+  cancelled: { texto: "Cancelada", clase: "lv-badge--live" },
+  disputed: { texto: "En disputa", clase: "lv-badge--live" },
+};
+
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   waiting: { texto: "En cola", clase: "lv-badge--soft" },
   active: { texto: "Activa", clase: "lv-badge--accent" },
@@ -66,6 +75,7 @@ export default function SellerPage() {
   const [pantalla, setPantalla] = useState<Pantalla>("hub");
   const [shows, setShows] = useState<any[]>([]);
   const [auctions, setAuctions] = useState<any[]>([]);
+  const [ventas, setVentas] = useState<any[]>([]);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
@@ -101,7 +111,11 @@ export default function SellerPage() {
       query(collection(db, "auctions"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
       s => setAuctions(s.docs.map(d => ({ id: d.id, ...d.data() }))),
       e => console.error("auctions:", e.code));
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(
+      query(collection(db, "orders"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
+      s => setVentas(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+      e => console.error("ventas:", e.code));
+    return () => { u1(); u2(); u3(); };
   }, [profile]);
 
   const avisar = (tipo: "ok" | "bad", texto: string) => {
@@ -218,6 +232,8 @@ export default function SellerPage() {
   const activas = misSubastas.filter(a => a.status === "active");
   const vendidas = auctions.filter(a => a.status === "sold");
   const enCola = auctions.filter(a => a.mode === "live" && a.status === "waiting");
+  // Órdenes esperando algo de él: confirmar el pago o despachar
+  const porAtender = ventas.filter(o => ["pending_payment", "payment_confirmed"].includes(o.status)).length;
 
   const Encabezado = ({ titulo }: { titulo: string }) => (
     <header className="lv-topbar">
@@ -460,6 +476,44 @@ export default function SellerPage() {
                     <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>
                       {s.status === "live" && <i className="lv-dot"/>}{e.texto}
                     </span>
+                  </div>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              );
+            })}
+          </section>
+        )}
+
+        {/* Ventas — sin esta pantalla las órdenes se congelaban en
+            pending_payment porque nadie podía avanzarlas */}
+        {ventas.length > 0 && (
+          <section className="lv-panel" style={{ padding: "2px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
+              <span className="lv-eyebrow">Mis ventas</span>
+              {porAtender > 0 && (
+                <span className="lv-badge lv-badge--accent">{porAtender} por atender</span>
+              )}
+            </div>
+            {ventas.map(o => {
+              const e = ESTADO_ORDEN[o.status] ?? { texto: o.status, clase: "lv-badge--soft" };
+              const tuTurno = ["pending_payment", "payment_confirmed"].includes(o.status);
+              return (
+                <button key={o.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/orders/${o.id}`)}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 9, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
+                      {o.productImageURL && <img src={o.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {o.productTitle ?? "Producto"}
+                      </div>
+                      <div className="lv-dim" style={{ fontSize: "0.72rem", marginTop: 1 }}>
+                        ${o.bidAmountUsd?.toFixed(2)} · {o.buyerName ?? "Comprador"}
+                      </div>
+                      <span className={`lv-badge ${tuTurno ? "lv-badge--accent" : e.clase}`} style={{ marginTop: 4 }}>
+                        {tuTurno ? "Te toca" : e.texto}
+                      </span>
+                    </div>
                   </div>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
                 </button>

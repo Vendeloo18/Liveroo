@@ -1,7 +1,7 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, addDoc, updateDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
 import { formatUsd, formatBs, buildWhatsappMessage, buildWhatsappLink } from "@subastas-ve/shared";
@@ -51,6 +51,8 @@ export default function OrderPage() {
   const [enviando, setEnviando] = useState(false);
   const [errorRating, setErrorRating] = useState<string | null>(null);
   const [yaCalifique, setYaCalifique] = useState(false);
+  const [avanzando, setAvanzando] = useState(false);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   useEffect(() => {
     return onSnapshot(doc(db, "orders", orderId), s => {
@@ -60,6 +62,25 @@ export default function OrderPage() {
       if (o.ratingGiven != null) setYaCalifique(true);
     });
   }, [orderId]);
+
+  // El vendedor empuja hasta "enviado"; el último paso lo da el comprador,
+  // porque es el único que sabe si le llegó. Las reglas lo hacen cumplir.
+  const avanzar = async (nuevo: string, extra: Record<string, any> = {}) => {
+    if (!order) return;
+    setAvanzando(true);
+    setErrorEstado(null);
+    try {
+      await updateDoc(doc(db, "orders", order.id), {
+        status: nuevo,
+        ...extra,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (e: any) {
+      setErrorEstado(e?.message ?? "No se pudo actualizar la orden");
+    } finally {
+      setAvanzando(false);
+    }
+  };
 
   const calificar = async () => {
     if (!order || !profile || estrellas === 0) return;
@@ -91,6 +112,23 @@ export default function OrderPage() {
   const e = ESTADO[order.status] ?? { texto: order.status, detalle: "", clase: "lv-badge--soft" };
   const paso = PASOS.findIndex(p => p.clave === order.status);
   const soyComprador = profile?.uid === order.buyerId;
+  const soyVendedor = profile?.uid === order.sellerId;
+
+  // Qué acción toca según quién mira y en qué estado va la orden
+  const accion: { label: string; estado: string; extra?: Record<string, any>; nota: string } | null =
+    soyVendedor && order.status === "pending_payment"
+      ? { label: "Ya recibí el pago", estado: "payment_confirmed",
+          extra: { paymentConfirmedAt: serverTimestamp(), paymentConfirmedBy: profile!.uid },
+          nota: "Confírmalo solo cuando el dinero esté en tu cuenta." }
+      : soyVendedor && order.status === "payment_confirmed"
+      ? { label: "Marcar como enviado", estado: "shipped",
+          extra: { shippedAt: serverTimestamp() },
+          nota: "El comprador confirmará cuando lo reciba." }
+      : soyComprador && order.status === "shipped"
+      ? { label: "Ya lo recibí", estado: "delivered",
+          extra: { deliveredAt: serverTimestamp() },
+          nota: "Al confirmar podrás calificar al vendedor." }
+      : null;
 
   const mensaje = buildWhatsappMessage({
     buyerName: order.buyerName,
@@ -134,6 +172,30 @@ export default function OrderPage() {
         </section>
 
         {e.detalle && <div className="lv-note">{e.detalle}</div>}
+
+        {/* Acción del turno */}
+        {accion && (
+          <section className="lv-panel">
+            <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.5, marginBottom: 12 }}>
+              {accion.nota}
+            </p>
+            {errorEstado && <div className="lv-note lv-note--bad" style={{ marginBottom: 12 }}>{errorEstado}</div>}
+            <button
+              className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
+              disabled={avanzando}
+              onClick={() => avanzar(accion.estado, accion.extra)}
+            >
+              {avanzando ? "Guardando…" : accion.label}
+            </button>
+          </section>
+        )}
+
+        {soyVendedor && (
+          <div className="lv-note">
+            Estás viendo esta orden como <strong>vendedor</strong>.
+            {order.buyerName ? ` Le vendiste a ${order.buyerName}.` : ""}
+          </div>
+        )}
 
         {/* Progreso */}
         {order.status !== "cancelled" && (

@@ -228,20 +228,33 @@ service cloud.firestore {
 
       allow create: if false;
 
+      // El ciclo de una orden va: pending_payment → payment_confirmed →
+      // shipped → delivered. El vendedor mueve los tres primeros pasos;
+      // el último lo da el comprador, porque es el único que sabe si le
+      // llegó. Ese paso es además el que habilita la calificación.
       allow update: if isSignedIn() && (
         // El vendedor confirma el pago y despacha
         (resource.data.sellerId == uid()
           && onlyChanges([
                'status', 'paymentMethod', 'paymentReference',
                'paymentConfirmedAt', 'paymentConfirmedBy',
-               'whatsappMessageSent', 'trackingCode', 'updatedAt'
+               'whatsappMessageSent', 'trackingCode', 'shippedAt', 'updatedAt'
              ])
+          && request.resource.data.status in
+             ['pending_payment', 'payment_confirmed', 'shipped', 'cancelled']
           && unchanged('bidAmountUsd')
           && unchanged('commissionUsd'))
         ||
-        // El comprador solo deja su contacto
+        // El comprador deja su contacto
         (resource.data.buyerId == uid()
           && onlyChanges(['buyerWhatsapp', 'updatedAt']))
+        ||
+        // El comprador confirma que recibió: solo desde 'shipped', y solo
+        // hacia 'delivered'. No puede saltarse pasos ni devolverse.
+        (resource.data.buyerId == uid()
+          && onlyChanges(['status', 'deliveredAt', 'updatedAt'])
+          && resource.data.status == 'shipped'
+          && request.resource.data.status == 'delivered')
         ||
         isAdmin()
       );
