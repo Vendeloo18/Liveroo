@@ -1,6 +1,18 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Se mantiene el enlazado aislado por defecto de pnpm.
+#
+# Se probó nodeLinker: hoisted, que es lo que Expo recomienda, pero rompe
+# la web: al aplanar, `next` sube a la raíz mientras apps/web conserva su
+# React 18 anidado (porque choca con el React 19 de móvil), y Next termina
+# viendo el React equivocado. Las páginas de error dejan de exportarse.
+#
+# Expo se resuelve en su lugar desde metro.config.js, apuntando Metro a
+# node_modules/.pnpm/node_modules, que es donde pnpm sí deja accesibles
+# las dependencias transitivas.
+
 allowBuilds:
   '@sentry/cli': true
   protobufjs: true

@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Liveroo",
+    "slug": "liveroo",
+    "scheme": "liveroo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.liveroo.mobile"
+    },
+    "android": {
+      "package": "app.liveroo.mobile",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}

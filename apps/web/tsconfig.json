@@ -16,6 +16,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    // Sin esto TypeScript carga TODO @types/* que alcance a ver. Con el
+    // node_modules aplanado que necesita Expo, eso incluye stubs
+    // deprecados como @types/minimatch, que no traen definiciones y
+    // rompen la compilación.
+    "types": ["node", "react", "react-dom"],
     "plugins": [
       {
         "name": "next"
