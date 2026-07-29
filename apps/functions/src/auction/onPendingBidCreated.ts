@@ -53,20 +53,30 @@ export const onPendingBidCreated = functions
 
     const pendingBidRef = db.doc(`${COLLECTIONS.PENDING_BIDS}/${pendingBidId}`);
 
-    // Validación de forma antes de tocar la base
+    // Validación de forma antes de tocar la base. Se rechazan también los
+    // IDs con doble guion bajo: Firestore los reserva y db.doc() lanza
+    // INVALID_ARGUMENT, que dejaría la puja colgada en "pending".
+    const idValido = (s: unknown): s is string =>
+      typeof s === "string" && s.length > 0 && !/^__.*__$/.test(s);
+
     if (
-      !auctionId || typeof auctionId !== "string" ||
-      !bidderId || typeof bidderId !== "string" ||
+      !idValido(auctionId) || !idValido(bidderId) ||
       typeof amountUsd !== "number" || !isFinite(amountUsd) || amountUsd <= 0
     ) {
       await marcarRechazada(pendingBidRef, "not_found");
       return;
     }
 
-    // El nombre sale del perfil, no de lo que mande el cliente:
-    // así nadie puja como "Pepe" siendo otro.
-    const bidderSnap = await db.doc(`${COLLECTIONS.USERS}/${bidderId}`).get();
-    const bidderName = (bidderSnap.data()?.displayName as string | undefined) ?? "Anónimo";
+    // El nombre sale del perfil, no de lo que mande el cliente: así nadie
+    // puja como "Pepe" siendo otro. Si la lectura falla no se aborta la
+    // puja — el nombre es cosmético y no vale dejar al comprador colgado.
+    let bidderName = "Anónimo";
+    try {
+      const bidderSnap = await db.doc(`${COLLECTIONS.USERS}/${bidderId}`).get();
+      bidderName = (bidderSnap.data()?.displayName as string | undefined) ?? "Anónimo";
+    } catch (err) {
+      functions.logger.warn("No se pudo leer el perfil del pujador", { bidderId, err });
+    }
 
     const auctionRef = db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`);
     let veredicto: Veredicto;
