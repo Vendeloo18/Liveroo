@@ -4,7 +4,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/f
 import { useRouter } from "next/navigation";
 import { db } from "../lib/firebase";
 import { AuctionCard, AuctionCardData } from "../components/auction/AuctionCard";
-import { BRAND } from "@subastas-ve/shared";
+import { Logo } from "../components/ui/Logo";
 
 interface Show {
   id: string; sellerName?: string; title?: string; status?: string;
@@ -52,7 +52,7 @@ export default function Home() {
 
       {/* Barra superior */}
       <header className="lv-topbar">
-        <span className="lv-wordmark">{BRAND.name}</span>
+        <Logo tamano={26}/>
         <div style={{ flex: 1 }}/>
         <button className="lv-icon-btn" onClick={() => router.push("/auctions")} aria-label="Buscar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">

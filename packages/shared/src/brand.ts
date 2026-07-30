@@ -54,6 +54,22 @@ export interface Marca {
 export const BRAND: Marca = datos;
 
 /**
+ * El símbolo: una etiqueta de precio apuntando abajo-izquierda, con el
+ * agujero arriba a la derecha. Trazado en un lienzo de 24×24.
+ *
+ * Es una reconstrucción a partir de assets/simbolo-naranja.png, no el
+ * vector original. Si aparece el SVG de la marca, se reemplaza este
+ * string y las dos plataformas lo toman.
+ *
+ * Se dibuja con fill-rule="evenodd": el segundo subtrazado (el círculo)
+ * perfora el primero, así el agujero queda transparente de verdad y no
+ * pintado de blanco — importante porque el logotipo va sobre naranja en
+ * el hero y sobre blanco en la barra superior.
+ */
+export const SIMBOLO_PATH =
+  "M11.06 2.32A2.4 2.4 0 0 1 12.75 1.6h6.9a2.4 2.4 0 0 1 2.4 2.4v6.9a2.4 2.4 0 0 1-.72 1.71l-8.1 8.1a2.7 2.7 0 0 1-3.82 0l-6.2-6.2a2.7 2.7 0 0 1 0-3.82zM17.3 4.6a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2z";
+
+/**
  * Las variables CSS que la web necesita, derivadas de la paleta.
  * Se inyectan en el layout para que el CSS y React usen el mismo origen.
  */

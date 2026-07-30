@@ -91,11 +91,11 @@ export const font = {
 };
 
 export const text = {
-  wordmark: { fontFamily: familia.display, fontSize: 28, letterSpacing: 0.3, color: color.ink },
-  title: { fontFamily: familia.display, fontSize: 22, letterSpacing: 0.3, color: color.ink },
-  section: { fontFamily: familia.display, fontSize: 20, letterSpacing: 0.3, color: color.ink },
+  wordmark: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 28, letterSpacing: 0.3, color: color.ink },
+  title: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 22, letterSpacing: 0.3, color: color.ink },
+  section: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 20, letterSpacing: 0.3, color: color.ink },
   body: { fontFamily: familia.cuerpo, fontSize: 15, color: color.ink },
-  cardTitle: { fontFamily: familia.display, fontSize: 15, lineHeight: 17, letterSpacing: 0.2, color: color.ink },
+  cardTitle: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 15, lineHeight: 17, letterSpacing: 0.2, color: color.ink },
   // El precio va en naranja: es el cambio mas visible del rebranding.
   price: { fontFamily: familia.display, fontSize: 20, letterSpacing: 0.2, color: color.accent },
   priceXl: { fontFamily: familia.display, fontSize: 38, letterSpacing: 0.2, color: color.accent },

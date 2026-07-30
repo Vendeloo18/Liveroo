@@ -7,7 +7,7 @@ import { db } from "../../src/lib/firebase";
 import { color, space, text as T, APP_MAX_WIDTH } from "../../src/theme";
 import { AuctionCard, DatosSubasta } from "../../src/components/AuctionCard";
 import { Cargando, Vacio, Boton } from "../../src/components/ui";
-import { BRAND } from "@subastas-ve/shared";
+import { Logo } from "../../src/components/Logo";
 
 const CATEGORIAS = ["Para Ti", "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar", "Deportes"];
 
@@ -46,7 +46,7 @@ export default function Inicio() {
         flexDirection: "row", alignItems: "center", gap: 10,
         borderBottomWidth: 1, borderBottomColor: color.line,
       }}>
-        <Text style={T.wordmark}>{BRAND.name}</Text>
+        <Logo tamano={26} color={color.ink}/>
         <View style={{ flex: 1 }}/>
         <Pressable
           onPress={() => router.push("/explorar")}

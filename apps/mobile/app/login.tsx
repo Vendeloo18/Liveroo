@@ -9,8 +9,11 @@ import { useAuthStore } from "../src/store/authStore";
 import { color, space, radius, text as T, font, APP_MAX_WIDTH } from "../src/theme";
 import { Boton, Aviso } from "../src/components/ui";
 import { BRAND } from "@subastas-ve/shared";
+import { Hero } from "../src/components/Hero";
+import { Logo } from "../src/components/Logo";
 
 type Modo = "entrar" | "crear";
+type Vista = "hero" | "formulario";
 
 export default function Login() {
   const router = useRouter();
@@ -18,6 +21,8 @@ export default function Login() {
   const { width } = useWindowDimensions();
   const { signIn, signUp, error, clearError, profile } = useAuthStore();
 
+  // Primero el hero de marca; el formulario aparece al elegir.
+  const [vista, setVista] = useState<Vista>("hero");
   const [modo, setModo] = useState<Modo>("crear");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -44,6 +49,16 @@ export default function Login() {
     paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: color.ink,
   };
 
+  if (vista === "hero") {
+    return (
+      <Hero
+        onCrearCuenta={() => { setModo("crear"); clearError(); setVista("formulario"); }}
+        onIniciarSesion={() => { setModo("entrar"); clearError(); setVista("formulario"); }}
+        onEntrarSinCuenta={() => router.replace("/")}
+      />
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: color.bg }}
@@ -54,7 +69,7 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ width: contenido, paddingHorizontal: space.lg, paddingTop: insets.top + 40 }}>
-          <Text style={{ ...T.wordmark, fontSize: 32 }}>{BRAND.name}</Text>
+          <Logo tamano={30}/>
           <Text style={{ ...T.muted, lineHeight: 21, marginTop: 8, marginBottom: 26 }}>
             {BRAND.tagline}. Puja, gana y coordina con el vendedor.
           </Text>

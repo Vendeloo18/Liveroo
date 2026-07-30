@@ -3,13 +3,19 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
 import { BRAND } from "@subastas-ve/shared";
+import { Hero } from "../../components/ui/Hero";
+import { Logo } from "../../components/ui/Logo";
 
 type Modo = "entrar" | "crear";
+type Vista = "hero" | "formulario";
 
 export default function AuthPage() {
   const router = useRouter();
   const { signIn, signUp, signInWithGoogle, error, clearError, profile } = useAuthStore();
 
+  // Primero el hero de marca; el formulario aparece cuando el usuario
+  // elige crear cuenta o iniciar sesión.
+  const [vista, setVista] = useState<Vista>("hero");
   const [modo, setModo] = useState<Modo>("crear");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -46,12 +52,32 @@ export default function AuthPage() {
 
   const puedeEnviar = !!email.trim() && clave.length >= 6 && (modo === "entrar" || !!nombre.trim());
 
+  if (vista === "hero") {
+    return (
+      <Hero
+        onCrearCuenta={() => { setModo("crear"); clearError(); setVista("formulario"); }}
+        onIniciarSesion={() => { setModo("entrar"); clearError(); setVista("formulario"); }}
+        onEntrarSinCuenta={() => router.push("/")}
+      />
+    );
+  }
+
   return (
     <div className="lv-app" style={{ paddingBottom: 32 }}>
 
-      <div className="lv-pad" style={{ paddingTop: 40 }}>
-        <div className="lv-wordmark" style={{ fontSize: "2rem" }}>{BRAND.name}</div>
-        <p className="lv-muted" style={{ fontSize: "0.92rem", lineHeight: 1.5, marginTop: 8, maxWidth: 300 }}>
+      <div className="lv-pad" style={{ paddingTop: 32 }}>
+        <button
+          onClick={() => setVista("hero")}
+          className="lv-icon-btn"
+          aria-label="Atrás"
+          style={{ marginBottom: 18 }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+        </button>
+        <Logo tamano={30} color="var(--accent)"/>
+        <p className="lv-muted" style={{ fontSize: "0.92rem", lineHeight: 1.5, marginTop: 10, maxWidth: 300 }}>
           {BRAND.tagline}. Puja, gana y coordina con el vendedor.
         </p>
       </div>
