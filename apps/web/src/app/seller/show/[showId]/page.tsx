@@ -73,7 +73,9 @@ export default function SellerShowPage() {
   const [fotos, setFotos] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLDivElement>(null);
-  const agora = useAgora(show?.agoraChannelName ?? "", "host");
+  // Se le pasa el showId, no el canal: el canal y el rol los resuelve
+  // generateAgoraToken en el servidor.
+  const agora = useAgora(showId, "host");
 
   useEffect(() => {
     const u1 = onSnapshot(doc(db, "shows", showId), s => { if (s.exists()) setShow({ id: s.id, ...s.data() }); });

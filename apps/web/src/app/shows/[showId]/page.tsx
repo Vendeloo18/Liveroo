@@ -43,7 +43,7 @@ export default function ShowPage() {
   const remoteVideoRef = useRef<HTMLDivElement>(null);
 
   const esHost = !!show?.sellerId && show.sellerId === profile?.uid;
-  const agora = useAgora(show?.agoraChannelName ?? "", esHost ? "host" : "audience");
+  const agora = useAgora(showId, esHost ? "host" : "audience");
   const { texto: cuenta, urgente, vencida } = useCountdown(subasta?.endsAt);
 
   useEffect(() => {
@@ -60,8 +60,11 @@ export default function ShowPage() {
 
   useEffect(() => {
     if (!show?.agoraChannelName || agora.joined || show.status !== "live") return;
+    // profile puede llegar después que el show; sin esperarlo, el vendedor
+    // entraría como espectador y no podría transmitir.
+    if (!profile) return;
     agora.join(esHost ? localVideoRef.current : remoteVideoRef.current);
-  }, [show?.agoraChannelName, show?.status]);
+  }, [show?.agoraChannelName, show?.status, profile?.uid, esHost]);
 
   useEffect(() => {
     const u = agora.remoteUsers[0];

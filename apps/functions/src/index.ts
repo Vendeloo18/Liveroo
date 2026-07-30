@@ -11,6 +11,7 @@ export { closeExpiredAuctions, closeAuctionNow } from "./auction/closeExpiredAuc
 
 // Show controls
 export { startShow, endShow, skipAuction } from "./shows/showControls";
+export { generateAgoraToken } from "./shows/agoraToken";
 
 // Users
 export { syncPublicProfile } from "./users/syncPublicProfile";
@@ -27,7 +28,6 @@ export {
   suspendSeller,
   updateExchangeRate,
   updateCommissionConfig,
-  generateAgoraToken,
 } from "./admin/adminFunctions";
 
 // Datos de demostración (herramienta de pre-lanzamiento, solo admin)
