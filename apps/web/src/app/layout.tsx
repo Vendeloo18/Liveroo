@@ -38,9 +38,29 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Sin metadataBase, Next resuelve las imágenes de Open Graph como rutas
+  // relativas y WhatsApp o Twitter no las encuentran: al compartir un link
+  // sale sin preview. El dominio sale de packages/shared, el mismo archivo
+  // que consume el móvil.
+  metadataBase: new URL(BRAND.url),
   title: `${BRAND.name} — ${BRAND.tagline}`,
   description: BRAND.description,
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "es_VE",
+    siteName: BRAND.name,
+    title: `${BRAND.name} — ${BRAND.tagline}`,
+    description: BRAND.description,
+    url: BRAND.url,
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: BRAND.name }],
+  },
+  twitter: {
+    card: "summary",
+    title: `${BRAND.name} — ${BRAND.tagline}`,
+    description: BRAND.description,
+    images: ["/icon-512.png"],
+  },
   icons: {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",

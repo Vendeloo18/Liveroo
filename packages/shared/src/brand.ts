@@ -23,6 +23,9 @@ import datos from "./brand.json";
 export interface Marca {
   name: string;
   tagline: string;
+  /** Dominio canónico. Vive acá y no en cada app para que un cambio de
+   * dominio sea un solo archivo. */
+  url: string;
   description: string;
   supportEmail: string;
   palette: {

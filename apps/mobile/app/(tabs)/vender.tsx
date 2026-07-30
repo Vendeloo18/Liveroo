@@ -5,12 +5,12 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "../../src/store/authStore";
 import { color, space, text as T, font, APP_MAX_WIDTH } from "../../src/theme";
 import { Panel, Boton, Vacio } from "../../src/components/ui";
+import { BRAND } from "@subastas-ve/shared";
 
 // Publicar desde el móvil implica subir fotos, que necesita permisos de
 // cámara y galería. Hasta implementarlo, se manda a la web en vez de
 // mostrar un formulario que no puede completar la parte importante.
-// TODO: cuando el proyecto de Vercel se renombre, actualizar esta URL.
-const WEB = "https://liveroo-web.vercel.app";
+const WEB = BRAND.url;
 
 export default function Vender() {
   const router = useRouter();
