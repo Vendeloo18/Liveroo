@@ -52,8 +52,21 @@ export async function activarPush(uid: string): Promise<EstadoPush> {
     const permiso = await Notification.requestPermission();
     if (permiso !== "granted") return permiso === "denied" ? "denegado" : "pendiente";
 
-    // El service worker recibe los avisos con la app cerrada
-    const registro = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    // Alcance propio, no "/". next-pwa registra su sw.js de workbox en la
+    // raíz con register:true, y dos service workers no pueden controlar el
+    // mismo alcance: el último en registrarse reemplaza al otro. Sin esto,
+    // activar los avisos apagaba el caché offline de la PWA —o la PWA
+    // apagaba los avisos en la siguiente carga—, y en ninguno de los dos
+    // casos había un error que lo dijera.
+    //
+    // /firebase-cloud-messaging-push-scope es el alcance que usa el propio
+    // Firebase cuando no se le pasa un registro. Recibir push y mostrar
+    // avisos no necesita la raíz; el clic se maneja igual porque
+    // clients.matchAll usa includeUncontrolled.
+    const registro = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+      { scope: "/firebase-cloud-messaging-push-scope" }
+    );
 
     const { getToken } = await import("firebase/messaging");
     const token = await getToken(messaging, {
