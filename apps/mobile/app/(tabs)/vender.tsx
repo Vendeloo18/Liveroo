@@ -9,6 +9,7 @@ import { Panel, Boton, Vacio } from "../../src/components/ui";
 // Publicar desde el móvil implica subir fotos, que necesita permisos de
 // cámara y galería. Hasta implementarlo, se manda a la web en vez de
 // mostrar un formulario que no puede completar la parte importante.
+// TODO: cuando el proyecto de Vercel se renombre, actualizar esta URL.
 const WEB = "https://liveroo-web.vercel.app";
 
 export default function Vender() {

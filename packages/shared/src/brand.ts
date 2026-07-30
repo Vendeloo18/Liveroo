@@ -11,7 +11,7 @@
 
 export const BRAND = {
   /** Nombre visible. Aparece en el logotipo, el título y los textos. */
-  name: "Liveroo",
+  name: "Vendeloo",
 
   /** Una línea que explica qué es. Se usa en login y metadatos. */
   tagline: "Subastas en vivo de Venezuela",
@@ -19,8 +19,12 @@ export const BRAND = {
   /** Descripción larga, para metadatos y tiendas de apps. */
   description: "Puja en vivo con vendedores venezolanos y coordina la entrega directo con ellos.",
 
-  /** Correo de soporte que ve el usuario. */
-  supportEmail: "soporte@liveroo.app",
+  /**
+   * Correo de soporte que ve el usuario.
+   * ⚠️  PENDIENTE: apuntar a una casilla que exista de verdad. Hoy es
+   * un dominio sin verificar y quien escriba no recibe respuesta.
+   */
+  supportEmail: "soporte@vendeloo.app",
 
   /**
    * Colores de marca.

@@ -4,7 +4,7 @@
 // Levanta Firestore + Functions de verdad y dispara pujas
 // SIMULTÁNEAS para comprobar que no se pisan entre sí.
 //
-//   pnpm --filter @liveroo/rules-tests test:engine
+//   pnpm --filter @vendeloo/rules-tests test:engine
 //
 // Reglas desactivadas a propósito (FIRESTORE_EMULATOR_HOST + admin):
 // aquí no se prueba quién puede escribir —eso es firestore.test.mjs—
@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import admin from "firebase-admin";
 
 process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
-const PROYECTO = process.env.GCLOUD_PROJECT ?? "demo-liveroo";
+const PROYECTO = process.env.GCLOUD_PROJECT ?? "demo-vendeloo";
 
 admin.initializeApp({ projectId: PROYECTO });
 const db = admin.firestore();

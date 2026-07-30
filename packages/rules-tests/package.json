@@ -1,11 +1,11 @@
 {
-  "name": "@liveroo/rules-tests",
+  "name": "@vendeloo/rules-tests",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-liveroo \"node --test firestore.test.mjs\"",
-    "test:engine": "firebase emulators:exec --only firestore,functions --project demo-liveroo \"node --test engine.test.mjs\""
+    "test": "firebase emulators:exec --only firestore --project demo-vendeloo \"node --test firestore.test.mjs\"",
+    "test:engine": "firebase emulators:exec --only firestore,functions --project demo-vendeloo \"node --test engine.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

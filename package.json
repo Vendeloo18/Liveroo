@@ -10,7 +10,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
-    "test:rules": "pnpm --filter @liveroo/rules-tests test",
+    "test:rules": "pnpm --filter @vendeloo/rules-tests test",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

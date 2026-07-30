@@ -4,7 +4,7 @@
 // Corren contra el emulador. Cada prueba afirma algo que la app
 // necesita poder hacer, o algo que un atacante NO debe poder hacer.
 //
-//   pnpm --filter @liveroo/rules-tests test
+//   pnpm --filter @vendeloo/rules-tests test
 // =============================================================
 
 import { test, describe, after, beforeEach } from "node:test";
@@ -40,7 +40,7 @@ const anon = () => testEnv.unauthenticatedContext().firestore();
 async function ensureEnv() {
   if (!testEnv) {
     testEnv = await initializeTestEnvironment({
-      projectId: "demo-liveroo",
+      projectId: "demo-vendeloo",
       firestore: { rules: RULES },
     });
   }
@@ -76,7 +76,7 @@ beforeEach(async () => {
       role: "seller", sellerStatus: "pending",
     });
     await setDoc(doc(db, "users", ADMIN), {
-      uid: ADMIN, email: "alfred@liveroo.com", displayName: "Alfred",
+      uid: ADMIN, email: "alfred@vendeloo.app", displayName: "Alfred",
       role: "admin", sellerStatus: "approved",
     });
 
