@@ -259,6 +259,10 @@ export default function WalletPage() {
                 <button className="lv-btn lv-btn--primary lv-btn--block" disabled={ocupado} onClick={enviarSolicitud}>
                   {ocupado ? "Enviando…" : "Enviar solicitud"}
                 </button>
+                <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.5, marginTop: 10 }}>
+                  <strong>Importante:</strong> las recargas no son reembolsables. El saldo
+                  se usa para pujar y pagar dentro de Vendeloo.
+                </p>
               </section>
             </>
           )
@@ -309,8 +313,9 @@ export default function WalletPage() {
         </section>
 
         <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", padding: "0 8px 10px" }}>
-          Las recargas se acreditan cuando el equipo verifica el pago.
-          Si algo no cuadra, escríbenos por soporte con tu referencia.
+          Las recargas se acreditan cuando el equipo verifica el pago y no son
+          reembolsables. Si ganas una subasta, tu puja es un compromiso de compra.
+          ¿Algo no cuadra? Escríbenos por soporte con tu referencia.
         </p>
       </div>
     </div>

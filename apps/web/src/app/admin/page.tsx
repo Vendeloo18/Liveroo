@@ -228,6 +228,10 @@ export default function AdminPage() {
       exito);
   };
 
+  const traerBcv = () => correr("bcv",
+    () => httpsCallable(functions, "syncBcvRateNow")({}),
+    "Tasa actualizada desde el BCV");
+
   const guardarTasa = () => {
     const v = parseFloat(tasaInput);
     if (!isFinite(v) || v <= 0) { setAviso({ tipo: "bad", texto: "La tasa debe ser un número mayor que cero" }); return; }
@@ -606,7 +610,7 @@ export default function AdminPage() {
                                 "Pago confirmado")}>Confirmar pago</button>
                             <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `ord_${o.id}`}
                               onClick={() => moverOrden(o, { status: "cancelled" },
-                                "¿Cancelar esta orden? Esto no devuelve saldo automáticamente: si pagó con billetera, acredítalo a mano en Pagos.",
+                                "¿Cancelar esta orden? Política vigente: SIN reembolsos — cancelar no devuelve saldo ni pagos. Un ajuste manual en Pagos queda para casos excepcionales.",
                                 "Orden cancelada")}>Cancelar</button>
                           </>
                         )}
@@ -658,6 +662,13 @@ export default function AdminPage() {
             <button className="lv-btn lv-btn--primary lv-btn--block" disabled={ocupado === "tasa"} onClick={guardarTasa}>
               {ocupado === "tasa" ? "Guardando…" : "Guardar tasa"}
             </button>
+            <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 8 }} disabled={ocupado === "bcv"} onClick={traerBcv}>
+              {ocupado === "bcv" ? "Consultando…" : "Actualizar del BCV ahora"}
+            </button>
+            <p className="lv-dim" style={{ fontSize: "0.73rem", lineHeight: 1.5, marginTop: 10 }}>
+              La tasa oficial se sincroniza sola cada 4 horas (fuente: ve.dolarapi.com,
+              espejo del BCV). Fijarla a mano vale hasta la próxima sincronización.
+            </p>
           </section>
 
           <section className="lv-panel">

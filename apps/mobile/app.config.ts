@@ -25,7 +25,18 @@ const config: ExpoConfig = {
     },
   },
   web: { bundler: "metro", output: "single", favicon: "./assets/favicon.png" },
-  plugins: ["expo-router"],
+  plugins: [
+    "expo-router",
+    [
+      "expo-image-picker",
+      {
+        // Textos de permiso que iOS exige mostrar. Sin esto la app se
+        // rechaza en la App Store y en Android el permiso sale genérico.
+        photosPermission: "Vendeloo necesita tus fotos para publicar los productos que vendes.",
+        cameraPermission: "Vendeloo usa la cámara para que tomes fotos de tus productos al publicar.",
+      },
+    ],
+  ],
   experiments: { typedRoutes: true },
 };
 
