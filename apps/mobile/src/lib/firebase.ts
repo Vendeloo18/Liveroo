@@ -22,8 +22,11 @@ import Constants from "expo-constants";
 
 // Los valores llegan por app.json → extra, o por variables EXPO_PUBLIC_*
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string>;
+// El .trim() por lo mismo que en la web: el messagingSenderId venía con un
+// espacio al inicio y con eso FCM no emite token, sin dar error en ninguna
+// parte. Un valor pegado a mano puede traer espacios en cualquier clave.
 const cfg = (clave: string, fallback = "") =>
-  process.env[`EXPO_PUBLIC_FIREBASE_${clave}`] ?? extra[clave] ?? fallback;
+  (process.env[`EXPO_PUBLIC_FIREBASE_${clave}`] ?? extra[clave] ?? fallback).trim();
 
 const firebaseConfig = {
   apiKey: cfg("API_KEY"),

@@ -17,7 +17,7 @@
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db, getMessagingInstance } from "./firebase";
 
-const VAPID = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? "";
+const VAPID = (process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY ?? "").trim();
 
 export type EstadoPush =
   | "sin-configurar"   // falta la clave VAPID en el proyecto

@@ -19,3 +19,5 @@ backups/
 
 # Salida compilada de las functions (la regenera el predeploy)
 apps/functions/lib/
+.vercel
+.env*

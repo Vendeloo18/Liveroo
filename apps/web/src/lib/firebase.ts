@@ -13,13 +13,19 @@ import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 import { getMessaging, isSupported } from "firebase/messaging";
 
+// Un espacio de más al pegar la variable en Vercel no se ve en ninguna
+// pantalla y rompe cosas sin dar error: el messagingSenderId venía con un
+// espacio al inicio (13 caracteres en vez de 12) y con eso FCM no podía
+// emitir un token. Se limpia siempre, no solo esa clave.
+const env = (v: string | undefined) => (v ?? "").trim();
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  apiKey: env(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+  authDomain: env(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+  projectId: env(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+  storageBucket: env(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: env(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+  appId: env(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
 };
 
 // Singleton
