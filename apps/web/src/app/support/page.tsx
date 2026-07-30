@@ -16,16 +16,24 @@ const FAQS = [
     a: "Se crea tu orden con el precio final y el monto en bolívares a la tasa del momento del cierre. Ese monto queda congelado aunque la tasa cambie después.",
   },
   {
-    q: "¿Cómo pago?",
-    a: `Coordinas el pago y la entrega directamente con el vendedor por WhatsApp, desde el botón que aparece en tu orden. ${BRAND.name} no retiene tu dinero ni cobra por dentro de la app.`,
+    q: "¿Cómo tengo saldo para pujar?",
+    a: `Pujar requiere saldo en tu billetera, que respalda tus ofertas. Durante esta etapa el equipo de ${BRAND.name} activa tu saldo a mano cuando confirmas tu pago: escríbenos por soporte para coordinarlo.`,
   },
   {
-    q: `¿${BRAND.name} protege mi pago?`,
-    a: `No hay custodia de fondos: el pago va directo de comprador a vendedor. Lo que sí hace ${BRAND.name} es dejar registro de la orden, del monto y de con quién la hiciste, y mostrar públicamente la reputación de cada vendedor.`,
+    q: "¿Cómo pago cuando gano?",
+    a: "Si tienes saldo, el pago se descuenta de tu billetera en el momento en que ganas y tu orden queda pagada al instante. Luego coordinas la entrega con el vendedor por WhatsApp, desde el botón de tu orden.",
+  },
+  {
+    q: "¿Cómo funciona mi saldo mientras pujo?",
+    a: "Mientras tu puja va ganando, ese monto queda apartado y no lo puedes usar en otra subasta. Si alguien te supera, se libera al instante y vuelve a estar disponible. Así nunca comprometes más de lo que tienes.",
+  },
+  {
+    q: "¿Puedo cancelar una puja o pedir reembolso?",
+    a: "No. Una puja es un compromiso de compra: si ganas, la orden es tuya. Las recargas de saldo tampoco son reembolsables. Puja solo por lo que de verdad quieres llevar.",
   },
   {
     q: "¿Por qué me rechazaron una puja?",
-    a: "Casi siempre porque alguien pujó unas décimas antes y tu monto quedó por debajo del nuevo mínimo. También se rechaza si la subasta ya cerró o si ya ibas ganando. El motivo exacto te sale en pantalla al momento.",
+    a: "Puede ser porque alguien pujó unas décimas antes y tu monto quedó bajo el nuevo mínimo, porque la subasta ya cerró, porque ya ibas ganando, o porque no te alcanza el saldo disponible. El motivo exacto te sale en pantalla al momento.",
   },
   {
     q: "¿Cómo me convierto en vendedor?",
