@@ -246,10 +246,16 @@ async function closeOneAuction(params: {
 
         const orderRef = db.collection(COLLECTIONS.ORDERS).doc();
 
-        // ¿Alcanza el saldo? Sin retenciones al pujar, puede no alcanzar:
-        // el mismo saldo pudo ganar otra subasta hace un minuto. En ese
-        // caso la orden nace pendiente de pago, como siempre.
-        const saldoGanador = Math.round((((winnerWalletSnap?.data()?.balanceUsd as number) ?? 0)) * 100) / 100;
+        // Con retención, el saldo del líder siempre cubre su puja cuando
+        // el interruptor está encendido. El chequeo queda como defensa:
+        // pujas de antes de la retención, o hechas con el interruptor
+        // apagado, pueden no tener respaldo — esas nacen pendientes.
+        const r2 = (x: number) => Math.round(x * 100) / 100;
+        const saldoGanador = r2((winnerWalletSnap?.data()?.balanceUsd as number) ?? 0);
+        const retenidoGanador = r2((winnerWalletSnap?.data()?.heldUsd as number) ?? 0);
+        // La retención de ESTA subasta se libera al cerrar, gane o pague
+        // como pague. Clampeada: nunca queda negativa.
+        const retenidoTrasCierre = Math.max(0, r2(retenidoGanador - finalUsd));
         const pagaConSaldo = saldoGanador >= finalUsd;
 
         tx.update(auctionRef, {
@@ -269,10 +275,11 @@ async function closeOneAuction(params: {
         // liquida el precio menos la comisión, sin importar el modo
         // global de cobro. Todo queda asentado en el ledger.
         if (pagaConSaldo) {
-          const saldoNuevo = Math.round((saldoGanador - finalUsd) * 100) / 100;
+          const saldoNuevo = r2(saldoGanador - finalUsd);
           tx.set(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`), {
             userId: auction.currentBidderId,
             balanceUsd: saldoNuevo,
+            heldUsd: retenidoTrasCierre,
             updatedAt: now,
           }, { merge: true });
 
@@ -338,6 +345,17 @@ async function closeOneAuction(params: {
             `🏆 ¡${auction.currentBidderName} ganó "${auction.title}" por ${formatUsd(finalUsd)}!`,
             "auction_won", now
           );
+        }
+
+        // Sin saldo que alcance: la orden nace pendiente, pero la
+        // retención de esta subasta se libera igual — la subasta cerró y
+        // esa plata ya no respalda nada.
+        if (!pagaConSaldo && winnerWalletSnap?.exists) {
+          tx.set(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`), {
+            userId: auction.currentBidderId,
+            heldUsd: retenidoTrasCierre,
+            updatedAt: now,
+          }, { merge: true });
         }
 
         // Avanzar la cola del show antes de salir

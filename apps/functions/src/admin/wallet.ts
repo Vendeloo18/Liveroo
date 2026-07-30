@@ -151,12 +151,22 @@ export const adjustWallet = functions
       const walletRef = db.doc(`${COLLECTIONS.WALLETS}/${userId}`);
       const walletSnap = await tx.get(walletRef);
       const saldoActual = redondear((walletSnap.data()?.balanceUsd as number) ?? 0);
+      const retenido = redondear((walletSnap.data()?.heldUsd as number) ?? 0);
       const saldoNuevo = redondear(saldoActual + monto);
 
       if (saldoNuevo < 0) {
         throw new functions.https.HttpsError(
           "failed-precondition",
           `El saldo quedaría negativo (actual: ${saldoActual}, ajuste: ${monto})`
+        );
+      }
+      // Lo retenido respalda pujas que van ganando: un débito manual no
+      // puede dejar el saldo por debajo de eso, o el cierre no podría
+      // cobrar lo que la retención prometió.
+      if (monto < 0 && saldoNuevo < retenido) {
+        throw new functions.https.HttpsError(
+          "failed-precondition",
+          `El usuario tiene ${retenido} retenidos en pujas activas; el máximo a descontar es ${redondear(saldoActual - retenido)}`
         );
       }
 

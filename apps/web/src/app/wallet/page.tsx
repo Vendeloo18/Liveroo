@@ -43,7 +43,7 @@ export default function WalletPage() {
   const { profile } = useAuthStore();
   const router = useRouter();
 
-  const [saldo, setSaldo] = useState<number | null>(null);
+  const [saldo, setSaldo] = useState<{ total: number; retenido: number } | null>(null);
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [cuentas, setCuentas] = useState<CuentasCobro | null>(null);
@@ -59,7 +59,10 @@ export default function WalletPage() {
   useEffect(() => {
     if (!profile) return;
     const u1 = onSnapshot(doc(db, "wallets", profile.uid),
-      s => setSaldo(s.exists() ? ((s.data() as any).balanceUsd ?? 0) : 0), () => setSaldo(0));
+      s => {
+        const d = s.data() as any;
+        setSaldo({ total: d?.balanceUsd ?? 0, retenido: d?.heldUsd ?? 0 });
+      }, () => setSaldo({ total: 0, retenido: 0 }));
     const u2 = onSnapshot(
       query(collection(db, "walletTransactions"), where("userId", "==", profile.uid), orderBy("createdAt", "desc"), limit(25)),
       s => setMovimientos(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => undefined);
@@ -150,17 +153,23 @@ export default function WalletPage() {
 
         {/* Saldo */}
         <section className="lv-panel" style={{ textAlign: "center", padding: "22px 16px" }}>
-          <div className="lv-eyebrow">Saldo disponible</div>
+          <div className="lv-eyebrow">Disponible para pujar</div>
           <div className="lv-price lv-price--xl" style={{ fontSize: "2.1rem", marginTop: 4 }}>
-            {saldo === null ? "…" : formatUsd(saldo)}
+            {saldo === null ? "…" : formatUsd(Math.max(0, saldo.total - saldo.retenido))}
           </div>
-          {tasa && saldo !== null && saldo > 0 && (
+          {saldo !== null && saldo.retenido > 0 && (
+            <div className="lv-dim" style={{ fontSize: "0.78rem", marginTop: 4 }}>
+              Saldo total {formatUsd(saldo.total)} · <strong>{formatUsd(saldo.retenido)} respaldando tus pujas líderes</strong>
+            </div>
+          )}
+          {tasa && saldo !== null && saldo.total - saldo.retenido > 0 && (
             <div className="lv-dim" style={{ fontSize: "0.76rem", marginTop: 3 }}>
-              ≈ Bs {(saldo * tasa).toLocaleString("es-VE", { maximumFractionDigits: 2 })} a la tasa de hoy
+              ≈ Bs {((saldo.total - saldo.retenido) * tasa).toLocaleString("es-VE", { maximumFractionDigits: 2 })} a la tasa de hoy
             </div>
           )}
           <p className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.5, marginTop: 10 }}>
-            Tu saldo respalda tus pujas y paga automáticamente cuando ganas.
+            Mientras tu puja va ganando, ese monto queda apartado.
+            Si te superan, se libera al instante; si ganas, paga tu orden solo.
           </p>
           <button
             className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"

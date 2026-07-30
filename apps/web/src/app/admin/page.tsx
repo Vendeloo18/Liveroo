@@ -48,7 +48,7 @@ export default function AdminPage() {
   const [walletCfg, setWalletCfg] = useState<{ biddingRequiresBalance?: boolean } | null>(null);
   const [buscaUsuario, setBuscaUsuario] = useState("");
   const [usuarioSel, setUsuarioSel] = useState<Usuario | null>(null);
-  const [saldoSel, setSaldoSel] = useState<number | null>(null);
+  const [saldoSel, setSaldoSel] = useState<{ total: number; retenido: number } | null>(null);
   const [ajusteMonto, setAjusteMonto] = useState("");
   const [ajusteNota, setAjusteNota] = useState("");
   const [pmBanco, setPmBanco] = useState("");
@@ -131,7 +131,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!usuarioSel) { setSaldoSel(null); return; }
     return onSnapshot(doc(db, "wallets", usuarioSel.id),
-      s => setSaldoSel(s.exists() ? ((s.data() as any).balanceUsd ?? 0) : 0), () => setSaldoSel(0));
+      s => {
+        const d = s.data() as any;
+        setSaldoSel({ total: d?.balanceUsd ?? 0, retenido: d?.heldUsd ?? 0 });
+      }, () => setSaldoSel({ total: 0, retenido: 0 }));
   }, [usuarioSel?.id]);
 
   // ── Acciones ──
@@ -443,7 +446,7 @@ export default function AdminPage() {
                 <div style={{ fontSize: "0.9rem", fontWeight: 750 }}>Pujar exige saldo</div>
                 <div className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.45, marginTop: 3 }}>
                   {walletCfg?.biddingRequiresBalance
-                    ? "Activo: nadie puede pujar por encima de su saldo. Al ganar, el motor debita y la orden nace pagada."
+                    ? "Activo: cada puja se respalda con saldo DISPONIBLE. Mientras vas ganando queda retenido; si te superan se libera; al ganar, paga la orden solo."
                     : "Apagado: pujar es libre y el ganador coordina el pago después. El saldo, si existe, igual paga automático al ganar."}
                 </div>
               </div>
@@ -486,7 +489,12 @@ export default function AdminPage() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div className="lv-eyebrow">Saldo</div>
-                    <div className="lv-price">{saldoSel === null ? "…" : formatUsd(saldoSel)}</div>
+                    <div className="lv-price">{saldoSel === null ? "…" : formatUsd(saldoSel.total)}</div>
+                    {saldoSel !== null && saldoSel.retenido > 0 && (
+                      <div className="lv-dim" style={{ fontSize: "0.7rem" }}>
+                        {formatUsd(saldoSel.retenido)} retenidos · disp. {formatUsd(saldoSel.total - saldoSel.retenido)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="lv-field">

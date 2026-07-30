@@ -63,10 +63,12 @@ export const manageDemoAuctions = functions
       // Solo lo marcado como demo. Una subasta real no puede caer aquí.
       const demo = await db.collection(COLLECTIONS.AUCTIONS).where("isDemo", "==", true).get();
 
-      // Las que llegaron a venderse tienen una orden apuntándoles. Borrarlas
-      // dejaría esa orden señalando a una subasta que ya no existe, y la
-      // pantalla del pedido sin nada que mostrar. Se quedan.
-      const borrables = demo.docs.filter((d) => !d.data().orderId);
+      // Las que llegaron a venderse tienen una orden apuntándoles, y las
+      // que tienen un líder activo tienen su retención de saldo: borrarlas
+      // dejaría la orden huérfana o la retención colgada para siempre.
+      // Ambas se quedan; la retención se libera sola cuando la subasta
+      // cierre por su reloj.
+      const borrables = demo.docs.filter((d) => !d.data().orderId && !d.data().currentBidderId);
       const conVenta = demo.size - borrables.length;
 
       let borradas = 0;

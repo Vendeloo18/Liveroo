@@ -9,9 +9,16 @@
 // el interruptor "pujar exige saldo", la puja rechazada por saldo, la
 // aceptada, y el cierre que debita y hace nacer la orden YA PAGADA.
 //
+// La retención es el corazón: mientras tu puja va ganando, ese monto
+// queda apartado (heldUsd) y NO respalda otra puja — un mismo saldo no
+// puede quedar ganando dos subastas. Si te superan, se libera en la
+// misma transacción de la puja rival; si ganas, el cierre debita y
+// libera junto.
+//
 // También lo que NO se puede: escribir el saldo a mano, editar un
 // depósito, aprobárselo uno mismo, ajustar sin nota, dejar saldo
-// negativo. Al final, la auditoría: la suma del ledger es el saldo.
+// negativo, o descontarle a alguien plata que respalda pujas activas.
+// Al final, la auditoría: la suma del ledger es el saldo.
 //
 // Deja el interruptor APAGADO al salir (pujar libre), que es el estado
 // de lanzamiento. Dura ~3 min por el reloj real de la subasta.
@@ -37,11 +44,11 @@ const CLAVE = process.env.VENDELOO_TEST_PASSWORD;
 if (!CLAVE) { console.error("Falta VENDELOO_TEST_PASSWORD. La clave no va en el repo."); process.exit(2); }
 const DOMINIO = process.env.VENDELOO_TEST_DOMAIN ?? "vendeloo.io";
 
-const S = {};
+const S_ = {};
 for (const [rol, mail] of [["admin", "admin@" + DOMINIO], ["vendedor", "vendedor@" + DOMINIO], ["comprador", "comprador@" + DOMINIO]]) {
   const a = initializeApp(CONFIG, rol);
   const { user } = await signInWithEmailAndPassword(getAuth(a), mail, CLAVE);
-  S[rol] = { uid: user.uid, db: getFirestore(a), fns: getFunctions(a, "us-central1") };
+  S_[rol] = { uid: user.uid, db: getFirestore(a), fns: getFunctions(a, "us-central1") };
 }
 
 let n = 0, bad = 0;
@@ -69,29 +76,35 @@ async function pujar(s, auctionId, amountUsd) {
   return { ...v, aceptada: v.status === "processed" };
 }
 
-const saldoDe = async (s, uid) =>
-  Math.round((((await getDoc(doc(s.db, "wallets", uid))).data()?.balanceUsd ?? 0)) * 100) / 100;
+const billeteraDe = async (s, uid) => {
+  const d = (await getDoc(doc(s.db, "wallets", uid))).data() ?? {};
+  return {
+    saldo: Math.round((d.balanceUsd ?? 0) * 100) / 100,
+    retenido: Math.round((d.heldUsd ?? 0) * 100) / 100,
+  };
+};
+const saldoDe = async (s, uid) => (await billeteraDe(s, uid)).saldo;
 
-const saldoInicial = await saldoDe(S.comprador, S.comprador.uid);
+const saldoInicial = await saldoDe(S_.comprador, S_.comprador.uid);
 console.log(`\n(saldo inicial del comprador: ${usd(saldoInicial)})`);
 
 // ═══════════════════════════════════════════════════════════════
 titulo("1. Nadie escribe plata a mano");
 try {
-  await setDoc(doc(S.comprador.db, "wallets", S.comprador.uid), { balanceUsd: 9999 });
+  await setDoc(doc(S_.comprador.db, "wallets", S_.comprador.uid), { balanceUsd: 9999 });
   mal("el saldo no se escribe desde el cliente", "lo dejó");
 } catch { ok("el saldo no se escribe desde el cliente", "permission-denied"); }
 
 try {
-  await addDoc(collection(S.comprador.db, "walletTransactions"), {
-    userId: S.comprador.uid, type: "deposit", amountUsd: 9999, createdAt: serverTimestamp(),
+  await addDoc(collection(S_.comprador.db, "walletTransactions"), {
+    userId: S_.comprador.uid, type: "deposit", amountUsd: 9999, createdAt: serverTimestamp(),
   });
   mal("el ledger no se escribe desde el cliente", "lo dejó");
 } catch { ok("el ledger no se escribe desde el cliente", "permission-denied"); }
 
 try {
-  await addDoc(collection(S.comprador.db, "deposits"), {
-    userId: S.comprador.uid, userName: "x", amountUsd: 50, method: "zelle",
+  await addDoc(collection(S_.comprador.db, "deposits"), {
+    userId: S_.comprador.uid, userName: "x", amountUsd: 50, method: "zelle",
     reference: "REF-1234", status: "approved", createdAt: serverTimestamp(),
   });
   mal("un depósito no puede nacer aprobado", "lo dejó");
@@ -101,8 +114,8 @@ try {
 titulo("2. Declarar un depósito y aprobarlo");
 let depId = null;
 try {
-  const ref = await addDoc(collection(S.comprador.db, "deposits"), {
-    userId: S.comprador.uid, userName: "Comprador Prueba", amountUsd: 20,
+  const ref = await addDoc(collection(S_.comprador.db, "deposits"), {
+    userId: S_.comprador.uid, userName: "Comprador Prueba", amountUsd: 20,
     method: "pago_movil", reference: "0009876543", status: "pending", createdAt: serverTimestamp(),
   });
   depId = ref.id;
@@ -111,12 +124,12 @@ try {
 
 if (depId) {
   try {
-    await updateDoc(doc(S.comprador.db, "deposits", depId), { amountUsd: 900 });
+    await updateDoc(doc(S_.comprador.db, "deposits", depId), { amountUsd: 900 });
     mal("la solicitud no se puede editar", "lo dejó");
   } catch { ok("la solicitud no se puede editar", "permission-denied"); }
 
   try {
-    await httpsCallable(S.comprador.fns, "manageDeposit")({ depositId: depId, action: "approve" });
+    await httpsCallable(S_.comprador.fns, "manageDeposit")({ depositId: depId, action: "approve" });
     mal("nadie se aprueba su propio depósito", "lo dejó");
   } catch (e) {
     /permission-denied/.test(e.code) ? ok("nadie se aprueba su propio depósito", "permission-denied")
@@ -124,15 +137,15 @@ if (depId) {
   }
 
   try {
-    const r = await httpsCallable(S.admin.fns, "manageDeposit")({ depositId: depId, action: "approve" });
-    const saldo = await saldoDe(S.comprador, S.comprador.uid);
+    const r = await httpsCallable(S_.admin.fns, "manageDeposit")({ depositId: depId, action: "approve" });
+    const saldo = await saldoDe(S_.comprador, S_.comprador.uid);
     saldo === Math.round((saldoInicial + 20) * 100) / 100
       ? ok("admin aprueba y acredita", `saldo ${usd(saldo)}`)
       : mal("admin aprueba y acredita", `saldo=${saldo}, esperaba ${saldoInicial + 20}`);
   } catch (e) { mal("admin aprueba y acredita", e.message); }
 
   try {
-    await httpsCallable(S.admin.fns, "manageDeposit")({ depositId: depId, action: "approve" });
+    await httpsCallable(S_.admin.fns, "manageDeposit")({ depositId: depId, action: "approve" });
     mal("aprobar dos veces no acredita dos veces", "lo dejó");
   } catch (e) {
     /failed-precondition/.test(e.code) ? ok("aprobar dos veces no acredita dos veces", "failed-precondition")
@@ -143,7 +156,7 @@ if (depId) {
 // ═══════════════════════════════════════════════════════════════
 titulo("3. Créditos manuales del admin");
 try {
-  await httpsCallable(S.comprador.fns, "adjustWallet")({ userId: S.comprador.uid, amountUsd: 100, note: "yo mismo" });
+  await httpsCallable(S_.comprador.fns, "adjustWallet")({ userId: S_.comprador.uid, amountUsd: 100, note: "yo mismo" });
   mal("un usuario no se acredita solo", "lo dejó");
 } catch (e) {
   /permission-denied/.test(e.code) ? ok("un usuario no se acredita solo", "permission-denied")
@@ -151,7 +164,7 @@ try {
 }
 
 try {
-  await httpsCallable(S.admin.fns, "adjustWallet")({ userId: S.comprador.uid, amountUsd: 5 });
+  await httpsCallable(S_.admin.fns, "adjustWallet")({ userId: S_.comprador.uid, amountUsd: 5 });
   mal("ajuste sin nota rechazado", "lo dejó");
 } catch (e) {
   /invalid-argument/.test(e.code) ? ok("ajuste sin nota rechazado", "la nota es obligatoria")
@@ -159,13 +172,13 @@ try {
 }
 
 try {
-  await httpsCallable(S.admin.fns, "adjustWallet")({ userId: S.comprador.uid, amountUsd: 5, note: "Bono de prueba" });
-  const saldo = await saldoDe(S.comprador, S.comprador.uid);
+  await httpsCallable(S_.admin.fns, "adjustWallet")({ userId: S_.comprador.uid, amountUsd: 5, note: "Bono de prueba" });
+  const saldo = await saldoDe(S_.comprador, S_.comprador.uid);
   ok("admin acredita con nota", `+${usd(5)} → saldo ${usd(saldo)}`);
 } catch (e) { mal("admin acredita con nota", e.message); }
 
 try {
-  await httpsCallable(S.admin.fns, "adjustWallet")({ userId: S.comprador.uid, amountUsd: -99999, note: "imposible" });
+  await httpsCallable(S_.admin.fns, "adjustWallet")({ userId: S_.comprador.uid, amountUsd: -99999, note: "imposible" });
   mal("no se puede dejar saldo negativo", "lo dejó");
 } catch (e) {
   /failed-precondition/.test(e.code) ? ok("no se puede dejar saldo negativo", "failed-precondition")
@@ -175,85 +188,129 @@ try {
 // ═══════════════════════════════════════════════════════════════
 titulo("4. El interruptor «pujar exige saldo»");
 try {
-  await setDoc(doc(S.comprador.db, "config", "wallet"), { biddingRequiresBalance: true });
+  await setDoc(doc(S_.comprador.db, "config", "wallet"), { biddingRequiresBalance: true });
   mal("el interruptor no lo toca un usuario", "lo dejó");
 } catch { ok("el interruptor no lo toca un usuario", "permission-denied"); }
 
 try {
-  await setDoc(doc(S.admin.db, "config", "wallet"), { biddingRequiresBalance: true, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(S_.admin.db, "config", "wallet"), { biddingRequiresBalance: true, updatedAt: serverTimestamp() }, { merge: true });
   ok("admin lo enciende desde el panel", "biddingRequiresBalance: true");
 } catch (e) { mal("admin lo enciende desde el panel", e.message); }
 
 // ═══════════════════════════════════════════════════════════════
-titulo("5. Con el interruptor encendido");
-const saldoAntes = await saldoDe(S.comprador, S.comprador.uid);
-const ID = `test_wallet_${Date.now().toString(36)}`;
-await setDoc(doc(S.vendedor.db, "auctions", ID), {
-  mode: "standalone", showId: null,
-  title: "Prueba de billetera — Audífonos", description: "", category: "Electronica",
-  imageURL: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80",
-  imageURLs: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80"],
-  sellerId: S.vendedor.uid, sellerName: "Tienda Prueba",
-  startingPriceUsd: 10, currentBidUsd: 10, minIncrementUsd: 2,
-  status: "active",
-  // 150s: fuera del umbral de anti-sniping (120s), así el reloj no se
-  // estira con cada puja y la espera del cierre es predecible.
-  endsAt: Timestamp.fromMillis(Date.now() + 150_000),
-  bidsCount: 0, currentBidderId: null, currentBidderName: null,
-  winnerId: null, orderId: null, sortOrder: null, isDemo: true,
-  createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-});
-ok("subasta de prueba publicada", `${ID} · saldo del comprador ${usd(saldoAntes)}`);
+titulo("5. Retención: un saldo no gana dos subastas");
+const S = await saldoDe(S_.comprador, S_.comprador.uid);
 
+const crearSubasta = async (id) => {
+  await setDoc(doc(S_.vendedor.db, "auctions", id), {
+    mode: "standalone", showId: null,
+    title: "Prueba de retención — " + id, description: "", category: "Electronica",
+    imageURL: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80",
+    imageURLs: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80"],
+    sellerId: S_.vendedor.uid, sellerName: "Tienda Prueba",
+    startingPriceUsd: 10, currentBidUsd: 10, minIncrementUsd: 2,
+    status: "active",
+    // 150s: fuera del umbral de anti-sniping (120s), reloj predecible
+    endsAt: Timestamp.fromMillis(Date.now() + 150_000),
+    bidsCount: 0, currentBidderId: null, currentBidderName: null,
+    winnerId: null, orderId: null, sortOrder: null, isDemo: true,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  });
+};
+
+const A = "test_ret_a_" + Date.now().toString(36);
+const B = "test_ret_b_" + Date.now().toString(36);
+await crearSubasta(A); await crearSubasta(B);
+ok("dos subastas activas", "saldo del comprador " + usd(S));
+
+const PUJA_A = 12;
 try {
-  const v = await pujar(S.comprador, ID, Math.round((saldoAntes + 50) * 100) / 100);
+  const v = await pujar(S_.comprador, A, PUJA_A);
+  const w = await billeteraDe(S_.comprador, S_.comprador.uid);
+  v.aceptada && w.retenido === PUJA_A
+    ? ok("puja líder retiene su monto", usd(PUJA_A) + " apartados · disponible " + usd(w.saldo - w.retenido))
+    : mal("puja líder retiene su monto", "aceptada=" + v.aceptada + " retenido=" + w.retenido);
+} catch (e) { mal("puja líder retiene su monto", e.message); }
+
+// EL ARREGLO: la segunda puja mira lo disponible, no el saldo total
+try {
+  const grande = Math.round((S - PUJA_A + 1) * 100) / 100; // cabe en el saldo, NO en lo disponible
+  const v = await pujar(S_.comprador, B, grande);
   v.status === "rejected" && v.rejectedReason === "insufficient_funds"
-    ? ok("puja por encima del saldo rechazada", `rejectedReason: ${v.rejectedReason}`)
-    : mal("puja por encima del saldo rechazada", `status=${v.status} motivo=${v.rejectedReason}`);
-} catch (e) { mal("puja por encima del saldo rechazada", e.message); }
+    ? ok("el mismo saldo NO respalda dos pujas", usd(grande) + " > disponible → insufficient_funds")
+    : mal("el mismo saldo NO respalda dos pujas", "status=" + v.status + " motivo=" + v.rejectedReason);
+} catch (e) { mal("el mismo saldo NO respalda dos pujas", e.message); }
 
-const PUJA = 12;
+const PUJA_B = Math.round((S - PUJA_A) * 100) / 100; // exactamente lo disponible
 try {
-  const v = await pujar(S.comprador, ID, PUJA);
-  v.aceptada ? ok("puja dentro del saldo aceptada", usd(PUJA))
-             : mal("puja dentro del saldo aceptada", v.rejectedReason);
-} catch (e) { mal("puja dentro del saldo aceptada", e.message); }
+  const v = await pujar(S_.comprador, B, PUJA_B);
+  const w = await billeteraDe(S_.comprador, S_.comprador.uid);
+  v.aceptada && w.retenido === S
+    ? ok("hasta lo disponible sí se puede", usd(PUJA_B) + " · todo el saldo respaldando (" + usd(S) + ")")
+    : mal("hasta lo disponible sí se puede", "retenido=" + w.retenido + ", esperaba " + S);
+} catch (e) { mal("hasta lo disponible sí se puede", e.message); }
+
+// Superado → liberación inmediata, en la transacción de la puja rival
+try {
+  await httpsCallable(S_.admin.fns, "adjustWallet")({ userId: S_.admin.uid, amountUsd: 50, note: "Fondos de prueba para superar" });
+  const v = await pujar(S_.admin, A, 14);
+  const w = await billeteraDe(S_.comprador, S_.comprador.uid);
+  v.aceptada && w.retenido === PUJA_B
+    ? ok("superado = liberado al instante", "la retención bajó a " + usd(w.retenido) + " (solo la puja que sigue viva)")
+    : mal("superado = liberado al instante", "retenido=" + w.retenido + ", esperaba " + PUJA_B);
+} catch (e) { mal("superado = liberado al instante", e.message); }
+
+// Un débito manual no puede comerse plata retenida
+try {
+  await httpsCallable(S_.admin.fns, "adjustWallet")({ userId: S_.comprador.uid, amountUsd: -(PUJA_A + 1), note: "no debería" });
+  mal("débito manual respeta la retención", "lo dejó");
+} catch (e) {
+  /failed-precondition/.test(e.code) ? ok("débito manual respeta la retención", "máximo a descontar = saldo − retenido")
+    : mal("débito manual respeta la retención", e.code);
+}
 
 // ═══════════════════════════════════════════════════════════════
-titulo("6. El cierre debita y la orden nace pagada");
+titulo("6. El cierre debita, libera y la orden nace pagada");
 try {
-  const a = (await getDoc(doc(S.comprador.db, "auctions", ID))).data();
+  const a = (await getDoc(doc(S_.comprador.db, "auctions", B))).data();
   const falta = a.endsAt.toMillis() - Date.now() + 2000;
-  if (falta > 0) { console.log(`     esperando ${Math.ceil(falta / 1000)}s a que venza…`); await dormir(falta); }
-  await httpsCallable(S.comprador.fns, "closeAuctionNow")({ auctionId: ID });
-  const cerrada = await esperar(S.comprador, `auctions/${ID}`, (d) => d.status !== "active", 60000);
+  if (falta > 0) { console.log("     esperando " + Math.ceil(falta / 1000) + "s a que venzan…"); await dormir(falta); }
+  await httpsCallable(S_.comprador.fns, "closeAuctionNow")({ auctionId: B });
+  await httpsCallable(S_.admin.fns, "closeAuctionNow")({ auctionId: A });
 
-  if (cerrada.status !== "sold" || !cerrada.orderId) {
-    mal("subasta cerrada", `status=${cerrada.status}`);
+  const cerradaB = await esperar(S_.comprador, "auctions/" + B, (d) => d.status !== "active", 60000);
+  if (cerradaB.status !== "sold" || !cerradaB.orderId) {
+    mal("subasta B cerrada", "status=" + cerradaB.status);
   } else {
-    const o = (await getDoc(doc(S.comprador.db, "orders", cerrada.orderId))).data();
+    const o = (await getDoc(doc(S_.comprador.db, "orders", cerradaB.orderId))).data();
     o.status === "payment_confirmed" && o.paymentMethod === "wallet"
-      ? ok("la orden nace PAGADA con la billetera", `payment_confirmed · ${usd(o.bidAmountUsd)}`)
-      : mal("la orden nace PAGADA con la billetera", `status=${o.status} método=${o.paymentMethod}`);
+      ? ok("la orden nace PAGADA con la billetera", "payment_confirmed · " + usd(o.bidAmountUsd))
+      : mal("la orden nace PAGADA con la billetera", "status=" + o.status + " método=" + o.paymentMethod);
 
-    const esperado = Math.round((saldoAntes - PUJA) * 100) / 100;
-    const saldoFinal = await saldoDe(S.comprador, S.comprador.uid);
-    saldoFinal === esperado
-      ? ok("saldo debitado al cierre", `${usd(saldoAntes)} − ${usd(PUJA)} = ${usd(saldoFinal)}`)
-      : mal("saldo debitado al cierre", `saldo=${saldoFinal}, esperaba ${esperado}`);
+    const w = await billeteraDe(S_.comprador, S_.comprador.uid);
+    w.saldo === PUJA_A && w.retenido === 0
+      ? ok("débito y liberación al cierre", usd(S) + " − " + usd(PUJA_B) + " = " + usd(w.saldo) + " · retenido 0")
+      : mal("débito y liberación al cierre", "saldo=" + w.saldo + " retenido=" + w.retenido + ", esperaba saldo " + PUJA_A);
 
     o.sellerReceivesUsd === Math.round((o.bidAmountUsd - o.commissionUsd) * 100) / 100
-      ? ok("al vendedor se le liquida precio − comisión", `${usd(o.sellerReceivesUsd)} (la plata la tiene la plataforma)`)
-      : mal("al vendedor se le liquida precio − comisión", `recibe=${o.sellerReceivesUsd}`);
+      ? ok("al vendedor se le liquida precio − comisión", usd(o.sellerReceivesUsd) + " (la plata la tiene la plataforma)")
+      : mal("al vendedor se le liquida precio − comisión", "recibe=" + o.sellerReceivesUsd);
   }
+
+  // La retención del admin (ganó A a 14) también se libera al cerrar
+  await esperar(S_.admin, "auctions/" + A, (d) => d.status !== "active", 60000);
+  const wa = await billeteraDe(S_.admin, S_.admin.uid);
+  wa.retenido === 0
+    ? ok("la retención del otro ganador también se libera", "admin: saldo " + usd(wa.saldo) + " · retenido 0")
+    : mal("la retención del otro ganador también se libera", "retenido=" + wa.retenido);
 } catch (e) { mal("cierre con billetera", e.message); }
 
 // ═══════════════════════════════════════════════════════════════
 titulo("7. Auditoría del ledger");
 try {
-  const txs = await getDocs(query(collection(S.comprador.db, "walletTransactions"), where("userId", "==", S.comprador.uid)));
+  const txs = await getDocs(query(collection(S_.comprador.db, "walletTransactions"), where("userId", "==", S_.comprador.uid)));
   const suma = Math.round(txs.docs.reduce((acc, d) => acc + (d.data().amountUsd ?? 0), 0) * 100) / 100;
-  const saldo = await saldoDe(S.comprador, S.comprador.uid);
+  const saldo = await saldoDe(S_.comprador, S_.comprador.uid);
   suma === saldo
     ? ok("la suma del ledger ES el saldo", `${txs.size} movimientos → ${usd(suma)}`)
     : mal("la suma del ledger ES el saldo", `suma=${suma} vs saldo=${saldo}`);
@@ -262,9 +319,11 @@ try {
 // ═══════════════════════════════════════════════════════════════
 titulo("8. Se apaga el interruptor (estado de lanzamiento)");
 try {
-  await setDoc(doc(S.admin.db, "config", "wallet"), { biddingRequiresBalance: false, updatedAt: serverTimestamp() }, { merge: true });
-  const v = await pujar(S.admin, ID === null ? "x" : `no_existe_${Date.now()}`, 5).catch(() => null);
-  ok("interruptor apagado", "pujar vuelve a ser libre");
+  await setDoc(doc(S_.admin.db, "config", "wallet"), { biddingRequiresBalance: false, updatedAt: serverTimestamp() }, { merge: true });
+  const cfg = (await getDoc(doc(S_.admin.db, "config", "wallet"))).data();
+  cfg?.biddingRequiresBalance === false
+    ? ok("interruptor apagado", "pujar vuelve a ser libre (estado de lanzamiento)")
+    : mal("interruptor apagado", JSON.stringify(cfg));
 } catch (e) { mal("interruptor apagado", e.message); }
 
 console.log(`\n${"═".repeat(60)}\n  ${n - bad}/${n} pasos bien${bad ? ` · ${bad} FALLARON` : ""}\n${"═".repeat(60)}`);

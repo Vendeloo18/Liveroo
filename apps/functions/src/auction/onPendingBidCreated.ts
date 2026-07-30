@@ -102,15 +102,27 @@ export const onPendingBidCreated = functions
 
         // ¿La plataforma exige saldo para pujar? El interruptor vive en
         // config/wallet y nace apagado: si el doc no existe, la puja sigue
-        // siendo gratis. La lectura va acá y no más abajo porque Firestore
-        // prohíbe leer después de escribir.
+        // siendo gratis. Las lecturas van acá y no más abajo porque
+        // Firestore prohíbe leer después de escribir.
         const walletCfg = await tx.get(db.doc(`${COLLECTIONS.CONFIG}/${CONFIG_DOCS.WALLET}`));
         const exigeSaldo = walletCfg.data()?.biddingRequiresBalance === true;
-        let saldoUsd = 0;
-        if (exigeSaldo) {
-          const walletSnap = await tx.get(db.doc(`${COLLECTIONS.WALLETS}/${bidderId}`));
-          saldoUsd = (walletSnap.data()?.balanceUsd as number) ?? 0;
-        }
+
+        // La billetera del pujador se lee SIEMPRE, no solo con el
+        // interruptor encendido: la retención es contabilidad y tiene que
+        // mantenerse coherente aunque el interruptor entre y salga.
+        const r2 = (x: number) => Math.round(x * 100) / 100;
+        const bidderWalletRef = db.doc(`${COLLECTIONS.WALLETS}/${bidderId}`);
+        const bidderWalletSnap = await tx.get(bidderWalletRef);
+        const saldoUsd = r2((bidderWalletSnap.data()?.balanceUsd as number) ?? 0);
+        const retenidoUsd = r2((bidderWalletSnap.data()?.heldUsd as number) ?? 0);
+
+        // El líder saliente recupera su retención en esta MISMA
+        // transacción: superado = ya no debe nada.
+        const liderActualId = auction.currentBidderId as string | undefined;
+        const liderWalletRef = liderActualId && liderActualId !== bidderId
+          ? db.doc(`${COLLECTIONS.WALLETS}/${liderActualId}`)
+          : null;
+        const liderWalletSnap = liderWalletRef ? await tx.get(liderWalletRef) : null;
 
         // ── Validaciones de negocio ─────────────────────────────────
         // `now` se toma dentro de la transacción: en un reintento, el
@@ -139,10 +151,10 @@ export const onPendingBidCreated = functions
 
         if (amountUsd < minimo) return { ok: false, motivo: "too_low" };
 
-        // Sin retenciones: el saldo respalda la puja pero no se congela al
-        // pujar. Si el mismo saldo gana dos subastas, la segunda orden nace
-        // pendiente de pago (el cierre solo debita lo que alcanza).
-        if (exigeSaldo && amountUsd > saldoUsd) {
+        // Lo que respalda esta puja es lo DISPONIBLE: el saldo menos lo
+        // que ya está reteniendo otra puja líder. Un mismo saldo no puede
+        // quedar ganando dos subastas a la vez.
+        if (exigeSaldo && amountUsd > r2(saldoUsd - retenidoUsd)) {
           return { ok: false, motivo: "insufficient_funds" };
         }
 
@@ -165,6 +177,28 @@ export const onPendingBidCreated = functions
           endsAt: nuevoFin,
           updatedAt: now,
         });
+
+        // Retención: el nuevo líder aparta el monto de su puja. Se crea la
+        // billetera si no existía (saldo 0, retención M): la contabilidad
+        // no depende de que el usuario haya recargado alguna vez.
+        tx.set(bidderWalletRef, {
+          userId: bidderId,
+          heldUsd: r2(retenidoUsd + amountUsd),
+          updatedAt: now,
+        }, { merge: true });
+
+        // Liberación del superado. Clampeada a cero: las pujas líderes de
+        // antes de que existiera la retención no tienen nada que liberar,
+        // y un drift jamás puede volver la retención negativa.
+        if (liderWalletRef && liderWalletSnap) {
+          const retenidoLider = r2((liderWalletSnap.data()?.heldUsd as number) ?? 0);
+          const pujaLider = r2((auction.currentBidUsd as number) ?? 0);
+          tx.set(liderWalletRef, {
+            userId: liderActualId,
+            heldUsd: Math.max(0, r2(retenidoLider - pujaLider)),
+            updatedAt: now,
+          }, { merge: true });
+        }
 
         const bidRef = db.collection(COLLECTIONS.AUCTION_BIDS(auctionId)).doc();
         tx.set(bidRef, {
