@@ -1,18 +1,20 @@
 // =============================================================
 // SISTEMA VISUAL — espejo de apps/web/src/app/globals.css
 // =============================================================
-// Los mismos tokens que la web, como objetos de React Native.
-// Para rebrandear se cambian accent, accentInk e ink, igual que allá.
-// Si cambias algo aquí, cámbialo también en globals.css o las dos
-// plataformas se separan.
+// Los tokens estructurales (grises, líneas, semánticos) viven aquí y su
+// equivalente en globals.css. Los COLORES DE MARCA no se repiten: salen
+// de packages/shared/src/brand.ts, el mismo archivo que consume la web.
+// Rebrandear es editar ese archivo y nada más.
 // =============================================================
 
-export const color = {
-  accent: "#c6f24e",
-  accentInk: "#10120a",
-  accentSoft: "#f2ffd1",
+import { BRAND } from "@subastas-ve/shared";
 
-  ink: "#0b0b0d",
+export const color = {
+  accent: BRAND.palette.accent,
+  accentInk: BRAND.palette.accentInk,
+  accentSoft: BRAND.palette.accentSoft,
+
+  ink: BRAND.palette.ink,
   ink2: "#62626d",
   ink3: "#9a9aa6",
   ink4: "#c4c4cd",

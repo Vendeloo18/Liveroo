@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+import { BRAND } from "@subastas-ve/shared";
 
 interface Prefs { shows: boolean; pujas: boolean; ordenes: boolean; promo: boolean }
 
@@ -13,7 +14,7 @@ const AVISOS: [keyof Prefs, string, string][] = [
   ["pujas", "Te superaron en una puja", "Para que puedas volver a pujar a tiempo"],
   ["ordenes", "Cambios en tus órdenes", "Pago confirmado, envío y entrega"],
   ["shows", "Shows por empezar", "De los vendedores que sigues"],
-  ["promo", "Novedades y promociones", "Ofertas y anuncios de Liveroo"],
+  ["promo", "Novedades y promociones", `Ofertas y anuncios de ${BRAND.name}`],
 ];
 
 function Interruptor({ activo, onChange, label }: { activo: boolean; onChange: () => void; label: string }) {

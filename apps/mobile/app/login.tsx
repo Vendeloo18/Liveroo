@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "../src/store/authStore";
 import { color, space, radius, text as T, font, APP_MAX_WIDTH } from "../src/theme";
 import { Boton, Aviso } from "../src/components/ui";
+import { BRAND } from "@subastas-ve/shared";
 
 type Modo = "entrar" | "crear";
 
@@ -53,9 +54,9 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ width: contenido, paddingHorizontal: space.lg, paddingTop: insets.top + 40 }}>
-          <Text style={{ ...T.wordmark, fontSize: 32 }}>Liveroo</Text>
+          <Text style={{ ...T.wordmark, fontSize: 32 }}>{BRAND.name}</Text>
           <Text style={{ ...T.muted, lineHeight: 21, marginTop: 8, marginBottom: 26 }}>
-            Subastas en vivo de Venezuela. Puja, gana y coordina con el vendedor.
+            {BRAND.tagline}. Puja, gana y coordina con el vendedor.
           </Text>
 
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>

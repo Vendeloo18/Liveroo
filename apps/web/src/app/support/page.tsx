@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BRAND } from "@subastas-ve/shared";
 
 // Las respuestas describen lo que la plataforma hace HOY. Si mañana se
 // implementa custodia de fondos o pagos dentro de la app, se actualizan
@@ -16,11 +17,11 @@ const FAQS = [
   },
   {
     q: "¿Cómo pago?",
-    a: "Coordinas el pago y la entrega directamente con el vendedor por WhatsApp, desde el botón que aparece en tu orden. Liveroo no retiene tu dinero ni cobra por dentro de la app.",
+    a: `Coordinas el pago y la entrega directamente con el vendedor por WhatsApp, desde el botón que aparece en tu orden. ${BRAND.name} no retiene tu dinero ni cobra por dentro de la app.`,
   },
   {
-    q: "¿Liveroo protege mi pago?",
-    a: "No hay custodia de fondos: el pago va directo de comprador a vendedor. Lo que sí hace Liveroo es dejar registro de la orden, del monto y de con quién la hiciste, y mostrar públicamente la reputación de cada vendedor.",
+    q: `¿${BRAND.name} protege mi pago?`,
+    a: `No hay custodia de fondos: el pago va directo de comprador a vendedor. Lo que sí hace ${BRAND.name} es dejar registro de la orden, del monto y de con quién la hiciste, y mostrar públicamente la reputación de cada vendedor.`,
   },
   {
     q: "¿Por qué me rechazaron una puja?",
@@ -79,7 +80,7 @@ export default function SupportPage() {
             Escríbenos y te respondemos por el mismo correo con el que entraste.
           </p>
           <a
-            href="mailto:soporte@liveroo.app?subject=Ayuda%20con%20Liveroo"
+            href={`mailto:${BRAND.supportEmail}?subject=${encodeURIComponent("Ayuda con " + BRAND.name)}`}
             className="lv-btn lv-btn--primary lv-btn--block"
             style={{ textDecoration: "none" }}
           >

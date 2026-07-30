@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
+import { BRAND } from "@subastas-ve/shared";
 
 type Modo = "entrar" | "crear";
 
@@ -49,9 +50,9 @@ export default function AuthPage() {
     <div className="lv-app" style={{ paddingBottom: 32 }}>
 
       <div className="lv-pad" style={{ paddingTop: 40 }}>
-        <div className="lv-wordmark" style={{ fontSize: "2rem" }}>Liveroo</div>
+        <div className="lv-wordmark" style={{ fontSize: "2rem" }}>{BRAND.name}</div>
         <p className="lv-muted" style={{ fontSize: "0.92rem", lineHeight: 1.5, marginTop: 8, maxWidth: 300 }}>
-          Subastas en vivo de Venezuela. Puja, gana y coordina con el vendedor.
+          {BRAND.tagline}. Puja, gana y coordina con el vendedor.
         </p>
       </div>
 

@@ -6,7 +6,7 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
 import { useCountdown } from "../../../hooks/useCountdown";
-import { MOTIVO_RECHAZO } from "@subastas-ve/shared";
+import { BRAND, MOTIVO_RECHAZO } from "@subastas-ve/shared";
 
 interface Auction {
   id: string; title?: string; description?: string; imageURL?: string; imageURLs?: string[];
@@ -226,7 +226,7 @@ export default function AuctionPage() {
           <div>
             <strong style={{ color: "var(--ink)" }}>Cómo se paga.</strong>{" "}
             Si ganas, coordinas pago y entrega directamente con el vendedor por WhatsApp.
-            Liveroo registra la orden con el monto congelado en bolívares.
+            {BRAND.name} registra la orden con el monto congelado en bolívares.
           </div>
         </div>
 

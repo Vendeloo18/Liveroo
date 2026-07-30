@@ -10,7 +10,7 @@ import { useAuthStore } from "../../src/store/authStore";
 import { useCountdown } from "../../src/hooks/useCountdown";
 import { color, space, radius, text as T, font, APP_MAX_WIDTH } from "../../src/theme";
 import { Boton, Panel, Insignia, Aviso, Avatar, Fila, Cargando } from "../../src/components/ui";
-import { MOTIVO_RECHAZO } from "@subastas-ve/shared";
+import { BRAND, MOTIVO_RECHAZO } from "@subastas-ve/shared";
 
 type Estado = "idle" | "pending" | "ok" | "err";
 
@@ -188,7 +188,7 @@ export default function DetalleSubasta() {
 
             <Aviso>
               Si ganas, coordinas el pago y la entrega directamente con el vendedor por WhatsApp.
-              Liveroo registra la orden con el monto congelado en bolívares.
+              {BRAND.name} registra la orden con el monto congelado en bolívares.
             </Aviso>
 
             {pujas.length > 0 && (

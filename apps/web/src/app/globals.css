@@ -12,8 +12,10 @@
 
 :root {
   /* ── Marca ────────────────────────────────────────────────
-     --accent es el color de "acción de dinero": pujar, vender,
-     ganar. Cambiar estos tres re-tiñe la app entera. */
+     NO EDITAR AQUÍ. Estos cuatro son solo el valor por defecto para
+     que la hoja funcione sola; layout.tsx los sobrescribe con lo que
+     diga packages/shared/src/brand.ts, que es el único sitio que
+     manda y el que también consume la app móvil. */
   --accent: #c6f24e;
   --accent-ink: #10120a;      /* texto sobre el acento */
   --accent-soft: #f2ffd1;

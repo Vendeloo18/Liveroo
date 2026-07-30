@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo } from "next/font/google";
 import "./globals.css";
+import { BRAND, brandCssVariables } from "@subastas-ve/shared";
 import { AuthProvider } from "../components/ui/AuthProvider";
 import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
 
@@ -13,10 +14,10 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "Liveroo — Subastas en vivo",
-  description: "El marketplace de subastas en vivo de Venezuela",
+  title: `${BRAND.name} — ${BRAND.tagline}`,
+  description: BRAND.description,
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Liveroo" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: BRAND.name },
 };
 
 export const viewport: Viewport = {
@@ -29,6 +30,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
+      <head>
+        {/* Los colores de marca salen de packages/shared/src/brand.ts, el
+            mismo archivo que consume el móvil. globals.css trae valores por
+            defecto; esto los sobrescribe para que haya un solo origen. */}
+        <style dangerouslySetInnerHTML={{ __html: `:root{${brandCssVariables()}}` }}/>
+      </head>
       <body className={archivo.className}>
         <AuthProvider>
           {children}

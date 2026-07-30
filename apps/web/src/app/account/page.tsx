@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
+import { BRAND } from "@subastas-ve/shared";
 
 const MENU_ITEMS = [
   { label: "Mis órdenes", sub: "Compras y pujas", href: "/activity", icon: "M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z" },
@@ -109,7 +110,7 @@ export default function AccountPage() {
           </button>
         ) : (
           <section className="lv-panel">
-            <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 4 }}>¿Quieres vender en Liveroo?</div>
+            <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 4 }}>{`¿Quieres vender en ${BRAND.name}?`}</div>
             <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.5, marginBottom: 12 }}>
               {profile.sellerStatus === "pending"
                 ? "Tu solicitud está en revisión. Te avisamos cuando la aprueben."

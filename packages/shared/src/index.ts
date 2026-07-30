@@ -1,3 +1,6 @@
+// Marca — nombre, textos y colores de acento
+export * from "./brand";
+
 // Types
 export * from "./types/firestore";
 

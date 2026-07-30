@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot, addDoc, updateDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
-import { formatUsd, formatBs, buildWhatsappMessage, buildWhatsappLink } from "@subastas-ve/shared";
+import { BRAND, formatUsd, formatBs, buildWhatsappMessage, buildWhatsappLink } from "@subastas-ve/shared";
 
 const PASOS = [
   { clave: "pending_payment", corto: "Pago" },
@@ -137,7 +137,7 @@ export default function OrderPage() {
     bidAmountBs: order.bidAmountBs,
     frozenRate: order.frozenExchangeRate,
     orderId: order.id,
-    showTitle: "Liveroo",
+    showTitle: BRAND.name,
   });
   const enlaceWhatsapp = order.sellerWhatsapp
     ? buildWhatsappLink(order.sellerWhatsapp, mensaje)
