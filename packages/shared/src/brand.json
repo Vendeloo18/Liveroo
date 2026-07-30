@@ -1,0 +1,19 @@
+{
+  "name": "Vendeloo",
+  "tagline": "Subastas en vivo de Venezuela",
+  "description": "Entra al vivo, puja en segundos y págalo cuando lo ganes. Todo en Venezuela.",
+  "supportEmail": "soporte@vendeloo.app",
+  "palette": {
+    "accent": "#ff6a00",
+    "accentInk": "#ffffff",
+    "accentLight": "#ff7d21",
+    "accentStrong": "#dc5a00",
+    "accentDeep": "#ab4100",
+    "accentDarkest": "#8c3300",
+    "accentSoft": "#ffe2ce",
+    "accentTint": "#fdeee4",
+    "accentDisabled": "#e8c3ac",
+    "accentMuted": "#8a6a55",
+    "ink": "#0b0b0d"
+  }
+}

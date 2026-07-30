@@ -1,26 +1,24 @@
 {
-  "name": "SubastasVE",
-  "short_name": "SubastasVE",
-  "description": "Marketplace de subastas en vivo de Venezuela",
+  "name": "Vendeloo — Subastas en vivo de Venezuela",
+  "short_name": "Vendeloo",
+  "description": "Entra al vivo, puja en segundos y págalo cuando lo ganes. Todo en Venezuela.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#030712",
-  "theme_color": "#4F46E5",
-  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ff6a00",
+  "lang": "es-VE",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [],
-  "categories": ["shopping", "business"]
+  ]
 }

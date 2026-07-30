@@ -159,7 +159,7 @@ export default function AuctionPage() {
       <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 16 }}>
 
         <div>
-          <h1 style={{ fontSize: "1.3rem", fontWeight: 850, letterSpacing: "-0.035em", lineHeight: 1.22 }}>
+          <h1 className="lv-display" style={{ fontSize: "1.6rem" }}>
             {auction.title}
           </h1>
           {auction.description && (

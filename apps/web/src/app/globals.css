@@ -12,13 +12,25 @@
 
 :root {
   /* ── Marca ────────────────────────────────────────────────
-     NO EDITAR AQUÍ. Estos cuatro son solo el valor por defecto para
-     que la hoja funcione sola; layout.tsx los sobrescribe con lo que
-     diga packages/shared/src/brand.ts, que es el único sitio que
-     manda y el que también consume la app móvil. */
-  --accent: #c6f24e;
-  --accent-ink: #10120a;      /* texto sobre el acento */
-  --accent-soft: #f2ffd1;
+     NO EDITAR AQUÍ. Son solo el valor por defecto para que la hoja
+     funcione sola; layout.tsx los sobrescribe con lo que diga
+     packages/shared/src/brand.ts, que es el único sitio que manda y
+     el que también consume la app móvil. */
+  --accent: #ff6a00;
+  --accent-ink: #ffffff;        /* texto sobre el acento: blanco */
+  --accent-light: #ff7d21;
+  --accent-strong: #dc5a00;     /* secundario y chips de dato */
+  --accent-deep: #ab4100;       /* presionado, "vas ganando" */
+  --accent-darkest: #8c3300;    /* "te superaron" */
+  --accent-soft: #ffe2ce;
+  --accent-tint: #fdeee4;       /* superficies de imagen */
+  --accent-disabled: #e8c3ac;
+  --accent-muted: #8a6a55;      /* "vendido" */
+
+  /* ── Tipografías ──────────────────────────────────────── */
+  --f-cuerpo: var(--font-cuerpo), -apple-system, sans-serif;
+  --f-display: var(--font-display), Impact, sans-serif;
+  --f-mono: var(--font-mono), ui-monospace, monospace;
 
   /* ── Tinta y superficies ──────────────────────────────── */
   --ink: #0b0b0d;
@@ -28,20 +40,26 @@
 
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f5f5f7;
-  --surface-3: #ebebef;
-  --line: #e6e6ea;
-  --line-strong: #d5d5dc;
+  --surface-2: #f7f5f3;         /* gris con un pelo de cálido */
+  --surface-3: #eeeae6;
+  --line: #eae5e0;
+  --line-strong: #d8d1ca;
 
-  /* ── Semánticos ───────────────────────────────────────── */
-  --live: #f5333f;
-  --urgent: #f5333f;
+  /* ── Semánticos ───────────────────────────────────────────
+     "En vivo" y la urgencia usan la rampa de la marca, no rojo: así
+     lo definen los assets. El rojo queda solo para errores de verdad. */
+  --live: var(--accent);
+  --urgent: var(--accent-strong);
   --ok: #14a44d;
   --warn: #e8a300;
+  --error: #e02c39;
 
-  /* ── Forma ────────────────────────────────────────────── */
-  --r-card: 14px;
-  --r-btn: 12px;
+  /* ── Forma ──────────────────────────────────────────────
+     Radios generosos: en card-lote.png la tarjeta es ~24px y todos
+     los botones son píldoras completas. */
+  --r-card: 22px;
+  --r-media: 18px;
+  --r-btn: 999px;
   --r-pill: 999px;
 
   --shadow-card: 0 1px 2px rgba(11, 11, 13, 0.04);
@@ -85,8 +103,27 @@ body {
 body {
   background: var(--surface-2);
   color: var(--ink);
+  font-family: var(--f-cuerpo);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Display: condensada pesada en mayúsculas, como el logotipo y los
+   titulares de los assets. Se usa en títulos y precios. */
+.lv-display {
+  font-family: var(--f-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  line-height: 0.95;
+}
+
+/* Mono: todo lo numérico y de metadatos — contadores, lote, viewers,
+   @usuario. En los assets nada de eso va en la tipografía de cuerpo. */
+.lv-mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 button,
@@ -133,9 +170,11 @@ button:disabled { cursor: not-allowed; }
 }
 
 .lv-topbar__title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -144,9 +183,11 @@ button:disabled { cursor: not-allowed; }
 }
 
 .lv-wordmark {
-  font-size: 1.45rem;
-  font-weight: 900;
-  letter-spacing: -0.05em;
+  font-family: var(--f-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--ink);
 }
 
@@ -191,10 +232,17 @@ button:disabled { cursor: not-allowed; }
 .lv-btn--accent  { background: var(--accent); color: var(--accent-ink); }
 .lv-btn--soft    { background: var(--surface-2); color: var(--ink); }
 .lv-btn--outline { background: none; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
-.lv-btn--danger  { background: var(--live); color: #fff; }
+.lv-btn--danger  { background: var(--error); color: #fff; }
+
+/* Secundario naranja oscuro, como "Ver detalles" y "Seguir vendedor" */
+.lv-btn--accent-strong { background: var(--accent-strong); color: #fff; }
+/* El más oscuro, como "Crear cuenta" del hero */
+.lv-btn--accent-deep { background: var(--accent-darkest); color: #fff; }
+/* Sin acción posible: "Subasta cerrada" */
+.lv-btn--closed { background: var(--accent-disabled); color: #fff; }
 
 .lv-btn--block { width: 100%; }
-.lv-btn--sm { height: 36px; padding: 0 14px; font-size: 0.8rem; border-radius: 10px; }
+.lv-btn--sm { height: 36px; padding: 0 16px; font-size: 0.8rem; }
 .lv-btn--lg { height: 54px; font-size: 1rem; }
 
 /* =============================================================
@@ -251,8 +299,10 @@ button:disabled { cursor: not-allowed; }
 .lv-card__media {
   position: relative;
   aspect-ratio: 1 / 1;
-  background: var(--surface-2);
+  background: var(--accent-tint);
+  border-radius: var(--r-media);
   overflow: hidden;
+  margin: 6px 6px 0;
 }
 .lv-card__media img {
   width: 100%;
@@ -261,20 +311,34 @@ button:disabled { cursor: not-allowed; }
   display: block;
 }
 
+/* En card-lote.png la fila del vendedor va sobre el durazno plano, donde
+   se lee sola. Sobre una foto real hace falta este degradado o el texto
+   desaparece según la imagen. */
+.lv-card__media::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 46%;
+  background: linear-gradient(transparent, rgba(11, 11, 13, 0.55));
+  pointer-events: none;
+}
+
 .lv-card__body { padding: 10px 12px 12px; }
 
 .lv-card__title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  font-family: var(--f-display);
+  font-size: 0.95rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
   color: var(--ink);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 2.13rem;
-  margin-bottom: 8px;
+  min-height: 2rem;
+  margin-bottom: 9px;
 }
 
 .lv-card__foot {
@@ -289,21 +353,23 @@ button:disabled { cursor: not-allowed; }
    ============================================================= */
 
 .lv-eyebrow {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-family: var(--f-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
 .lv-price {
-  font-size: 1.05rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  line-height: 1.1;
+  font-family: var(--f-display);
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  color: var(--accent);
+  line-height: 1;
 }
-.lv-price--xl { font-size: 2rem; }
+.lv-price--xl { font-size: 2.6rem; }
 
 .lv-muted { color: var(--ink-2); }
 .lv-dim { color: var(--ink-3); }
@@ -316,12 +382,20 @@ button:disabled { cursor: not-allowed; }
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 0.65rem;
+  border-radius: var(--r-pill);
+  padding: 5px 11px;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: -0.01em;
   line-height: 1;
+}
+
+/* Chip de dato: contador, lote, viewers. Mono y naranja fuerte. */
+.lv-badge--data {
+  font-family: var(--f-mono);
+  font-weight: 500;
+  background: var(--accent-strong);
+  color: #fff;
 }
 
 .lv-badge--float {
@@ -361,9 +435,11 @@ button:disabled { cursor: not-allowed; }
 }
 
 .lv-section__title {
-  font-size: 1.05rem;
-  font-weight: 850;
-  letter-spacing: -0.03em;
+  font-family: var(--f-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -458,7 +534,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--ink-2);
 }
 .lv-note--ok { background: color-mix(in srgb, var(--ok) 10%, transparent); color: var(--ok); }
-.lv-note--bad { background: color-mix(in srgb, var(--live) 9%, transparent); color: var(--live); }
+.lv-note--bad { background: color-mix(in srgb, var(--error) 9%, transparent); color: var(--error); }
 .lv-note--warn { background: color-mix(in srgb, var(--warn) 12%, transparent); color: #8a6200; }
 
 /* =============================================================

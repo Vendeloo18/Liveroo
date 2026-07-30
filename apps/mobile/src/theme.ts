@@ -12,7 +12,14 @@ import { BRAND } from "@subastas-ve/shared";
 export const color = {
   accent: BRAND.palette.accent,
   accentInk: BRAND.palette.accentInk,
+  accentLight: BRAND.palette.accentLight,
+  accentStrong: BRAND.palette.accentStrong,
+  accentDeep: BRAND.palette.accentDeep,
+  accentDarkest: BRAND.palette.accentDarkest,
   accentSoft: BRAND.palette.accentSoft,
+  accentTint: BRAND.palette.accentTint,
+  accentDisabled: BRAND.palette.accentDisabled,
+  accentMuted: BRAND.palette.accentMuted,
 
   ink: BRAND.palette.ink,
   ink2: "#62626d",
@@ -21,15 +28,19 @@ export const color = {
 
   bg: "#ffffff",
   surface: "#ffffff",
-  surface2: "#f5f5f7",
-  surface3: "#ebebef",
-  line: "#e6e6ea",
-  lineStrong: "#d5d5dc",
+  surface2: "#f7f5f3",
+  surface3: "#eeeae6",
+  line: "#eae5e0",
+  lineStrong: "#d8d1ca",
 
-  live: "#f5333f",
+  // "En vivo" usa la rampa de la marca, no rojo: asi lo definen los
+  // assets. El rojo queda solo para errores de verdad.
+  live: BRAND.palette.accent,
+  urgent: BRAND.palette.accentStrong,
   ok: "#14a44d",
   warn: "#e8a300",
   warnInk: "#8a6200",
+  error: "#e02c39",
 
   // Superficie oscura: la vista de show en vivo
   darkBg: "#0b0b0d",
@@ -39,10 +50,11 @@ export const color = {
 } as const;
 
 export const radius = {
-  card: 14,
-  btn: 12,
+  card: 22,
+  media: 18,
+  btn: 999,
   pill: 999,
-  sm: 10,
+  sm: 12,
 } as const;
 
 export const space = {
@@ -54,8 +66,21 @@ export const space = {
   xxl: 32,
 } as const;
 
-// Archivo no viene con Expo por defecto; hasta cargarla con expo-font
-// se usa la de sistema, que en iOS y Android también es una grotesca.
+// Las carga app/_layout.tsx con expo-font. En React Native la familia se
+// elige por nombre de archivo, no por fontWeight, asi que cada peso es
+// una familia distinta.
+export const familia = {
+  display: "Anton_400Regular",
+  cuerpo: "Archivo_400Regular",
+  cuerpoMedium: "Archivo_500Medium",
+  cuerpoSemi: "Archivo_600SemiBold",
+  cuerpoBold: "Archivo_700Bold",
+  cuerpoExtra: "Archivo_800ExtraBold",
+  mono: "JetBrainsMono_400Regular",
+  monoMedium: "JetBrainsMono_500Medium",
+} as const;
+
+// Se conservan para el codigo que aun pasa fontWeight sueltos.
 export const font = {
   black: "900" as const,
   extrabold: "800" as const,
@@ -66,20 +91,23 @@ export const font = {
 };
 
 export const text = {
-  wordmark: { fontSize: 26, fontWeight: font.black, letterSpacing: -1.1, color: color.ink },
-  title: { fontSize: 20, fontWeight: font.extrabold, letterSpacing: -0.6, color: color.ink },
-  section: { fontSize: 17, fontWeight: font.extrabold, letterSpacing: -0.5, color: color.ink },
-  body: { fontSize: 15, fontWeight: font.regular, color: color.ink },
-  cardTitle: { fontSize: 13.5, fontWeight: font.bold, lineHeight: 18, color: color.ink },
-  price: { fontSize: 17, fontWeight: font.black, letterSpacing: -0.5, color: color.ink },
-  priceXl: { fontSize: 32, fontWeight: font.black, letterSpacing: -1.2, color: color.ink },
+  wordmark: { fontFamily: familia.display, fontSize: 28, letterSpacing: 0.3, color: color.ink },
+  title: { fontFamily: familia.display, fontSize: 22, letterSpacing: 0.3, color: color.ink },
+  section: { fontFamily: familia.display, fontSize: 20, letterSpacing: 0.3, color: color.ink },
+  body: { fontFamily: familia.cuerpo, fontSize: 15, color: color.ink },
+  cardTitle: { fontFamily: familia.display, fontSize: 15, lineHeight: 17, letterSpacing: 0.2, color: color.ink },
+  // El precio va en naranja: es el cambio mas visible del rebranding.
+  price: { fontFamily: familia.display, fontSize: 20, letterSpacing: 0.2, color: color.accent },
+  priceXl: { fontFamily: familia.display, fontSize: 38, letterSpacing: 0.2, color: color.accent },
   eyebrow: {
-    fontSize: 9.5, fontWeight: font.bold, letterSpacing: 0.9,
+    fontFamily: familia.monoMedium, fontSize: 10, letterSpacing: 1.2,
     textTransform: "uppercase" as const, color: color.ink3,
   },
-  muted: { fontSize: 13, color: color.ink2 },
-  dim: { fontSize: 12, color: color.ink3 },
-  label: { fontSize: 11.5, fontWeight: font.bold, color: color.ink2 },
+  // Datos: contador, lote, viewers, @usuario.
+  dato: { fontFamily: familia.mono, fontSize: 12, color: color.ink2 },
+  muted: { fontFamily: familia.cuerpo, fontSize: 13, color: color.ink2 },
+  dim: { fontFamily: familia.cuerpo, fontSize: 12, color: color.ink3 },
+  label: { fontFamily: familia.cuerpoBold, fontSize: 11.5, color: color.ink2 },
 };
 
 export const APP_MAX_WIDTH = 480;

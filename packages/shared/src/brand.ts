@@ -1,53 +1,60 @@
 // =============================================================
 // MARCA — fuente única de verdad
 // =============================================================
-// Nombre, textos de marca y colores de acento. Lo consumen las dos
-// plataformas:
-//   · web    → apps/web/src/app/layout.tsx inyecta las variables CSS
-//   · móvil  → apps/mobile/src/theme.ts las importa directo
+// Los valores viven en brand.json, no aquí. Es JSON a propósito: el
+// cargador de configuración de Expo transpila app.config.ts pero NO los
+// .ts que importe del workspace, así que con un .ts se rompía al leer
+// la config de la app móvil. JSON lo lee cualquiera.
 //
-// Para rebrandear se edita SOLO este archivo. Nada más.
+// Quién consume esto:
+//   · web    → layout.tsx inyecta las variables CSS
+//   · móvil  → src/theme.ts importa la paleta
+//   · Expo   → app.config.ts lee el JSON directo
+//
+// Para rebrandear se edita brand.json.
+//
+// Los valores de color salen de los assets de marca en /assets,
+// muestreados de botones.png, chips-estados.png, hero-app.png y
+// card-lote.png.
 // =============================================================
 
-export const BRAND = {
-  /** Nombre visible. Aparece en el logotipo, el título y los textos. */
-  name: "Vendeloo",
+import datos from "./brand.json";
 
-  /** Una línea que explica qué es. Se usa en login y metadatos. */
-  tagline: "Subastas en vivo de Venezuela",
-
-  /** Descripción larga, para metadatos y tiendas de apps. */
-  description: "Puja en vivo con vendedores venezolanos y coordina la entrega directo con ellos.",
-
-  /**
-   * Correo de soporte que ve el usuario.
-   * ⚠️  PENDIENTE: apuntar a una casilla que exista de verdad. Hoy es
-   * un dominio sin verificar y quien escriba no recibe respuesta.
-   */
-  supportEmail: "soporte@vendeloo.app",
-
-  /**
-   * Colores de marca.
-   *
-   * accent es el color de "acción de dinero": pujar, vender, ganar.
-   * accentInk es el texto que va encima de accent — tiene que dar
-   * contraste suficiente (mínimo 4.5:1) o los botones se vuelven
-   * ilegibles.
-   * ink es la tinta principal de todo el texto.
-   *
-   * Los grises, líneas y semánticos (rojo de "en vivo", verde de
-   * confirmado) no cambian con la marca: viven en globals.css y theme.ts.
-   */
+export interface Marca {
+  name: string;
+  tagline: string;
+  description: string;
+  supportEmail: string;
   palette: {
-    accent: "#c6f24e",
-    accentInk: "#10120a",
-    accentSoft: "#f2ffd1",
-    ink: "#0b0b0d",
-  },
-} as const;
+    /** Acción principal: pujar, entrar al vivo, el precio actual. */
+    accent: string;
+    /** Texto encima del acento. En esta marca es blanco. */
+    accentInk: string;
+    /** Hover, y la marca de agua del hero. */
+    accentLight: string;
+    /** Acción secundaria y chips de dato (timer, lote, viewers). */
+    accentStrong: string;
+    /** Presionado, y el chip "vas ganando". */
+    accentDeep: string;
+    /** Lo más oscuro: "te superaron", botón "crear cuenta". */
+    accentDarkest: string;
+    /** Fondo suave, para avisos y realces. */
+    accentSoft: string;
+    /** Tinte durazno de las superficies de imagen. */
+    accentTint: string;
+    /** Sin acción posible: subasta cerrada. */
+    accentDisabled: string;
+    /** Cerrado y neutro: el chip "vendido". */
+    accentMuted: string;
+    /** Tinta principal de todo el texto. */
+    ink: string;
+  };
+}
+
+export const BRAND: Marca = datos;
 
 /**
- * Las variables CSS que la web necesita, derivadas de BRAND.palette.
+ * Las variables CSS que la web necesita, derivadas de la paleta.
  * Se inyectan en el layout para que el CSS y React usen el mismo origen.
  */
 export function brandCssVariables(): string {
@@ -55,7 +62,14 @@ export function brandCssVariables(): string {
   return [
     `--accent:${p.accent}`,
     `--accent-ink:${p.accentInk}`,
+    `--accent-light:${p.accentLight}`,
+    `--accent-strong:${p.accentStrong}`,
+    `--accent-deep:${p.accentDeep}`,
+    `--accent-darkest:${p.accentDarkest}`,
     `--accent-soft:${p.accentSoft}`,
+    `--accent-tint:${p.accentTint}`,
+    `--accent-disabled:${p.accentDisabled}`,
+    `--accent-muted:${p.accentMuted}`,
     `--ink:${p.ink}`,
   ].join(";");
 }

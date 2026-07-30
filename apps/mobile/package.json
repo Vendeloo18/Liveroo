@@ -11,12 +11,16 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/anton": "^0.4.2",
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/jetbrains-mono": "^0.4.1",
     "@expo/log-box": "^57.0.1",
     "@expo/metro-runtime": "~57.0.7",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@subastas-ve/shared": "workspace:*",
     "expo": "~57.0.8",
     "expo-constants": "~57.0.7",
+    "expo-font": "~57.0.1",
     "expo-image": "~57.0.1",
     "expo-linking": "~57.0.4",
     "expo-router": "~57.0.8",

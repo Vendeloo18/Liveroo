@@ -2,14 +2,34 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
+import { Anton_400Regular } from "@expo-google-fonts/anton";
+import {
+  Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold,
+  Archivo_700Bold, Archivo_800ExtraBold,
+} from "@expo-google-fonts/archivo";
+import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import { useAuthStore } from "../src/store/authStore";
 import { color } from "../src/theme";
 
 export default function RootLayout() {
   const init = useAuthStore((s) => s.init);
 
+  // Las mismas tres tipografías que la web: Anton para display, Archivo
+  // para cuerpo y JetBrains Mono para datos. Ver apps/web/src/app/layout.tsx.
+  const [fuentesListas] = useFonts({
+    Anton_400Regular,
+    Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold,
+    Archivo_700Bold, Archivo_800ExtraBold,
+    JetBrainsMono_400Regular, JetBrainsMono_500Medium,
+  });
+
   // Un solo listener de sesión para toda la app
   useEffect(() => init(), [init]);
+
+  // Sin esperar a las fuentes hay un salto visible: el texto entra con la
+  // de sistema y brinca al montar Anton, que es mucho más estrecha.
+  if (!fuentesListas) return null;
 
   return (
     <SafeAreaProvider>

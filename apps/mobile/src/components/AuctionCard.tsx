@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { color, radius, text as T, font } from "../theme";
+import { color, radius, text as T, familia } from "../theme";
 import { useCountdown } from "../hooks/useCountdown";
 import { Insignia } from "./ui";
 
@@ -21,12 +21,22 @@ export interface DatosSubasta {
   category?: string;
 }
 
+/**
+ * Espejo de apps/web/src/components/auction/AuctionCard.tsx, siguiendo
+ * assets/card-lote.png: superficie en durazno con su propio radio, el
+ * contador en mono arriba a la derecha, el vendedor dentro de la imagen
+ * y el precio en naranja.
+ */
 export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: number }) {
   const router = useRouter();
   const { texto, urgente, vencida } = useCountdown(subasta.endsAt);
+
   const foto = subasta.imageURL ?? subasta.imageURLs?.[0];
   const precio = subasta.currentBidUsd ?? subasta.startingPriceUsd ?? 0;
   const pujas = subasta.bidsCount ?? 0;
+  const meta = pujas > 0
+    ? `${subasta.sellerName} · ${pujas} ${pujas === 1 ? "puja" : "pujas"}`
+    : subasta.sellerName;
 
   return (
     <Pressable
@@ -42,7 +52,14 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
         transform: [{ scale: pressed ? 0.985 : 1 }],
       })}
     >
-      <View style={{ width: "100%", aspectRatio: 1, backgroundColor: color.surface2 }}>
+      <View style={{
+        aspectRatio: 1,
+        backgroundColor: color.accentTint,
+        borderRadius: radius.media,
+        overflow: "hidden",
+        margin: 6,
+        marginBottom: 0,
+      }}>
         {foto ? (
           <Image source={{ uri: foto }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={160}/>
         ) : null}
@@ -51,22 +68,43 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
           <Insignia tono="live" style={{ position: "absolute", top: 8, left: 8 }}>EN VIVO</Insignia>
         )}
 
-        <Insignia
-          tono={urgente && !vencida ? "live" : "flotante"}
-          style={{ position: "absolute", bottom: 8, left: 8 }}
-        >
-          {vencida ? "Finalizada" : texto}
-        </Insignia>
+        {/* Contador arriba a la derecha, en monoespaciada */}
+        <View style={{
+          position: "absolute", top: 8, right: 8,
+          backgroundColor: urgente && !vencida ? color.accent : color.accentStrong,
+          borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4,
+        }}>
+          <Text style={{ fontFamily: familia.monoMedium, fontSize: 10.5, color: "#fff" }}>
+            {vencida ? "cerrada" : texto}
+          </Text>
+        </View>
 
-        {pujas > 0 && (
-          <Insignia tono="flotante" style={{ position: "absolute", top: 8, right: 8 }}>
-            {pujas} {pujas === 1 ? "puja" : "pujas"}
-          </Insignia>
-        )}
+        {/* Vendedor dentro de la imagen. Lleva sombra porque aquí va sobre
+            una foto, no sobre el durazno plano del asset. */}
+        {meta ? (
+          <View style={{
+            position: "absolute", bottom: 8, left: 8, right: 8,
+            flexDirection: "row", alignItems: "center", gap: 6,
+          }}>
+            <View style={{
+              width: 18, height: 18, borderRadius: 9,
+              backgroundColor: color.accentSoft,
+              borderWidth: 1.5, borderColor: color.accent,
+            }}/>
+            <Text numberOfLines={1} style={{
+              flex: 1, fontFamily: familia.mono, fontSize: 10, color: "#fff",
+              textShadowColor: "rgba(0,0,0,0.6)",
+              textShadowRadius: 3,
+              textShadowOffset: { width: 0, height: 1 },
+            }}>
+              {meta}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={{ padding: 10 }}>
-        <Text numberOfLines={2} style={{ ...T.cardTitle, minHeight: 36, marginBottom: 8 }}>
+        <Text numberOfLines={2} style={{ ...T.cardTitle, minHeight: 34, marginBottom: 9 }}>
           {subasta.title ?? "Sin título"}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
@@ -74,8 +112,11 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
             <Text style={T.eyebrow}>{pujas > 0 ? "Puja actual" : "Precio inicial"}</Text>
             <Text style={T.price}>${precio.toFixed(2)}</Text>
           </View>
-          <View style={{ backgroundColor: color.accent, borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 7 }}>
-            <Text style={{ color: color.accentInk, fontWeight: font.extrabold, fontSize: 12 }}>Pujar</Text>
+          <View style={{
+            backgroundColor: color.accent, borderRadius: radius.pill,
+            paddingHorizontal: 15, paddingVertical: 8,
+          }}>
+            <Text style={{ color: color.accentInk, fontFamily: familia.cuerpoExtra, fontSize: 12 }}>Pujar</Text>
           </View>
         </View>
       </View>
