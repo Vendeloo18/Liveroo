@@ -46,7 +46,7 @@ export default function Inicio() {
         flexDirection: "row", alignItems: "center", gap: 10,
         borderBottomWidth: 1, borderBottomColor: color.line,
       }}>
-        <Logo tamano={26} color={color.ink}/>
+        <Logo tamano={26}/>
         <View style={{ flex: 1 }}/>
         <Pressable
           onPress={() => router.push("/explorar")}
@@ -75,11 +75,11 @@ export default function Inicio() {
                 key={c}
                 onPress={() => setCat(c)}
                 style={{
-                  backgroundColor: cat === c ? color.ink : color.surface2,
+                  backgroundColor: cat === c ? color.accent : color.surface2,
                   borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9,
                 }}
               >
-                <Text style={{ color: cat === c ? color.bg : color.ink2, fontSize: 13, fontWeight: cat === c ? "700" : "500" }}>
+                <Text style={{ color: cat === c ? color.accentInk : color.ink2, fontSize: 13, fontWeight: cat === c ? "700" : "500" }}>
                   {c}
                 </Text>
               </Pressable>

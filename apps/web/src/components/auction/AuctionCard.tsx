@@ -89,7 +89,7 @@ export function AuctionCard({ auction, onClick }: { auction: AuctionCardData; on
         <h3 className="lv-card__title">{auction.title ?? "Sin título"}</h3>
         <div className="lv-card__foot">
           <div style={{ minWidth: 0 }}>
-            <div className="lv-eyebrow">{pujas > 0 ? "Puja actual" : "Precio inicial"}</div>
+            <div className="lv-eyebrow">{pujas > 0 ? "Puja actual" : "Desde"}</div>
             <div className="lv-price">${precio.toFixed(2)}</div>
           </div>
           <span className="lv-btn lv-btn--accent lv-btn--sm">Pujar</span>

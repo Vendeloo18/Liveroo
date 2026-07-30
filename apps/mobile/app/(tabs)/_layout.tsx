@@ -14,7 +14,7 @@ const ICONOS: Record<string, string> = {
 };
 
 function Icono({ nombre, activo }: { nombre: string; activo: boolean }) {
-  const tinta = activo ? color.ink : color.ink3;
+  const tinta = activo ? color.accent : color.ink3;
 
   // El de vender va en una pastilla del color de acción, como en la web
   if (nombre === "vender") {
@@ -41,7 +41,7 @@ function Icono({ nombre, activo }: { nombre: string; activo: boolean }) {
 }
 
 const etiqueta = (texto: string) => ({ focused }: { focused: boolean }) => (
-  <Text style={{ fontSize: 10, fontWeight: font.bold, color: focused ? color.ink : color.ink3 }}>
+  <Text style={{ fontSize: 10, fontWeight: font.bold, color: focused ? color.accent : color.ink3 }}>
     {texto}
   </Text>
 );

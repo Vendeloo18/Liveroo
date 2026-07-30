@@ -86,9 +86,9 @@ export function ImageUploader({ images, onChange, path, max = 5 }: Props) {
           >
             {uploading ? (
               <>
-                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--ink)" }}>{progress}%</span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--accent)" }}>{progress}%</span>
                 <span style={{ width: 38, height: 3, background: "var(--surface-3)", borderRadius: 2, overflow: "hidden" }}>
-                  <span style={{ display: "block", width: `${progress}%`, height: "100%", background: "var(--ink)", transition: "width 0.2s" }}/>
+                  <span style={{ display: "block", width: `${progress}%`, height: "100%", background: "var(--accent)", transition: "width 0.2s" }}/>
                 </span>
               </>
             ) : (

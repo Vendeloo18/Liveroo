@@ -203,20 +203,20 @@ export default function OrderPage() {
             <div style={{ display: "flex", position: "relative" }}>
               <div style={{ position: "absolute", top: 13, left: "12%", right: "12%", height: 2, background: "var(--surface-3)" }}/>
               <div style={{
-                position: "absolute", top: 13, left: "12%", height: 2, background: "var(--ink)",
+                position: "absolute", top: 13, left: "12%", height: 2, background: "var(--accent)",
                 width: `${Math.max(0, paso) / (PASOS.length - 1) * 76}%`, transition: "width 0.3s",
               }}/>
               {PASOS.map((p, i) => (
                 <div key={p.clave} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, position: "relative" }}>
                   <div style={{
                     width: 26, height: 26, borderRadius: "50%",
-                    background: i <= paso ? "var(--ink)" : "var(--surface-2)",
-                    color: i <= paso ? "var(--bg)" : "var(--ink-4)",
+                    background: i <= paso ? "var(--accent)" : "var(--surface-2)",
+                    color: i <= paso ? "var(--accent-ink)" : "var(--ink-4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
                   </div>
-                  <span style={{ fontSize: "0.58rem", fontWeight: 700, color: i <= paso ? "var(--ink)" : "var(--ink-3)", textAlign: "center" }}>
+                  <span style={{ fontSize: "0.58rem", fontWeight: 700, color: i <= paso ? "var(--accent)" : "var(--ink-3)", textAlign: "center" }}>
                     {p.corto}
                   </span>
                 </div>

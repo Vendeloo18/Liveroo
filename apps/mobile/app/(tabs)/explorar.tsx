@@ -59,13 +59,13 @@ export default function Explorar() {
     <Pressable
       onPress={onPress}
       style={{
-        backgroundColor: activo ? color.ink : color.surface2,
+        backgroundColor: activo ? color.accent : color.surface2,
         borderRadius: 999,
         paddingHorizontal: pequeno ? 13 : 16,
         paddingVertical: pequeno ? 7 : 9,
       }}
     >
-      <Text style={{ color: activo ? color.bg : color.ink2, fontSize: pequeno ? 12 : 13, fontWeight: activo ? "700" : "500" }}>
+      <Text style={{ color: activo ? color.accentInk : color.ink2, fontSize: pequeno ? 12 : 13, fontWeight: activo ? "700" : "500" }}>
         {children}
       </Text>
     </Pressable>

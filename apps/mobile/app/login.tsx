@@ -81,10 +81,10 @@ export default function Login() {
                 onPress={() => { setModo(v); clearError(); }}
                 style={{
                   flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 999,
-                  backgroundColor: modo === v ? color.ink : color.surface2,
+                  backgroundColor: modo === v ? color.accent : color.surface2,
                 }}
               >
-                <Text style={{ color: modo === v ? color.bg : color.ink2, fontWeight: "700", fontSize: 13 }}>{l}</Text>
+                <Text style={{ color: modo === v ? color.accentInk : color.ink2, fontWeight: "700", fontSize: 13 }}>{l}</Text>
               </Pressable>
             ))}
           </View>

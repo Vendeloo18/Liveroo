@@ -109,7 +109,7 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
         </Text>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
           <View style={{ flex: 1 }}>
-            <Text style={T.eyebrow}>{pujas > 0 ? "Puja actual" : "Precio inicial"}</Text>
+            <Text style={T.eyebrow}>{pujas > 0 ? "Puja actual" : "Desde"}</Text>
             <Text style={T.price}>${precio.toFixed(2)}</Text>
           </View>
           <View style={{

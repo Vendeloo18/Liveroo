@@ -18,7 +18,7 @@ export function Logo({
   variante?: "lockup" | "apilado" | "simbolo";
   /** Alto del símbolo en px. El nombre se escala en proporción. */
   tamano?: number;
-  /** Por defecto hereda del contexto. */
+  /** Por defecto el naranja de la marca. */
   color?: string;
   className?: string;
 }) {
@@ -27,7 +27,7 @@ export function Logo({
       width={tamano}
       height={tamano}
       viewBox="0 0 24 24"
-      fill={color ?? "currentColor"}
+      fill={color ?? "var(--accent)"}
       aria-hidden="true"
       style={{ flexShrink: 0, display: "block" }}
     >
@@ -51,7 +51,7 @@ export function Logo({
         flexDirection: apilado ? "column" : "row",
         alignItems: apilado ? "flex-start" : "center",
         gap: apilado ? tamano * 0.28 : tamano * 0.32,
-        color: color ?? "currentColor",
+        color: color ?? "var(--accent)",
       }}
     >
       {simbolo}

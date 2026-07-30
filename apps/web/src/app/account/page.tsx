@@ -70,7 +70,7 @@ export default function AccountPage() {
         <button className="lv-panel" style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left" }} onClick={() => router.push("/account/edit")}>
           {(profile as any).avatar
             ? <img className="lv-avatar" style={{ width: 56, height: 56 }} src={(profile as any).avatar} alt=""/>
-            : <span className="lv-avatar" style={{ width: 56, height: 56, fontSize: "1.3rem", background: "var(--ink)", color: "var(--bg)" }}>
+            : <span className="lv-avatar" style={{ width: 56, height: 56, fontSize: "1.3rem", background: "var(--accent)", color: "var(--accent-ink)" }}>
                 {profile.displayName?.[0]?.toUpperCase() ?? "?"}
               </span>}
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -129,7 +129,7 @@ export default function AccountPage() {
         {/* Admin */}
         {esAdmin && (
           <button className="lv-panel" onClick={() => router.push("/admin")} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%" }}>
-            <span className="lv-avatar" style={{ background: "var(--ink)", color: "var(--bg)", borderRadius: 11 }}>
+            <span className="lv-avatar" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 11 }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
                 <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>

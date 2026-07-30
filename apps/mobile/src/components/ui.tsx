@@ -24,11 +24,11 @@ export function Boton({
   block?: boolean;
 }) {
   const fondo: Record<Variante, string> = {
-    accent: color.accent, primary: color.ink, soft: color.surface2,
+    accent: color.accent, primary: color.accent, soft: color.surface2,
     outline: "transparent", danger: color.live,
   };
   const tinta: Record<Variante, string> = {
-    accent: color.accentInk, primary: color.bg, soft: color.ink,
+    accent: color.accentInk, primary: color.accentInk, soft: color.ink,
     outline: color.ink, danger: "#fff",
   };
   const alto = tamano === "sm" ? 36 : tamano === "lg" ? 54 : 46;
@@ -142,10 +142,10 @@ export function Avatar({ nombre, uri, tam = 34 }: { nombre?: string; uri?: strin
   }
   return (
     <View style={{
-      width: tam, height: tam, borderRadius: tam / 2, backgroundColor: color.ink,
+      width: tam, height: tam, borderRadius: tam / 2, backgroundColor: color.accent,
       alignItems: "center", justifyContent: "center",
     }}>
-      <Text style={{ color: color.bg, fontWeight: font.extrabold, fontSize: tam * 0.4 }}>
+      <Text style={{ color: color.accentInk, fontWeight: font.extrabold, fontSize: tam * 0.4 }}>
         {(nombre ?? "?")[0]?.toUpperCase()}
       </Text>
     </View>

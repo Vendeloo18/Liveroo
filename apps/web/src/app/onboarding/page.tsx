@@ -110,7 +110,7 @@ export default function OnboardingPage() {
               key={n}
               style={{
                 height: 3, flex: n === i ? 2.4 : 1, borderRadius: 2,
-                background: n <= i ? "var(--ink)" : "var(--surface-3)",
+                background: n <= i ? "var(--accent)" : "var(--surface-3)",
                 transition: "flex 0.25s, background 0.25s",
               }}
             />

@@ -26,7 +26,7 @@ function Interruptor({ activo, onChange, label }: { activo: boolean; onChange: (
       onClick={onChange}
       style={{
         width: 46, height: 27, borderRadius: 999, flexShrink: 0, position: "relative",
-        background: activo ? "var(--ink)" : "var(--surface-3)", transition: "background 0.2s",
+        background: activo ? "var(--accent)" : "var(--surface-3)", transition: "background 0.2s",
       }}
     >
       <span style={{

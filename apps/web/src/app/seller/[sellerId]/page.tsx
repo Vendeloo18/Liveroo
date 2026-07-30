@@ -99,7 +99,7 @@ export default function SellerProfilePage() {
         <section style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {perfil.avatar
             ? <img className="lv-avatar" style={{ width: 64, height: 64 }} src={perfil.avatar} alt=""/>
-            : <span className="lv-avatar" style={{ width: 64, height: 64, fontSize: "1.5rem", background: "var(--ink)", color: "var(--bg)" }}>
+            : <span className="lv-avatar" style={{ width: 64, height: 64, fontSize: "1.5rem", background: "var(--accent)", color: "var(--accent-ink)" }}>
                 {(perfil.displayName ?? "?")[0].toUpperCase()}
               </span>}
           <div style={{ minWidth: 0 }}>
