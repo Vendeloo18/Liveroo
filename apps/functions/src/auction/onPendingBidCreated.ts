@@ -23,6 +23,7 @@ import * as admin from "firebase-admin";
 // admin.firestore.* no sobrevive al envoltorio del emulador.
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { db, messaging } from "../firebase";
+import { tokenParaAviso } from "../notifications/destinatario";
 import {
   COLLECTIONS,
   ANTI_SNIPE,
@@ -224,8 +225,8 @@ async function notificarSuperado(params: {
   nuevoPostor: string;
 }) {
   try {
-    const userSnap = await db.doc(`${COLLECTIONS.USERS}/${params.superadoId}`).get();
-    const fcmToken = userSnap.data()?.fcmToken as string | undefined;
+    // Respeta el interruptor "Te superaron en una puja" de Ajustes
+    const fcmToken = await tokenParaAviso(params.superadoId, "pujas");
     if (!fcmToken) return;
 
     await messaging.send({

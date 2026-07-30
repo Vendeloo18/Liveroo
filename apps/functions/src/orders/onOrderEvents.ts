@@ -11,6 +11,7 @@ import * as admin from "firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS } from "../constants";
+import { tokenParaAviso } from "../notifications/destinatario";
 
 export const onRatingCreated = functions
   .region("us-central1")
@@ -63,14 +64,9 @@ export const onOrderDelivered = functions
 
     // Notificar al comprador para que califique
     try {
-      const userSnap = await db.doc(`${COLLECTIONS.USERS}/${buyerId}`).get();
-      const fcmToken = userSnap.data()?.fcmToken as string | undefined;
+      const fcmToken = await tokenParaAviso(buyerId, "ordenes");
 
       if (fcmToken) {
-        await db
-          .collection(COLLECTIONS.USERS)
-          .doc(buyerId);
-        // Importing messaging from firebase.ts
         const { messaging } = await import("../firebase");
         await messaging.send({
           token: fcmToken,

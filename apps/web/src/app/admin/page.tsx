@@ -23,6 +23,7 @@ export default function AdminPage() {
   const [tasa, setTasa] = useState<{ usdToBs?: number; updatedAt?: any } | null>(null);
   const [comision, setComision] = useState<{ mode?: string; platformFeePct?: number } | null>(null);
   const [activas, setActivas] = useState(0);
+  const [demo, setDemo] = useState(0);
   const [ordenes, setOrdenes] = useState(0);
 
   const [tasaInput, setTasaInput] = useState("");
@@ -56,7 +57,10 @@ export default function AdminPage() {
     const u4 = onSnapshot(query(collection(db, "auctions"), where("status", "==", "active")),
       s => setActivas(s.size));
 
-    return () => { u1(); u2(); u3(); u4(); };
+    const u5 = onSnapshot(query(collection(db, "auctions"), where("isDemo", "==", true)),
+      s => setDemo(s.size), () => setDemo(0));
+
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [esAdmin]);
 
   useEffect(() => {
@@ -93,6 +97,17 @@ export default function AdminPage() {
     if (!confirm(`¿Suspender a ${u.displayName ?? u.id}? No podrá publicar más subastas.`)) return;
     correr(`sp_${u.id}`, () => httpsCallable(functions, "suspendSeller")({ sellerUid: u.id }),
       `${u.displayName ?? u.id} quedó suspendido`);
+  };
+
+  // Sembrar y purgar pasan por una Function con permiso de admin: las
+  // reglas ya no dejan escribir subastas desde fuera, que es lo correcto.
+  const demoAccion = (accion: "seed" | "purge") => {
+    if (accion === "purge" && !confirm(`¿Borrar las ${demo} subastas de demostración? Las reales no se tocan.`)) return;
+    correr(
+      `demo_${accion}`,
+      () => httpsCallable(functions, "manageDemoAuctions")({ action: accion }),
+      accion === "seed" ? "Catálogo de demostración sembrado" : "Demostración purgada"
+    );
   };
 
   const guardarTasa = () => {
@@ -369,6 +384,33 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+
+          <section className="lv-panel">
+            <div className="lv-eyebrow" style={{ marginBottom: 6 }}>Datos de demostración</div>
+            <p className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.5, marginBottom: 12 }}>
+              Catálogo de prueba con vendedores ficticios, para que la app no se vea
+              vacía mientras llegan vendedores reales. Cero pujas inventadas y cierres
+              escalonados. Ahora hay <strong>{demo}</strong> marcadas como demo.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="lv-btn lv-btn--accent lv-btn--sm"
+                style={{ flex: 1 }}
+                disabled={ocupado === "demo_seed"}
+                onClick={() => demoAccion("seed")}
+              >
+                {ocupado === "demo_seed" ? "Sembrando…" : "Sembrar 16"}
+              </button>
+              <button
+                className="lv-btn lv-btn--outline lv-btn--sm"
+                style={{ flex: 1 }}
+                disabled={ocupado === "demo_purge" || demo === 0}
+                onClick={() => demoAccion("purge")}
+              >
+                {ocupado === "demo_purge" ? "Borrando…" : "Purgar demo"}
+              </button>
+            </div>
+          </section>
 
           <section className="lv-panel">
             <div className="lv-eyebrow" style={{ marginBottom: 8 }}>Configuración vigente</div>

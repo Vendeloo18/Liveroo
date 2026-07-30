@@ -633,3 +633,9 @@ button:disabled { cursor: not-allowed; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Aviso push que entra con la app abierta (PushForeground) */
+@keyframes lvPushIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

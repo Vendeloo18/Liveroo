@@ -29,3 +29,6 @@ export {
   updateCommissionConfig,
   generateAgoraToken,
 } from "./admin/adminFunctions";
+
+// Datos de demostración (herramienta de pre-lanzamiento, solo admin)
+export { manageDemoAuctions } from "./admin/demoData";

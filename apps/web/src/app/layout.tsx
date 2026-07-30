@@ -4,6 +4,7 @@ import "./globals.css";
 import { BRAND, brandCssVariables } from "@subastas-ve/shared";
 import { AuthProvider } from "../components/ui/AuthProvider";
 import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
+import { PushForeground } from "../components/ui/PushForeground";
 
 // Tres tipografías, cada una con un trabajo, siguiendo los assets de marca:
 //
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           {children}
+          <PushForeground/>
           <BottomNavWrapper/>
         </AuthProvider>
       </body>

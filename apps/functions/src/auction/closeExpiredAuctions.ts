@@ -26,6 +26,7 @@ import * as admin from "firebase-admin";
 // admin.firestore.* no sobrevive al envoltorio del emulador.
 import { Timestamp } from "firebase-admin/firestore";
 import { db, messaging } from "../firebase";
+import { tokenParaAviso } from "../notifications/destinatario";
 import {
   COLLECTIONS,
   CONFIG_DOCS,
@@ -392,8 +393,8 @@ async function sendAuctionWonNotification(params: {
   finalUsd: number;
 }) {
   try {
-    const userSnap = await db.doc(`${COLLECTIONS.USERS}/${params.winnerId}`).get();
-    const fcmToken = userSnap.data()?.fcmToken as string | undefined;
+    // Respeta el interruptor "Cambios en tus órdenes" de Ajustes
+    const fcmToken = await tokenParaAviso(params.winnerId, "ordenes");
     if (!fcmToken) return;
 
     await messaging.send({
