@@ -30,8 +30,8 @@ const cfg = (clave: string, fallback = "") =>
 
 const firebaseConfig = {
   apiKey: cfg("API_KEY"),
-  authDomain: cfg("AUTH_DOMAIN", "instacompras-fe791.firebaseapp.com"),
-  projectId: cfg("PROJECT_ID", "instacompras-fe791"),
+  authDomain: cfg("AUTH_DOMAIN", "vendeloo-73e28.firebaseapp.com"),
+  projectId: cfg("PROJECT_ID", "vendeloo-73e28"),
   storageBucket: cfg("STORAGE_BUCKET"),
   messagingSenderId: cfg("MESSAGING_SENDER_ID"),
   appId: cfg("APP_ID"),

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "instacompras-fe791"
+    "default": "vendeloo-73e28",
+    "viejo": "instacompras-fe791"
   }
 }
