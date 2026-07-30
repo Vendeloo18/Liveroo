@@ -167,7 +167,7 @@ export interface Bid {
   placedAt: Timestamp;
   // La Function marca si fue aceptada o rechazada
   accepted: boolean;
-  rejectedReason?: "too_low" | "auction_closed" | "own_bid" | "race_condition";
+  rejectedReason?: "too_low" | "auction_closed" | "own_bid" | "insufficient_funds" | "race_condition";
 }
 
 // --------------------------------------------------

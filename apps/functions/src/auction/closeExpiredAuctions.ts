@@ -214,6 +214,12 @@ async function closeOneAuction(params: {
         ? await tx.get(db.doc(`${COLLECTIONS.USERS}/${auction.sellerId}`))
         : null;
 
+      // La billetera del ganador: si el saldo cubre el precio final, la
+      // orden nace pagada y el saldo se debita en esta misma transacción.
+      const winnerWalletSnap = hasWinner
+        ? await tx.get(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`))
+        : null;
+
       // Siguiente de la cola del show (si esto es parte de un show)
       const nextSnap =
         mode === "live" && showId
@@ -240,6 +246,12 @@ async function closeOneAuction(params: {
 
         const orderRef = db.collection(COLLECTIONS.ORDERS).doc();
 
+        // ¿Alcanza el saldo? Sin retenciones al pujar, puede no alcanzar:
+        // el mismo saldo pudo ganar otra subasta hace un minuto. En ese
+        // caso la orden nace pendiente de pago, como siempre.
+        const saldoGanador = Math.round((((winnerWalletSnap?.data()?.balanceUsd as number) ?? 0)) * 100) / 100;
+        const pagaConSaldo = saldoGanador >= finalUsd;
+
         tx.update(auctionRef, {
           status: "sold",
           endedAt: now,
@@ -251,6 +263,34 @@ async function closeOneAuction(params: {
           orderId: orderRef.id,
           updatedAt: now,
         });
+
+        // Pagada con saldo: la plata ya está en manos de la plataforma
+        // (entró por un depósito aprobado), así que al vendedor se le
+        // liquida el precio menos la comisión, sin importar el modo
+        // global de cobro. Todo queda asentado en el ledger.
+        if (pagaConSaldo) {
+          const saldoNuevo = Math.round((saldoGanador - finalUsd) * 100) / 100;
+          tx.set(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`), {
+            userId: auction.currentBidderId,
+            balanceUsd: saldoNuevo,
+            updatedAt: now,
+          }, { merge: true });
+
+          const wtxRef = db.collection(COLLECTIONS.WALLET_TXS).doc();
+          tx.set(wtxRef, {
+            id: wtxRef.id,
+            userId: auction.currentBidderId,
+            type: "auction_payment",
+            amountUsd: -finalUsd,
+            balanceAfterUsd: saldoNuevo,
+            depositId: null,
+            method: "wallet",
+            reference: orderRef.id,
+            note: `Pago de "${auction.title ?? auctionId}"`,
+            by: "engine",
+            createdAt: now,
+          });
+        }
 
         tx.set(orderRef, {
           id: orderRef.id,
@@ -270,16 +310,18 @@ async function closeOneAuction(params: {
           frozenExchangeRate: currentRate,
           bidAmountBs: finalBs,
 
-          commissionMode,
+          commissionMode: pagaConSaldo ? "platform_collects" : commissionMode,
           platformFeePct,
           commissionUsd,
-          sellerReceivesUsd,
+          sellerReceivesUsd: pagaConSaldo
+            ? Math.round((finalUsd - commissionUsd) * 100) / 100
+            : sellerReceivesUsd,
 
-          status: "pending_payment",
-          paymentMethod: null,
-          paymentReference: null,
-          paymentConfirmedAt: null,
-          paymentConfirmedBy: null,
+          status: pagaConSaldo ? "payment_confirmed" : "pending_payment",
+          paymentMethod: pagaConSaldo ? "wallet" : null,
+          paymentReference: pagaConSaldo ? `billetera ${orderRef.id}` : null,
+          paymentConfirmedAt: pagaConSaldo ? now : null,
+          paymentConfirmedBy: pagaConSaldo ? "engine" : null,
           whatsappMessageSent: false,
 
           ratingGiven: null,

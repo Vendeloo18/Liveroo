@@ -32,3 +32,6 @@ export {
 
 // Datos de demostración (herramienta de pre-lanzamiento, solo admin)
 export { manageDemoAuctions } from "./admin/demoData";
+
+// Billetera (depósitos aprobados por admin, ajustes manuales con ledger)
+export { manageDeposit, adjustWallet } from "./admin/wallet";

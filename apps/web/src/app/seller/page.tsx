@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+import { BRAND } from "@subastas-ve/shared";
 import { ImageUploader } from "../../components/ui/ImageUploader";
 import { useCountdown } from "../../hooks/useCountdown";
 
@@ -92,6 +93,39 @@ export default function SellerPage() {
   const [tShow, setTShow] = useState("");
   const [dShow, setDShow] = useState("");
   const [catShow, setCatShow] = useState("Moda y Ropa");
+
+  // Solicitud de vendedor (estado no-aprobado)
+  const [solTienda, setSolTienda] = useState("");
+  const [solCat, setSolCat] = useState("Moda y Ropa");
+  const [solWhatsapp, setSolWhatsapp] = useState((profile as any)?.whatsapp ?? "");
+  const [solCiudad, setSolCiudad] = useState((profile as any)?.city ?? "");
+  const [solOcupado, setSolOcupado] = useState(false);
+  const [avisoSolicitud, setAvisoSolicitud] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
+
+  const enviarSolicitudVendedor = async () => {
+    if (!profile) return;
+    if (solTienda.trim().length < 3) { setAvisoSolicitud({ tipo: "bad", texto: "El nombre de la tienda necesita al menos 3 caracteres" }); return; }
+    if (solWhatsapp.trim().length < 7) { setAvisoSolicitud({ tipo: "bad", texto: "Tu WhatsApp es obligatorio: por ahí vendes" }); return; }
+    setSolOcupado(true);
+    setAvisoSolicitud(null);
+    try {
+      // Las reglas solo permiten este movimiento: none → pending, con los
+      // datos de la tienda en la misma escritura. Aprobar es del admin.
+      await updateDoc(doc(db, "users", profile.uid), {
+        sellerStatus: "pending",
+        shopName: solTienda.trim(),
+        sellerCat: solCat,
+        whatsapp: solWhatsapp.trim(),
+        city: solCiudad.trim(),
+        updatedAt: serverTimestamp(),
+      });
+      setAvisoSolicitud({ tipo: "ok", texto: "¡Solicitud enviada! Te avisamos cuando esté aprobada." });
+    } catch (e: any) {
+      setAvisoSolicitud({ tipo: "bad", texto: e?.message ?? "No se pudo enviar la solicitud" });
+    } finally {
+      setSolOcupado(false);
+    }
+  };
 
   // Formulario de producto de show
   const [showElegido, setShowElegido] = useState("");
@@ -204,25 +238,78 @@ export default function SellerPage() {
   }
 
   if (profile.sellerStatus !== "approved") {
+    const enRevision = profile.sellerStatus === "pending";
+    const suspendido = profile.sellerStatus === "suspended";
     return (
       <div className="lv-app">
         <header className="lv-topbar"><h1 className="lv-topbar__title">Vender</h1></header>
-        <div className="lv-pad" style={{ paddingTop: 20 }}>
-          <section className="lv-panel">
-            <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>
-              {profile.sellerStatus === "pending" ? "Tu solicitud está en revisión"
-                : profile.sellerStatus === "suspended" ? "Tu cuenta de vendedor está suspendida"
-                : "Todavía no eres vendedor"}
-            </div>
-            <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55 }}>
-              {profile.sellerStatus === "suspended"
-                ? "Escríbenos por soporte para revisar tu caso."
-                : "Un administrador revisa cada cuenta antes de habilitarla para publicar subastas. Es lo que evita que cualquiera publique en tu nombre."}
-            </p>
-            <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 14 }} onClick={() => router.push("/support")}>
-              Contactar soporte
-            </button>
-          </section>
+        <div className="lv-pad" style={{ paddingTop: 20, display: "grid", gap: 14 }}>
+          {avisoSolicitud && <div className={`lv-note lv-note--${avisoSolicitud.tipo}`}>{avisoSolicitud.texto}</div>}
+
+          {suspendido ? (
+            <section className="lv-panel">
+              <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>Tu cuenta de vendedor está suspendida</div>
+              <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55 }}>
+                Escríbenos por soporte para revisar tu caso.
+              </p>
+              <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 14 }} onClick={() => router.push("/support")}>
+                Contactar soporte
+              </button>
+            </section>
+          ) : enRevision ? (
+            <section className="lv-panel">
+              <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>Tu solicitud está en revisión ⏳</div>
+              <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55 }}>
+                Un administrador la revisa a mano. Te avisamos apenas quede aprobada
+                y podrás publicar subastas y hacer shows en vivo.
+              </p>
+            </section>
+          ) : (
+            <>
+              <section className="lv-panel">
+                <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>{`Vende en ${BRAND.name}`}</div>
+                <p className="lv-dim" style={{ fontSize: "0.82rem", lineHeight: 1.55 }}>
+                  Cuéntanos de tu tienda y un administrador revisa tu solicitud.
+                  Es lo que evita que cualquiera publique a nombre de otro.
+                </p>
+              </section>
+
+              <section className="lv-panel">
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="sol-tienda">Nombre de tu tienda</label>
+                  <input id="sol-tienda" className="lv-input" value={solTienda} onChange={e => setSolTienda(e.target.value)}
+                    placeholder="Ej: Tecno Caracas" maxLength={40}/>
+                </div>
+
+                <div className="lv-field">
+                  <span className="lv-field__label">Qué vendes</span>
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                    {CATEGORIAS.map(c => (
+                      <button key={c} onClick={() => setSolCat(c)}
+                        className={`lv-chip${solCat === c ? " lv-chip--active" : ""}`}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="sol-wa">Tu WhatsApp</label>
+                  <input id="sol-wa" className="lv-input" type="tel" value={solWhatsapp} onChange={e => setSolWhatsapp(e.target.value)}
+                    placeholder="Ej: +58 414 1234567" maxLength={20}/>
+                  <div className="lv-field__hint">Por ahí coordinas pagos y entregas con tus compradores.</div>
+                </div>
+
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="sol-ciudad">Ciudad</label>
+                  <input id="sol-ciudad" className="lv-input" value={solCiudad} onChange={e => setSolCiudad(e.target.value)}
+                    placeholder="Ej: Caracas" maxLength={40}/>
+                </div>
+
+                <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={solOcupado} onClick={enviarSolicitudVendedor}>
+                  {solOcupado ? "Enviando…" : "Enviar solicitud"}
+                </button>
+              </section>
+            </>
+          )}
         </div>
       </div>
     );

@@ -1,35 +1,119 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { doc, collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
+import {
+  doc, collection, onSnapshot, query, where, orderBy, limit, addDoc, serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
 import { formatUsd } from "@subastas-ve/shared";
 
-// La billetera todavía no tiene backend: no hay función que acredite un
-// depósito ni que mueva saldo, y las reglas mantienen /wallets,
-// /deposits y /walletTransactions cerrados a escritura desde el cliente.
+// =============================================================
+// Billetera
+// =============================================================
+// El saldo respalda las pujas y paga solo al ganar. El flujo de plata:
 //
-// Antes esta pantalla ofrecía depositar a datos de pago de relleno
-// ("zellepagos@liveroo.com", "0414-0000000", "TXxx...xxxx"). Cualquiera
-// que enviara dinero ahí lo perdía, y la escritura fallaba igual. Hasta
-// que exista el backend, esta pantalla explica el modelo real.
+//   1. El usuario envía dinero a una cuenta de la plataforma (las que el
+//      admin configuró en config/paymentAccounts — nada inventado: si no
+//      hay cuentas, aquí se dice y no se puede "recargar" a la nada).
+//   2. Declara el envío creando una solicitud en /deposits.
+//   3. El admin la aprueba y el saldo se acredita en la misma transacción.
+//
+// El cliente jamás escribe /wallets ni /walletTransactions: el ledger es
+// del motor. Esta pantalla solo mira y solicita.
+// =============================================================
+
+interface CuentaPagoMovil { banco?: string; telefono?: string; cedula?: string }
+interface CuentaZelle { correo?: string; titular?: string }
+interface CuentasCobro { pagoMovil?: CuentaPagoMovil; zelle?: CuentaZelle; binance?: string; nota?: string }
+
+const METODO_NOMBRE: Record<string, string> = {
+  pago_movil: "Pago móvil", zelle: "Zelle", binance: "Binance", efectivo: "Efectivo",
+};
+
+const TIPO_MOVIMIENTO: Record<string, string> = {
+  deposit: "Recarga aprobada",
+  admin_credit: "Crédito del equipo",
+  admin_debit: "Ajuste del equipo",
+  auction_payment: "Pago de subasta",
+  refund: "Reembolso",
+};
 
 export default function WalletPage() {
   const { profile } = useAuthStore();
   const router = useRouter();
-  const [saldo, setSaldo] = useState<{ balanceUsd?: number; frozenUsd?: number } | null>(null);
+
+  const [saldo, setSaldo] = useState<number | null>(null);
   const [movimientos, setMovimientos] = useState<any[]>([]);
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [cuentas, setCuentas] = useState<CuentasCobro | null>(null);
+  const [tasa, setTasa] = useState<number | null>(null);
+
+  const [recargando, setRecargando] = useState(false);
+  const [monto, setMonto] = useState("");
+  const [metodo, setMetodo] = useState<string>("");
+  const [referencia, setReferencia] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
   useEffect(() => {
     if (!profile) return;
     const u1 = onSnapshot(doc(db, "wallets", profile.uid),
-      s => setSaldo(s.exists() ? (s.data() as any) : null), () => undefined);
+      s => setSaldo(s.exists() ? ((s.data() as any).balanceUsd ?? 0) : 0), () => setSaldo(0));
     const u2 = onSnapshot(
-      query(collection(db, "walletTransactions"), where("userId", "==", profile.uid), orderBy("createdAt", "desc"), limit(20)),
+      query(collection(db, "walletTransactions"), where("userId", "==", profile.uid), orderBy("createdAt", "desc"), limit(25)),
       s => setMovimientos(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => undefined);
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(
+      query(collection(db, "deposits"), where("userId", "==", profile.uid), orderBy("createdAt", "desc"), limit(10)),
+      s => setSolicitudes(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => undefined);
+    const u4 = onSnapshot(doc(db, "config", "paymentAccounts"),
+      s => setCuentas(s.exists() ? (s.data() as CuentasCobro) : null), () => setCuentas(null));
+    const u5 = onSnapshot(doc(db, "exchangeRates", "current"),
+      s => setTasa((s.data() as any)?.usdToBs ?? null), () => undefined);
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [profile]);
+
+  // Solo se ofrecen los métodos cuya cuenta el admin configuró de verdad
+  const metodosDisponibles = useMemo(() => {
+    const m: string[] = [];
+    if (cuentas?.pagoMovil?.telefono) m.push("pago_movil");
+    if (cuentas?.zelle?.correo) m.push("zelle");
+    if (cuentas?.binance) m.push("binance");
+    return m;
+  }, [cuentas]);
+
+  useEffect(() => {
+    if (metodosDisponibles.length && !metodosDisponibles.includes(metodo)) {
+      setMetodo(metodosDisponibles[0]);
+    }
+  }, [metodosDisponibles, metodo]);
+
+  const enviarSolicitud = async () => {
+    if (!profile) return;
+    const v = parseFloat(monto);
+    if (!isFinite(v) || v <= 0) { setAviso({ tipo: "bad", texto: "Pon el monto que enviaste, en dólares" }); return; }
+    if (referencia.trim().length < 4) { setAviso({ tipo: "bad", texto: "La referencia del pago es obligatoria (mínimo 4 caracteres)" }); return; }
+    setOcupado(true);
+    setAviso(null);
+    try {
+      await addDoc(collection(db, "deposits"), {
+        userId: profile.uid,
+        userName: profile.displayName ?? profile.email ?? "",
+        amountUsd: Math.round(v * 100) / 100,
+        method: metodo,
+        reference: referencia.trim(),
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+      setAviso({ tipo: "ok", texto: "Solicitud enviada. Te acreditamos el saldo al verificar el pago." });
+      setMonto(""); setReferencia(""); setRecargando(false);
+    } catch (e: any) {
+      setAviso({ tipo: "bad", texto: e?.message ?? "No se pudo enviar la solicitud" });
+    } finally {
+      setOcupado(false);
+      setTimeout(() => setAviso(null), 6000);
+    }
+  };
 
   const Cabecera = () => (
     <header className="lv-topbar">
@@ -52,69 +136,173 @@ export default function WalletPage() {
     );
   }
 
+  const ESTADO_SOLICITUD: Record<string, { texto: string; clase: string }> = {
+    pending: { texto: "En revisión", clase: "lv-badge--soft" },
+    approved: { texto: "Acreditada", clase: "lv-badge--accent" },
+    rejected: { texto: "Rechazada", clase: "lv-badge--live" },
+  };
+
   return (
     <div className="lv-app">
       <Cabecera/>
+      <div className="lv-pad" style={{ paddingTop: 16, display: "grid", gap: 14 }}>
+        {aviso && <div className={`lv-note lv-note--${aviso.tipo}`}>{aviso.texto}</div>}
 
-      <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
-
-        <section className="lv-panel">
-          <div className="lv-eyebrow">Saldo</div>
-          <div className="lv-price lv-price--xl" style={{ margin: "3px 0 4px" }}>
-            {formatUsd(saldo?.balanceUsd ?? 0)}
+        {/* Saldo */}
+        <section className="lv-panel" style={{ textAlign: "center", padding: "22px 16px" }}>
+          <div className="lv-eyebrow">Saldo disponible</div>
+          <div className="lv-price lv-price--xl" style={{ fontSize: "2.1rem", marginTop: 4 }}>
+            {saldo === null ? "…" : formatUsd(saldo)}
           </div>
-          {(saldo?.frozenUsd ?? 0) > 0 && (
-            <div className="lv-dim" style={{ fontSize: "0.78rem" }}>
-              {formatUsd(saldo!.frozenUsd!)} retenidos
+          {tasa && saldo !== null && saldo > 0 && (
+            <div className="lv-dim" style={{ fontSize: "0.76rem", marginTop: 3 }}>
+              ≈ Bs {(saldo * tasa).toLocaleString("es-VE", { maximumFractionDigits: 2 })} a la tasa de hoy
             </div>
           )}
-        </section>
-
-        <div className="lv-note lv-note--warn">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          <div>
-            <strong>Los depósitos todavía no están habilitados.</strong> No hay forma de
-            cargar saldo por ahora, y no necesitas hacerlo para pujar.
-          </div>
-        </div>
-
-        <section className="lv-panel">
-          <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 6 }}>Entonces, ¿cómo pago?</div>
-          <p className="lv-muted" style={{ fontSize: "0.83rem", lineHeight: 1.6 }}>
-            Pujar es gratis y no requiere saldo. Cuando ganas una subasta se crea tu orden
-            con el precio final y el monto congelado en bolívares, y coordinas el pago y la
-            entrega directamente con el vendedor por WhatsApp.
+          <p className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.5, marginTop: 10 }}>
+            Tu saldo respalda tus pujas y paga automáticamente cuando ganas.
           </p>
-          <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 13 }} onClick={() => router.push("/support")}>
-            Ver cómo funciona
+          <button
+            className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
+            style={{ marginTop: 12 }}
+            onClick={() => setRecargando(r => !r)}
+          >
+            {recargando ? "Cerrar" : "Recargar saldo"}
           </button>
         </section>
 
-        {movimientos.length > 0 && (
-          <section className="lv-panel" style={{ padding: "2px 16px" }}>
-            <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Movimientos</div>
-            {movimientos.map(m => (
-              <div key={m.id} className="lv-row">
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 650 }}>{m.concept ?? m.type ?? "Movimiento"}</div>
-                  <div className="lv-dim" style={{ fontSize: "0.72rem", marginTop: 1 }}>
-                    {m.createdAt?.toDate?.()?.toLocaleDateString("es-VE") ?? ""}
+        {/* Recarga */}
+        {recargando && (
+          metodosDisponibles.length === 0 ? (
+            <section className="lv-panel">
+              <div style={{ fontSize: "0.9rem", fontWeight: 750, marginBottom: 4 }}>Recargas aún no disponibles</div>
+              <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.55 }}>
+                Las cuentas para recibir pagos todavía no están configuradas.
+                Escríbenos por soporte y lo resolvemos.
+              </p>
+              <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 12 }} onClick={() => router.push("/support")}>
+                Contactar soporte
+              </button>
+            </section>
+          ) : (
+            <>
+              <section className="lv-panel">
+                <div className="lv-eyebrow" style={{ marginBottom: 8 }}>1 · Envía tu pago a</div>
+                {cuentas?.pagoMovil?.telefono && (
+                  <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Pago móvil</div>
+                    <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
+                      {cuentas.pagoMovil.banco && <>Banco: <strong>{cuentas.pagoMovil.banco}</strong><br/></>}
+                      Teléfono: <strong>{cuentas.pagoMovil.telefono}</strong><br/>
+                      {cuentas.pagoMovil.cedula && <>Cédula/RIF: <strong>{cuentas.pagoMovil.cedula}</strong></>}
+                    </div>
+                  </div>
+                )}
+                {cuentas?.zelle?.correo && (
+                  <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Zelle</div>
+                    <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
+                      Correo: <strong>{cuentas.zelle.correo}</strong>
+                      {cuentas.zelle.titular && <><br/>Titular: <strong>{cuentas.zelle.titular}</strong></>}
+                    </div>
+                  </div>
+                )}
+                {cuentas?.binance && (
+                  <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Binance Pay</div>
+                    <div className="lv-dim" style={{ fontSize: "0.78rem" }}>{cuentas.binance}</div>
+                  </div>
+                )}
+                {cuentas?.nota && <p className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.5 }}>{cuentas.nota}</p>}
+              </section>
+
+              <section className="lv-panel">
+                <div className="lv-eyebrow" style={{ marginBottom: 8 }}>2 · Declara tu envío</div>
+
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="w-monto">Monto enviado (USD)</label>
+                  <input id="w-monto" className="lv-input" type="number" inputMode="decimal" min="1" step="0.01"
+                    value={monto} onChange={e => setMonto(e.target.value)} placeholder="Ej: 20"/>
+                  {tasa && isFinite(parseFloat(monto)) && parseFloat(monto) > 0 && (
+                    <div className="lv-field__hint">≈ Bs {(parseFloat(monto) * tasa).toLocaleString("es-VE", { maximumFractionDigits: 2 })}</div>
+                  )}
+                </div>
+
+                <div className="lv-field">
+                  <span className="lv-field__label">Método</span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {metodosDisponibles.map(m => (
+                      <button key={m} onClick={() => setMetodo(m)}
+                        className={`lv-chip${metodo === m ? " lv-chip--active" : ""}`} style={{ flex: 1 }}>
+                        {METODO_NOMBRE[m]}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <strong style={{ color: (m.amountUsd ?? 0) < 0 ? "var(--live)" : "var(--ink)" }}>
-                  {formatUsd(m.amountUsd ?? 0)}
-                </strong>
-              </div>
-            ))}
+
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="w-ref">Referencia del pago</label>
+                  <input id="w-ref" className="lv-input" value={referencia} onChange={e => setReferencia(e.target.value)}
+                    placeholder="Los últimos dígitos de la operación" maxLength={60}/>
+                  <div className="lv-field__hint">Con esto verificamos tu pago. Sin referencia no podemos acreditar.</div>
+                </div>
+
+                <button className="lv-btn lv-btn--primary lv-btn--block" disabled={ocupado} onClick={enviarSolicitud}>
+                  {ocupado ? "Enviando…" : "Enviar solicitud"}
+                </button>
+              </section>
+            </>
+          )
+        )}
+
+        {/* Solicitudes */}
+        {solicitudes.length > 0 && (
+          <section className="lv-panel" style={{ padding: "2px 16px" }}>
+            <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Mis recargas</div>
+            {solicitudes.map(s => {
+              const e = ESTADO_SOLICITUD[s.status] ?? { texto: s.status, clase: "lv-badge--soft" };
+              return (
+                <div key={s.id} className="lv-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{formatUsd(s.amountUsd)} · {METODO_NOMBRE[s.method] ?? s.method}</div>
+                    <div className="lv-dim" style={{ fontSize: "0.72rem" }}>
+                      Ref {s.reference}{s.status === "rejected" && s.rejectReason ? ` · ${s.rejectReason}` : ""}
+                    </div>
+                  </div>
+                  <span className={`lv-badge ${e.clase}`} style={{ flexShrink: 0 }}>{e.texto}</span>
+                </div>
+              );
+            })}
           </section>
         )}
 
-        <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => router.push("/auctions")}>
-          Ver subastas
-        </button>
+        {/* Movimientos */}
+        <section className="lv-panel" style={{ padding: "2px 16px" }}>
+          <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Movimientos</div>
+          {movimientos.length === 0
+            ? <p className="lv-dim" style={{ fontSize: "0.8rem", padding: "6px 0 14px" }}>Todavía no hay movimientos.</p>
+            : movimientos.map(m => (
+                <div key={m.id} className="lv-row">
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{TIPO_MOVIMIENTO[m.type] ?? m.type}</div>
+                    <div className="lv-dim" style={{ fontSize: "0.72rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.note ?? m.reference ?? ""}{m.createdAt?.toDate ? ` · ${m.createdAt.toDate().toLocaleDateString("es-VE")}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.88rem", color: m.amountUsd >= 0 ? "var(--accent-strong)" : "var(--ink)" }}>
+                      {m.amountUsd >= 0 ? "+" : ""}{formatUsd(m.amountUsd)}
+                    </div>
+                    <div className="lv-dim" style={{ fontSize: "0.7rem" }}>saldo {formatUsd(m.balanceAfterUsd ?? 0)}</div>
+                  </div>
+                </div>
+              ))}
+        </section>
+
+        <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", padding: "0 8px 10px" }}>
+          Las recargas se acreditan cuando el equipo verifica el pago.
+          Si algo no cuadra, escríbenos por soporte con tu referencia.
+        </p>
       </div>
     </div>
   );

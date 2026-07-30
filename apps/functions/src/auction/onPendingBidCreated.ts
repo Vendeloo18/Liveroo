@@ -26,6 +26,7 @@ import { db, messaging } from "../firebase";
 import { tokenParaAviso } from "../notifications/destinatario";
 import {
   COLLECTIONS,
+  CONFIG_DOCS,
   ANTI_SNIPE,
   AuctionMode,
   BidRejectedReason,
@@ -99,6 +100,18 @@ export const onPendingBidCreated = functions
           if (showSnap.data()!.status !== "live") return { ok: false, motivo: "show_not_live" };
         }
 
+        // ¿La plataforma exige saldo para pujar? El interruptor vive en
+        // config/wallet y nace apagado: si el doc no existe, la puja sigue
+        // siendo gratis. La lectura va acá y no más abajo porque Firestore
+        // prohíbe leer después de escribir.
+        const walletCfg = await tx.get(db.doc(`${COLLECTIONS.CONFIG}/${CONFIG_DOCS.WALLET}`));
+        const exigeSaldo = walletCfg.data()?.biddingRequiresBalance === true;
+        let saldoUsd = 0;
+        if (exigeSaldo) {
+          const walletSnap = await tx.get(db.doc(`${COLLECTIONS.WALLETS}/${bidderId}`));
+          saldoUsd = (walletSnap.data()?.balanceUsd as number) ?? 0;
+        }
+
         // ── Validaciones de negocio ─────────────────────────────────
         // `now` se toma dentro de la transacción: en un reintento, el
         // reloj tiene que ser el del reintento, no el del primer intento.
@@ -125,6 +138,13 @@ export const onPendingBidCreated = functions
           : Math.round(base * 100) / 100;
 
         if (amountUsd < minimo) return { ok: false, motivo: "too_low" };
+
+        // Sin retenciones: el saldo respalda la puja pero no se congela al
+        // pujar. Si el mismo saldo gana dos subastas, la segunda orden nace
+        // pendiente de pago (el cierre solo debita lo que alcanza).
+        if (exigeSaldo && amountUsd > saldoUsd) {
+          return { ok: false, motivo: "insufficient_funds" };
+        }
 
         // ── Aceptada: de aquí en adelante, solo escrituras ──────────
         const previousBidderId = auction.currentBidderId as string | undefined;

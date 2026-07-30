@@ -1,10 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, doc, getDoc, onSnapshot, query, where } from "firebase/firestore";
+import {
+  collection, doc, getDoc, onSnapshot, query, where, orderBy, limit,
+  updateDoc, setDoc, serverTimestamp,
+} from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+import { formatUsd } from "@subastas-ve/shared";
 
 interface Usuario {
   id: string; displayName?: string; email?: string; role?: string;
@@ -12,7 +16,20 @@ interface Usuario {
   whatsapp?: string; city?: string; avatar?: string;
 }
 
-type Pestana = "vendedores" | "config" | "resumen";
+type Pestana = "vendedores" | "pagos" | "ordenes" | "config" | "resumen";
+
+const ESTADO_ORDEN: Record<string, { texto: string; clase: string }> = {
+  pending_payment: { texto: "Por pagar", clase: "lv-badge--live" },
+  payment_confirmed: { texto: "Pagada", clase: "lv-badge--accent" },
+  shipped: { texto: "Enviada", clase: "lv-badge--soft" },
+  delivered: { texto: "Entregada", clase: "lv-badge--soft" },
+  cancelled: { texto: "Cancelada", clase: "lv-badge--soft" },
+};
+
+const METODO_NOMBRE: Record<string, string> = {
+  pago_movil: "Pago móvil", zelle: "Zelle", binance: "Binance",
+  efectivo: "Efectivo", wallet: "Billetera",
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -25,6 +42,26 @@ export default function AdminPage() {
   const [activas, setActivas] = useState(0);
   const [demo, setDemo] = useState(0);
   const [ordenes, setOrdenes] = useState(0);
+
+  // Pagos
+  const [depositos, setDepositos] = useState<any[]>([]);
+  const [walletCfg, setWalletCfg] = useState<{ biddingRequiresBalance?: boolean } | null>(null);
+  const [buscaUsuario, setBuscaUsuario] = useState("");
+  const [usuarioSel, setUsuarioSel] = useState<Usuario | null>(null);
+  const [saldoSel, setSaldoSel] = useState<number | null>(null);
+  const [ajusteMonto, setAjusteMonto] = useState("");
+  const [ajusteNota, setAjusteNota] = useState("");
+  const [pmBanco, setPmBanco] = useState("");
+  const [pmTel, setPmTel] = useState("");
+  const [pmCi, setPmCi] = useState("");
+  const [zCorreo, setZCorreo] = useState("");
+  const [zTitular, setZTitular] = useState("");
+  const [ctaNota, setCtaNota] = useState("");
+
+  // Órdenes
+  const [ordenesLista, setOrdenesLista] = useState<any[]>([]);
+  const [filtroOrden, setFiltroOrden] = useState<string>("todas");
+  const [ordenAbierta, setOrdenAbierta] = useState<string | null>(null);
 
   const [tasaInput, setTasaInput] = useState("");
   const [pctInput, setPctInput] = useState("");
@@ -60,7 +97,25 @@ export default function AdminPage() {
     const u5 = onSnapshot(query(collection(db, "auctions"), where("isDemo", "==", true)),
       s => setDemo(s.size), () => setDemo(0));
 
-    return () => { u1(); u2(); u3(); u4(); u5(); };
+    const u6 = onSnapshot(
+      query(collection(db, "deposits"), where("status", "==", "pending"), orderBy("createdAt", "asc")),
+      s => setDepositos(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setDepositos([]));
+
+    const u7 = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(100)),
+      s => setOrdenesLista(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setOrdenesLista([]));
+
+    const u8 = onSnapshot(doc(db, "config", "wallet"),
+      s => setWalletCfg(s.exists() ? (s.data() as any) : null), () => undefined);
+
+    const u9 = onSnapshot(doc(db, "config", "paymentAccounts"), s => {
+      const d = s.data() as any;
+      if (!d) return;
+      setPmBanco(d.pagoMovil?.banco ?? ""); setPmTel(d.pagoMovil?.telefono ?? ""); setPmCi(d.pagoMovil?.cedula ?? "");
+      setZCorreo(d.zelle?.correo ?? ""); setZTitular(d.zelle?.titular ?? "");
+      setCtaNota(d.nota ?? "");
+    }, () => undefined);
+
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); };
   }, [esAdmin]);
 
   useEffect(() => {
@@ -71,6 +126,13 @@ export default function AdminPage() {
     const u = onSnapshot(collection(db, "orders"), s => setOrdenes(s.size), () => setOrdenes(0));
     return () => u();
   }, [esAdmin]);
+
+  // Saldo del usuario elegido en «Billeteras»
+  useEffect(() => {
+    if (!usuarioSel) { setSaldoSel(null); return; }
+    return onSnapshot(doc(db, "wallets", usuarioSel.id),
+      s => setSaldoSel(s.exists() ? ((s.data() as any).balanceUsd ?? 0) : 0), () => setSaldoSel(0));
+  }, [usuarioSel?.id]);
 
   // ── Acciones ──
   const correr = async (clave: string, fn: () => Promise<any>, exito: string) => {
@@ -108,6 +170,59 @@ export default function AdminPage() {
       () => httpsCallable(functions, "manageDemoAuctions")({ action: accion }),
       accion === "seed" ? "Catálogo de demostración sembrado" : "Demostración purgada"
     );
+  };
+
+  const decidirDeposito = (d: any, action: "approve" | "reject") => {
+    let reason: string | undefined;
+    if (action === "reject") {
+      const r = prompt(`¿Por qué se rechaza la recarga de ${d.userName} (${formatUsd(d.amountUsd)}, ref ${d.reference})? El usuario lo va a ver:`);
+      if (r === null) return;
+      reason = r;
+    } else if (!confirm(`¿Acreditar ${formatUsd(d.amountUsd)} a ${d.userName}? Verificaste la referencia ${d.reference}.`)) {
+      return;
+    }
+    correr(`dep_${d.id}`,
+      () => httpsCallable(functions, "manageDeposit")({ depositId: d.id, action, reason }),
+      action === "approve" ? `${formatUsd(d.amountUsd)} acreditados a ${d.userName}` : "Solicitud rechazada");
+  };
+
+  const ajustarSaldo = (signo: 1 | -1) => {
+    if (!usuarioSel) return;
+    const v = parseFloat(ajusteMonto);
+    if (!isFinite(v) || v <= 0) { setAviso({ tipo: "bad", texto: "Pon un monto mayor que cero" }); return; }
+    if (ajusteNota.trim().length < 3) { setAviso({ tipo: "bad", texto: "La nota es obligatoria: queda en el historial del usuario" }); return; }
+    const verbo = signo > 0 ? "Acreditar" : "Descontar";
+    if (!confirm(`¿${verbo} ${formatUsd(v)} a ${usuarioSel.displayName ?? usuarioSel.email}?`)) return;
+    correr("ajuste",
+      () => httpsCallable(functions, "adjustWallet")({ userId: usuarioSel.id, amountUsd: signo * v, note: ajusteNota.trim() }),
+      `Saldo de ${usuarioSel.displayName ?? usuarioSel.email} actualizado`);
+    setAjusteMonto(""); setAjusteNota("");
+  };
+
+  const guardarCuentas = () => correr("cuentas", async () => {
+    await setDoc(doc(db, "config", "paymentAccounts"), {
+      pagoMovil: pmTel.trim() ? { banco: pmBanco.trim(), telefono: pmTel.trim(), cedula: pmCi.trim() } : null,
+      zelle: zCorreo.trim() ? { correo: zCorreo.trim(), titular: zTitular.trim() } : null,
+      nota: ctaNota.trim() || null,
+      updatedAt: serverTimestamp(),
+    });
+  }, "Cuentas de recarga guardadas");
+
+  const toggleSaldoObligatorio = () => {
+    const activo = walletCfg?.biddingRequiresBalance === true;
+    if (!activo && depositos.length === 0 && !pmTel && !zCorreo) {
+      if (!confirm("Nadie puede recargar todavía (no hay cuentas configuradas). Si activas esto, nadie sin saldo podrá pujar. ¿Seguro?")) return;
+    }
+    correr("wallet_toggle", async () => {
+      await setDoc(doc(db, "config", "wallet"), { biddingRequiresBalance: !activo, updatedAt: serverTimestamp() }, { merge: true });
+    }, !activo ? "Ahora pujar exige saldo en la billetera" : "Pujar vuelve a ser libre, sin saldo");
+  };
+
+  const moverOrden = (o: any, cambios: Record<string, any>, pregunta: string, exito: string) => {
+    if (!confirm(pregunta)) return;
+    correr(`ord_${o.id}`,
+      () => updateDoc(doc(db, "orders", o.id), { ...cambios, updatedAt: serverTimestamp() }),
+      exito);
   };
 
   const guardarTasa = () => {
@@ -203,6 +318,8 @@ export default function AdminPage() {
 
       <div className="lv-chips">
         {([["vendedores", `Vendedores${pendientes.length + interesados.length > 0 ? ` (${pendientes.length + interesados.length})` : ""}`],
+           ["pagos", `Pagos${depositos.length > 0 ? ` (${depositos.length})` : ""}`],
+           ["ordenes", `Órdenes${ordenesLista.filter(o => o.status === "pending_payment").length > 0 ? ` (${ordenesLista.filter(o => o.status === "pending_payment").length})` : ""}`],
            ["config", "Tasa y comisión"],
            ["resumen", "Resumen"]] as [Pestana, string][]).map(([v, label]) => (
           <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
@@ -288,6 +405,221 @@ export default function AdminPage() {
               ))}
             </section>
           )}
+        </div>
+      )}
+
+      {/* ══ Pagos ══ */}
+      {tab === "pagos" && (
+        <div className="lv-pad" style={{ display: "grid", gap: 14 }}>
+
+          <section className="lv-panel">
+            <div className="lv-eyebrow" style={{ marginBottom: 8 }}>Recargas por aprobar · {depositos.length}</div>
+            {depositos.length === 0
+              ? <p className="lv-dim" style={{ fontSize: "0.8rem" }}>No hay solicitudes pendientes.</p>
+              : depositos.map(d => (
+                  <div key={d.id} className="lv-row" style={{ alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: "0.87rem", fontWeight: 750 }}>{formatUsd(d.amountUsd)} · {d.userName ?? d.userId}</div>
+                      <div className="lv-dim" style={{ fontSize: "0.73rem", lineHeight: 1.5 }}>
+                        {METODO_NOMBRE[d.method] ?? d.method} · ref <strong>{d.reference}</strong>
+                        {d.createdAt?.toDate ? ` · ${d.createdAt.toDate().toLocaleString("es-VE")}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button className="lv-btn lv-btn--accent lv-btn--sm" disabled={ocupado === `dep_${d.id}`}
+                        onClick={() => decidirDeposito(d, "approve")}>
+                        {ocupado === `dep_${d.id}` ? "…" : "Acreditar"}
+                      </button>
+                      <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `dep_${d.id}`}
+                        onClick={() => decidirDeposito(d, "reject")}>Rechazar</button>
+                    </div>
+                  </div>
+                ))}
+          </section>
+
+          <section className="lv-panel">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.9rem", fontWeight: 750 }}>Pujar exige saldo</div>
+                <div className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.45, marginTop: 3 }}>
+                  {walletCfg?.biddingRequiresBalance
+                    ? "Activo: nadie puede pujar por encima de su saldo. Al ganar, el motor debita y la orden nace pagada."
+                    : "Apagado: pujar es libre y el ganador coordina el pago después. El saldo, si existe, igual paga automático al ganar."}
+                </div>
+              </div>
+              <button
+                className={`lv-btn lv-btn--sm ${walletCfg?.biddingRequiresBalance ? "lv-btn--accent" : "lv-btn--outline"}`}
+                disabled={ocupado === "wallet_toggle"}
+                onClick={toggleSaldoObligatorio}
+              >
+                {walletCfg?.biddingRequiresBalance ? "Activado" : "Apagado"}
+              </button>
+            </div>
+          </section>
+
+          <section className="lv-panel">
+            <div className="lv-eyebrow" style={{ marginBottom: 8 }}>Billeteras · agregar créditos</div>
+            <input className="lv-input" placeholder="Busca por nombre o correo…" value={buscaUsuario}
+              onChange={e => { setBuscaUsuario(e.target.value); setUsuarioSel(null); }}/>
+            {buscaUsuario.trim().length >= 2 && !usuarioSel && (
+              <div style={{ marginTop: 8 }}>
+                {usuarios
+                  .filter(u => (`${u.displayName ?? ""} ${u.email ?? ""}`).toLowerCase().includes(buscaUsuario.trim().toLowerCase()))
+                  .slice(0, 6)
+                  .map(u => (
+                    <button key={u.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => setUsuarioSel(u)}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{u.displayName ?? "Sin nombre"}</div>
+                        <div className="lv-dim" style={{ fontSize: "0.72rem" }}>{u.email}</div>
+                      </div>
+                      <span className="lv-dim" style={{ fontSize: "0.75rem", flexShrink: 0 }}>elegir →</span>
+                    </button>
+                  ))}
+              </div>
+            )}
+            {usuarioSel && (
+              <div style={{ marginTop: 10 }}>
+                <div className="lv-row" style={{ borderBottom: "none" }}>
+                  <div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 750 }}>{usuarioSel.displayName ?? usuarioSel.email}</div>
+                    <div className="lv-dim" style={{ fontSize: "0.73rem" }}>{usuarioSel.email}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="lv-eyebrow">Saldo</div>
+                    <div className="lv-price">{saldoSel === null ? "…" : formatUsd(saldoSel)}</div>
+                  </div>
+                </div>
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="aj-monto">Monto (USD)</label>
+                  <input id="aj-monto" className="lv-input" type="number" inputMode="decimal" min="0" step="0.01"
+                    value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)} placeholder="Ej: 10"/>
+                </div>
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="aj-nota">Nota (el usuario la ve en sus movimientos)</label>
+                  <input id="aj-nota" className="lv-input" value={ajusteNota} onChange={e => setAjusteNota(e.target.value)}
+                    placeholder="Ej: bono de bienvenida" maxLength={120}/>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="lv-btn lv-btn--accent lv-btn--sm" style={{ flex: 1 }}
+                    disabled={ocupado === "ajuste"} onClick={() => ajustarSaldo(1)}>+ Acreditar</button>
+                  <button className="lv-btn lv-btn--outline lv-btn--sm" style={{ flex: 1 }}
+                    disabled={ocupado === "ajuste"} onClick={() => ajustarSaldo(-1)}>− Descontar</button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="lv-panel">
+            <div className="lv-eyebrow" style={{ marginBottom: 4 }}>Cuentas de recarga</div>
+            <p className="lv-dim" style={{ fontSize: "0.75rem", lineHeight: 1.5, marginBottom: 10 }}>
+              Esto es lo que ve el usuario al recargar. Un método sin datos no se ofrece.
+            </p>
+            <div className="lv-field">
+              <span className="lv-field__label">Pago móvil</span>
+              <div style={{ display: "grid", gap: 8 }}>
+                <input className="lv-input" placeholder="Banco (ej: Banesco)" value={pmBanco} onChange={e => setPmBanco(e.target.value)}/>
+                <input className="lv-input" placeholder="Teléfono (ej: 0414-1234567)" value={pmTel} onChange={e => setPmTel(e.target.value)}/>
+                <input className="lv-input" placeholder="Cédula o RIF" value={pmCi} onChange={e => setPmCi(e.target.value)}/>
+              </div>
+            </div>
+            <div className="lv-field">
+              <span className="lv-field__label">Zelle</span>
+              <div style={{ display: "grid", gap: 8 }}>
+                <input className="lv-input" placeholder="Correo" value={zCorreo} onChange={e => setZCorreo(e.target.value)}/>
+                <input className="lv-input" placeholder="Titular" value={zTitular} onChange={e => setZTitular(e.target.value)}/>
+              </div>
+            </div>
+            <div className="lv-field">
+              <label className="lv-field__label" htmlFor="cta-nota">Nota para el que recarga (opcional)</label>
+              <input id="cta-nota" className="lv-input" value={ctaNota} onChange={e => setCtaNota(e.target.value)}
+                placeholder="Ej: pon tu nombre de usuario en el concepto" maxLength={200}/>
+            </div>
+            <button className="lv-btn lv-btn--primary lv-btn--block" disabled={ocupado === "cuentas"} onClick={guardarCuentas}>
+              {ocupado === "cuentas" ? "Guardando…" : "Guardar cuentas"}
+            </button>
+          </section>
+        </div>
+      )}
+
+      {/* ══ Órdenes ══ */}
+      {tab === "ordenes" && (
+        <div className="lv-pad" style={{ display: "grid", gap: 14 }}>
+          <div className="lv-chips" style={{ padding: 0 }}>
+            {([["todas", "Todas"], ["pending_payment", "Por pagar"], ["payment_confirmed", "Pagadas"],
+               ["shipped", "Enviadas"], ["delivered", "Entregadas"], ["cancelled", "Canceladas"]] as const).map(([v, label]) => (
+              <button key={v} onClick={() => setFiltroOrden(v)}
+                className={`lv-chip${filtroOrden === v ? " lv-chip--active" : ""}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <section className="lv-panel" style={{ padding: "2px 16px" }}>
+            {ordenesLista.filter(o => filtroOrden === "todas" || o.status === filtroOrden).length === 0 && (
+              <p className="lv-dim" style={{ fontSize: "0.8rem", padding: "12px 0" }}>Nada por aquí.</p>
+            )}
+            {ordenesLista.filter(o => filtroOrden === "todas" || o.status === filtroOrden).map(o => {
+              const e = ESTADO_ORDEN[o.status] ?? { texto: o.status, clase: "lv-badge--soft" };
+              const abierta = ordenAbierta === o.id;
+              return (
+                <div key={o.id} style={{ borderBottom: "1px solid var(--line)" }}>
+                  <button style={{ width: "100%", textAlign: "left", padding: "11px 0", display: "flex", alignItems: "center", gap: 10 }}
+                    onClick={() => setOrdenAbierta(abierta ? null : o.id)}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.86rem", fontWeight: 750, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {o.productTitle ?? o.auctionId}
+                      </div>
+                      <div className="lv-dim" style={{ fontSize: "0.72rem" }}>
+                        {o.buyerName} → {o.sellerName} · {formatUsd(o.bidAmountUsd ?? 0)}
+                        {o.paymentMethod === "wallet" ? " · pagó con billetera" : ""}
+                      </div>
+                    </div>
+                    <span className={`lv-badge ${e.clase}`} style={{ flexShrink: 0 }}>{e.texto}</span>
+                  </button>
+
+                  {abierta && (
+                    <div style={{ paddingBottom: 13 }}>
+                      <div className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.7 }}>
+                        <div>Monto: <strong>{formatUsd(o.bidAmountUsd ?? 0)}</strong>{o.bidAmountBs ? ` · Bs ${o.bidAmountBs}` : ""} · comisión {formatUsd(o.commissionUsd ?? 0)} · recibe vendedor <strong>{formatUsd(o.sellerReceivesUsd ?? 0)}</strong></div>
+                        <div>Pago: {o.paymentMethod ? `${METODO_NOMBRE[o.paymentMethod] ?? o.paymentMethod}${o.paymentReference ? ` · ref ${o.paymentReference}` : ""}` : "sin registrar"}</div>
+                        <div>
+                          Comprador: {o.buyerName}{o.buyerWhatsapp && <> · <a href={`https://wa.me/${String(o.buyerWhatsapp).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>{o.buyerWhatsapp}</a></>}
+                          {" · "}Vendedor: {o.sellerName}{o.sellerWhatsapp && <> · <a href={`https://wa.me/${String(o.sellerWhatsapp).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>{o.sellerWhatsapp}</a></>}
+                        </div>
+                        <div>Creada: {o.createdAt?.toDate ? o.createdAt.toDate().toLocaleString("es-VE") : "—"} · id {o.id}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        {o.status === "pending_payment" && (
+                          <>
+                            <button className="lv-btn lv-btn--accent lv-btn--sm" disabled={ocupado === `ord_${o.id}`}
+                              onClick={() => moverOrden(o,
+                                { status: "payment_confirmed", paymentConfirmedAt: serverTimestamp(), paymentConfirmedBy: profile!.uid },
+                                `¿Confirmar el pago de ${o.buyerName} por ${formatUsd(o.bidAmountUsd ?? 0)}?`,
+                                "Pago confirmado")}>Confirmar pago</button>
+                            <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `ord_${o.id}`}
+                              onClick={() => moverOrden(o, { status: "cancelled" },
+                                "¿Cancelar esta orden? Esto no devuelve saldo automáticamente: si pagó con billetera, acredítalo a mano en Pagos.",
+                                "Orden cancelada")}>Cancelar</button>
+                          </>
+                        )}
+                        {o.status === "payment_confirmed" && (
+                          <button className="lv-btn lv-btn--soft lv-btn--sm" disabled={ocupado === `ord_${o.id}`}
+                            onClick={() => moverOrden(o, { status: "shipped", shippedAt: serverTimestamp() },
+                              "¿Marcar como enviada?", "Orden marcada como enviada")}>Marcar enviada</button>
+                        )}
+                        {o.status === "shipped" && (
+                          <button className="lv-btn lv-btn--soft lv-btn--sm" disabled={ocupado === `ord_${o.id}`}
+                            onClick={() => moverOrden(o, { status: "delivered", deliveredAt: serverTimestamp() },
+                              "¿Marcar como entregada? Normalmente lo confirma el comprador; usa esto solo para destrabar.",
+                              "Orden marcada como entregada")}>Marcar entregada</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </section>
         </div>
       )}
 

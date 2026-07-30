@@ -11,6 +11,9 @@ export const COLLECTIONS = {
   PENDING_BIDS: "pendingBids",
   EXCHANGE_RATES: "exchangeRates",
   CONFIG: "config",
+  WALLETS: "wallets",
+  WALLET_TXS: "walletTransactions",
+  DEPOSITS: "deposits",
 
   AUCTION_BIDS: (auctionId: string) => `auctions/${auctionId}/bids`,
   SHOW_MESSAGES: (showId: string) => `shows/${showId}/messages`,
@@ -18,6 +21,13 @@ export const COLLECTIONS = {
 
 export const CONFIG_DOCS = {
   COMMISSION: "commission",
+  // Interruptor de la billetera: si biddingRequiresBalance es true, pujar
+  // exige saldo que cubra la puja. Nace apagado para no bloquear a nadie
+  // hasta que las cuentas de recarga estén configuradas.
+  WALLET: "wallet",
+  // Cuentas de cobro de la plataforma (pago móvil, Zelle…). Las llena el
+  // admin desde el panel; la pantalla de recarga las muestra tal cual.
+  PAYMENT_ACCOUNTS: "paymentAccounts",
 } as const;
 
 export const EXCHANGE_RATE_DOCS = {
@@ -60,6 +70,7 @@ export type BidRejectedReason =
   | "own_bid"
   | "not_found"
   | "show_not_live"
+  | "insufficient_funds"
   | "race_condition";
 
 // --------------------------------------------------

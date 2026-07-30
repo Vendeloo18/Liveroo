@@ -63,13 +63,28 @@ service cloud.firestore {
         && request.resource.data.sellerStatus == 'none';
 
       // El rol, el estado de vendedor y las métricas las mueve el motor
-      allow update: if isSignedIn()
+      allow update: if (isSignedIn()
         && uid() == userId
         && onlyChanges([
              'displayName', 'avatar', 'username', 'city', 'phone', 'whatsapp',
              'cedula', 'shopName', 'sellerCat', 'fcmToken', 'onboardingDone',
              'notifPrefs', 'currencyPref', 'updatedAt'
-           ]);
+           ]))
+        || (
+          // Solicitar ser vendedor: el ÚNICO movimiento de sellerStatus que
+          // puede hacer un usuario es none → pending, con los datos de la
+          // tienda en la misma escritura. Aprobar y suspender siguen siendo
+          // del motor (approveSeller / suspendSeller). Sin esta rama, el
+          // botón "Quiero vender" era un callejón sin salida: nada en la
+          // app podía escribir la solicitud que el panel espera revisar.
+          isSignedIn()
+          && uid() == userId
+          && onlyChanges(['sellerStatus', 'shopName', 'sellerCat', 'whatsapp', 'city', 'phone', 'updatedAt'])
+          && (!('sellerStatus' in resource.data) || resource.data.sellerStatus == 'none')
+          && request.resource.data.sellerStatus == 'pending'
+          && request.resource.data.shopName is string
+          && request.resource.data.shopName.size() >= 3
+        );
 
       allow delete: if false;
     }
@@ -283,7 +298,10 @@ service cloud.firestore {
 
     match /config/{docId} {
       allow read: if true;
-      allow write: if false;
+      // paymentAccounts (cuentas de recarga que ve el que deposita) y
+      // wallet (interruptor "pujar exige saldo") los edita el admin desde
+      // el panel. commission sigue moviéndose solo por Function.
+      allow write: if isAdmin() && docId in ["paymentAccounts", "wallet"];
     }
 
     match /exchangeRates/{docId} {
@@ -295,18 +313,34 @@ service cloud.firestore {
     // Cuando se implemente, los movimientos los escribe una Function.
 
     match /wallets/{userId} {
-      allow read: if isSignedIn() && uid() == userId;
+      allow read: if isSignedIn() && (uid() == userId || isAdmin());
       allow write: if false;
     }
 
     match /walletTransactions/{txId} {
-      allow read: if isSignedIn() && resource.data.userId == uid();
+      allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
       allow write: if false;
     }
 
+    // La única puerta de entrada de plata: el usuario DECLARA que envió
+    // (pago móvil, Zelle…) y el admin decide por manageDeposit, que
+    // acredita en la misma transacción. La solicitud no se puede editar
+    // ni borrar después de creada: es la constancia de ambas partes.
     match /deposits/{depositId} {
-      allow read: if isSignedIn() && resource.data.userId == uid();
-      allow write: if false;
+      allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == uid()
+        && request.resource.data.status == "pending"
+        && request.resource.data.amountUsd is number
+        && request.resource.data.amountUsd > 0
+        && request.resource.data.amountUsd <= 100000
+        && request.resource.data.method in ["pago_movil", "zelle", "binance", "efectivo"]
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() >= 4
+        && request.resource.data.reference.size() <= 60;
+
+      allow update, delete: if false;
     }
 
     // ── Cierre por defecto ──────────────────────────────────────
