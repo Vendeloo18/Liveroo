@@ -62,15 +62,22 @@ export const manageDemoAuctions = functions
     if (action === "purge") {
       // Solo lo marcado como demo. Una subasta real no puede caer aquí.
       const demo = await db.collection(COLLECTIONS.AUCTIONS).where("isDemo", "==", true).get();
+
+      // Las que llegaron a venderse tienen una orden apuntándoles. Borrarlas
+      // dejaría esa orden señalando a una subasta que ya no existe, y la
+      // pantalla del pedido sin nada que mostrar. Se quedan.
+      const borrables = demo.docs.filter((d) => !d.data().orderId);
+      const conVenta = demo.size - borrables.length;
+
       let borradas = 0;
       // En lotes de 400: el límite de un batch de Firestore es 500
-      for (let i = 0; i < demo.docs.length; i += 400) {
+      for (let i = 0; i < borrables.length; i += 400) {
         const lote = db.batch();
-        for (const d of demo.docs.slice(i, i + 400)) { lote.delete(d.ref); borradas++; }
+        for (const d of borrables.slice(i, i + 400)) { lote.delete(d.ref); borradas++; }
         await lote.commit();
       }
-      functions.logger.info("Demo purgada", { borradas, por: context.auth.uid });
-      return { action: "purge", borradas };
+      functions.logger.info("Demo purgada", { borradas, conVenta, por: context.auth.uid });
+      return { action: "purge", borradas, conVenta };
     }
 
     if (action !== "seed") {
@@ -95,13 +102,29 @@ export const manageDemoAuctions = functions
     }
 
     const ahora = Timestamp.now();
-    // La tanda va en el id para no sobreescribir la anterior
-    const tanda = Date.now().toString(36).slice(-4);
     const lote = db.batch();
 
+    // Las que ya se vendieron no se tocan: reescribirlas las devolvería a
+    // "active" con winnerId en null, y su orden quedaría apuntando a una
+    // subasta que dice que nunca se vendió.
+    const refs = CATALOGO.map((_, i) =>
+      db.doc(`${COLLECTIONS.AUCTIONS}/demo_${String(i).padStart(2, "0")}`)
+    );
+    const existentes = await db.getAll(...refs);
+    const vendidas = new Set(
+      existentes.filter((d) => d.exists && d.data()?.orderId).map((d) => d.id)
+    );
+
+    // Ids fijos: sembrar dos veces reescribe las mismas 16 y les renueva el
+    // reloj, en vez de apilar otra tanda. Antes el id llevaba un prefijo
+    // distinto en cada corrida "para no sobreescribir", y el resultado fue
+    // un catálogo con 120 subastas: los mismos 16 productos repetidos siete
+    // veces. Volver a apretar el botón ahora significa "refrescá la demo",
+    // que es lo que uno espera que haga.
     CATALOGO.forEach(([title, category, foto, precio, incremento, sellerId, horas], i) => {
+      const ref = refs[i];
+      if (vendidas.has(ref.id)) return;
       const url = `https://images.unsplash.com/${foto}?w=600&q=80`;
-      const ref = db.doc(`${COLLECTIONS.AUCTIONS}/demo_${tanda}_${String(i).padStart(2, "0")}`);
       lote.set(ref, {
         mode: "standalone",
         showId: null,
@@ -130,6 +153,7 @@ export const manageDemoAuctions = functions
     });
 
     await lote.commit();
-    functions.logger.info("Demo sembrada", { creadas: CATALOGO.length, por: context.auth.uid });
-    return { action: "seed", creadas: CATALOGO.length };
+    const creadas = CATALOGO.length - vendidas.size;
+    functions.logger.info("Demo sembrada", { creadas, respetadas: vendidas.size, por: context.auth.uid });
+    return { action: "seed", creadas, respetadas: vendidas.size };
   });

@@ -91,7 +91,16 @@ export const closeExpiredAuctions = functions
 export const closeAuctionNow = functions
   .region("us-central1")
   .runWith({ timeoutSeconds: 30 })
-  .https.onCall(async (data) => {
+  .https.onCall(async (data, context) => {
+    // Toda callable de Firebase se despliega con invoker allUsers: el
+    // filtro de quién puede usarla va en el código, no en IAM. Sin este
+    // chequeo era un endpoint abierto que cualquiera podía machacar, y
+    // cada llamada cuesta un getDoc. Quien necesita el cierre inmediato
+    // es el que está pujando, y ese tiene sesión.
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
+    }
+
     const { auctionId } = (data ?? {}) as { auctionId?: string };
     if (!auctionId) {
       throw new functions.https.HttpsError("invalid-argument", "auctionId es requerido");
