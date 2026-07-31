@@ -2,7 +2,9 @@
 import { usePathname } from "next/navigation";
 import { BottomNav } from "./BottomNav";
 
-const HIDE_ON = ["/login", "/onboarding", "/shows/"];
+// /admin es la consola de administración: interfaz de escritorio propia,
+// sin la barra inferior de la app de compradores.
+const HIDE_ON = ["/login", "/onboarding", "/shows/", "/admin"];
 
 export function BottomNavWrapper() {
   const pathname = usePathname();
