@@ -84,6 +84,19 @@ const CATALOGO: [string, string, string, number, number, string, number][] = [
   ["Cámara vintage de colección", "Colecciones", "photo-1526170375885-4d8ecf77b99f", 22, 2, "seller011", 96],
   ["Cuadro decorativo abstracto grande", "Arte", "photo-1526178613552-2b45c6c302f0", 15, 2, "seller012", 110],
   ["Casco de moto certificado DOT", "Autos y Motos", "photo-1558981806-ec527fa84c39", 20, 2, "seller013", 140],
+  ["PlayStation 5 edición Digital blanca", "Electronica", "photo-1605901309584-818e25960a8f", 10, 5, "seller005", 66],
+  ["iPhone 12 64GB excelente estado", "Electronica", "photo-1511707171634-5f897ff02aa9", 12, 5, "seller003", 82],
+  ["Laptop gamer 16GB RAM tarjeta dedicada", "Electronica", "photo-1541807084-5c52b6b3adef", 30, 5, "seller005", 128],
+  ["Teclado RGB inalámbrico compacto", "Electronica", "photo-1541140532154-b024d705b90a", 8, 1, "seller001", 106],
+  ["Smartwatch pantalla AMOLED", "Electronica", "photo-1579586337278-3befd40fd17a", 12, 1, "seller015", 116],
+  ["Parlante de sonido envolvente", "Electronica", "photo-1558537348-c0f8e733989d", 10, 1, "seller015", 132],
+  ["Audífonos inalámbricos edición rosa", "Electronica", "photo-1583394838336-acd977736f90", 8, 1, "seller007", 148],
+  ["Cámara análoga 35mm de colección", "Colecciones", "photo-1452780212940-6f5c0d14d848", 18, 2, "seller011", 160],
+  ["Bolso de cuero artesanal", "Moda y Ropa", "photo-1584917865442-de89df76afd3", 14, 1, "seller004", 74],
+  ["Sneakers edición urbana talla 40", "Calzado", "photo-1606107557195-0e29a4b5b4aa", 16, 2, "seller009", 92],
+  ["Reloj clásico correa de cuero", "Joyas y Relojes", "photo-1434056886845-dac89ffe9b56", 22, 2, "seller010", 118],
+  ["Bicicleta de ruta en aluminio", "Deportes", "photo-1485965120184-e220f721d03e", 35, 5, "seller016", 172],
+  ["Cuadro artístico decorativo", "Arte", "photo-1547891654-e66ed7ebb968", 14, 2, "seller012", 152],
 ];
 
 async function esAdmin(uid: string): Promise<boolean> {

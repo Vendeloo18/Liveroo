@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { db } from "../lib/firebase";
 import { AuctionCard, AuctionCardData } from "../components/auction/AuctionCard";
 import { Logo } from "../components/ui/Logo";
+import { InicioHero } from "../components/ui/InicioHero";
 
 interface Show {
   id: string; sellerName?: string; title?: string; status?: string;
@@ -40,12 +41,14 @@ export default function Home() {
       e => { console.error("No se pudieron cargar las subastas:", e.code, e.message); setCargando(false); });
   }, []);
 
+  const ms = (v: any) => v?.toMillis?.() ?? new Date(v ?? 0).getTime();
+  const destacada = auctions.length
+    ? [...auctions].sort((a, b) => ms((a as any).endsAt) - ms((b as any).endsAt))[0]
+    : null;
+
   const visibles = auctions
     .filter(a => cat === "Para Ti" || (a as any).category === cat)
-    .sort((a, b) => {
-      const ms = (v: any) => v?.toMillis?.() ?? new Date(v ?? 0).getTime();
-      return ms(a.endsAt) - ms(b.endsAt);
-    });
+    .sort((a, b) => ms((a as any).endsAt) - ms((b as any).endsAt));
 
   return (
     <div className="lv-app">
@@ -65,6 +68,13 @@ export default function Home() {
           </svg>
         </button>
       </header>
+
+      {/* Hero de portada: le da identidad al Inicio frente a Explorar */}
+      <InicioHero
+        destacada={destacada}
+        onExplorar={() => router.push("/auctions")}
+        onDestacada={(id) => router.push(`/auctions/${id}`)}
+      />
 
       {/* Categorías */}
       <div className="lv-chips">
@@ -147,7 +157,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="lv-grid">
-            {visibles.slice(0, 8).map(a => <AuctionCard key={a.id} auction={a}/>)}
+            {visibles.slice(0, 12).map(a => <AuctionCard key={a.id} auction={a}/>)}
           </div>
         )}
       </div>
