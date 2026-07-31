@@ -38,6 +38,10 @@ export function useCountdown(endsAt: any) {
     const sec = s % 60;
     if (d > 0) texto = `${d}d ${h}h`;
     else if (h > 0) texto = `${h}h ${m}m`;
+    // 10-60 min: "38m" (claro). "38:48" se leía como 38 horas al lado
+    // de "2h 39m". El formato MM:SS con segundos corriendo se reserva
+    // para los últimos 10 min, donde la urgencia justifica el tic-tac.
+    else if (m >= 10) texto = `${m}m`;
     else texto = `${m}:${String(sec).padStart(2, "0")}`;
   }
 
