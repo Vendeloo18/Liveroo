@@ -147,7 +147,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (snap.exists()) {
           set({ profile: snap.data() as UserProfile, loading: false });
         } else {
-          set({ loading: false });
+          // Una cuenta de Authentication nunca debe quedar huérfana si la
+          // creación inicial del perfil falló por red o por reglas. Se repara
+          // con el mismo perfil seguro de comprador; el snapshot se actualiza
+          // solo cuando Firestore confirme la escritura.
+          setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: user.email ?? "",
+            displayName: user.displayName ?? "Usuario",
+            avatar: user.photoURL ?? null,
+            whatsapp: null,
+            role: "buyer",
+            sellerStatus: "none",
+            ratingAvg: 0,
+            ratingCount: 0,
+            totalSales: 0,
+            totalPurchases: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }).catch((err: any) => {
+            set({ error: mapFirebaseError(err?.code), loading: false });
+          });
         }
       });
     });
@@ -167,6 +187,7 @@ function mapFirebaseError(code: string): string {
     "auth/weak-password": "La contraseña debe tener al menos 6 caracteres",
     "auth/invalid-email": "Email inválido",
     "auth/too-many-requests": "Demasiados intentos. Intenta más tarde.",
+    "permission-denied": "No pudimos preparar tu perfil. Actualiza la app e inténtalo otra vez.",
   };
   return map[code] ?? "Error desconocido. Intenta de nuevo.";
 }

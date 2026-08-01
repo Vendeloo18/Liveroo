@@ -60,11 +60,18 @@ service cloud.firestore {
       // reputación: las métricas las escribe solo el motor.
       allow create: if isSignedIn()
         && uid() == userId
+        && request.resource.data.uid == userId
         && request.resource.data.role == 'buyer'
         && request.resource.data.sellerStatus == 'none'
-        && !request.resource.data.keys().hasAny(
-             ['ratingAvg', 'ratingCount', 'totalSales', 'totalPurchases']
-           );
+        && request.resource.data.keys().hasOnly([
+             'uid', 'email', 'displayName', 'avatar', 'phone', 'whatsapp',
+             'role', 'sellerStatus', 'ratingAvg', 'ratingCount', 'totalSales',
+             'totalPurchases', 'createdAt', 'updatedAt'
+           ])
+        && (!('ratingAvg' in request.resource.data) || request.resource.data.ratingAvg == 0)
+        && (!('ratingCount' in request.resource.data) || request.resource.data.ratingCount == 0)
+        && (!('totalSales' in request.resource.data) || request.resource.data.totalSales == 0)
+        && (!('totalPurchases' in request.resource.data) || request.resource.data.totalPurchases == 0);
 
       // El rol, el estado de vendedor y las métricas las mueve el motor
       allow update: if (isSignedIn()

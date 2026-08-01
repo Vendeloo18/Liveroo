@@ -6,6 +6,7 @@ import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
 import { BRAND, formatUsd } from "@subastas-ve/shared";
 import { ImageUploader } from "../../components/ui/ImageUploader";
+import { Logo } from "../../components/ui/Logo";
 import { useCountdown } from "../../hooks/useCountdown";
 
 type Pantalla = "hub" | "subasta" | "show" | "producto";
@@ -99,10 +100,37 @@ export default function SellerPage() {
   const [solOcupado, setSolOcupado] = useState(false);
   const [avisoSolicitud, setAvisoSolicitud] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
+  useEffect(() => {
+    if (!profile) return;
+    const p = profile as any;
+    setSolWhatsapp(actual => actual || p.whatsapp || p.phone || "");
+    setSolCiudad(actual => actual || p.city || "");
+    setSolTienda(actual => actual || p.shopName || "");
+    setSolCat(actual => p.sellerCat || actual);
+  }, [profile]);
+
+  useEffect(() => {
+    if (profile?.sellerStatus === "pending") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [profile?.sellerStatus]);
+
+  const mensajeSolicitud = (error: any) => {
+    const code = String(error?.code ?? "");
+    if (code.includes("permission-denied")) {
+      return "No pudimos guardar tu solicitud. Actualiza la app e inténtalo nuevamente.";
+    }
+    if (code.includes("unavailable") || code.includes("network")) {
+      return "Parece que estás sin conexión. Revisa tu internet y vuelve a intentar.";
+    }
+    return "No pudimos enviar la solicitud. Tus datos siguen aquí para que lo intentes otra vez.";
+  };
+
   const enviarSolicitudVendedor = async () => {
     if (!profile) return;
     if (solTienda.trim().length < 3) { setAvisoSolicitud({ tipo: "bad", texto: "El nombre de la tienda necesita al menos 3 caracteres" }); return; }
     if (solWhatsapp.trim().length < 7) { setAvisoSolicitud({ tipo: "bad", texto: "Tu WhatsApp es obligatorio: por ahí vendes" }); return; }
+    if (solCiudad.trim().length < 2) { setAvisoSolicitud({ tipo: "bad", texto: "Indica la ciudad desde donde vas a vender" }); return; }
     setSolOcupado(true);
     setAvisoSolicitud(null);
     try {
@@ -118,7 +146,7 @@ export default function SellerPage() {
       });
       setAvisoSolicitud({ tipo: "ok", texto: "¡Solicitud enviada! Te avisamos cuando esté aprobada." });
     } catch (e: any) {
-      setAvisoSolicitud({ tipo: "bad", texto: e?.message ?? "No se pudo enviar la solicitud" });
+      setAvisoSolicitud({ tipo: "bad", texto: mensajeSolicitud(e) });
     } finally {
       setSolOcupado(false);
     }
@@ -234,77 +262,103 @@ export default function SellerPage() {
   if (profile.sellerStatus !== "approved") {
     const enRevision = profile.sellerStatus === "pending";
     const suspendido = profile.sellerStatus === "suspended";
+    const solicitudLista = solTienda.trim().length >= 3
+      && solWhatsapp.trim().length >= 7
+      && solCiudad.trim().length >= 2;
     return (
-      <div className="lv-app">
-        <header className="lv-topbar"><h1 className="lv-topbar__title">Vender</h1></header>
-        <div className="lv-pad" style={{ paddingTop: 20, display: "grid", gap: 14 }}>
-          {avisoSolicitud && <div className={`lv-note lv-note--${avisoSolicitud.tipo}`}>{avisoSolicitud.texto}</div>}
+      <div className="lv-app seller-apply">
+        <header className="seller-apply__hero">
+          <Logo tamano={24} color="#fff" />
+          <Logo variante="simbolo" tamano={250} color="var(--accent-light)" className="seller-apply__watermark" />
+          <div className="seller-apply__hero-copy">
+            <div className="lv-eyebrow">Tu próxima venta empieza aquí</div>
+            <h1 className="lv-display">Vende lo tuyo.<br/>Llega a todo el país.</h1>
+            <p>Publica subastas, vende en vivo y construye una tienda que la gente pueda seguir.</p>
+          </div>
+        </header>
+
+        <main className="seller-apply__sheet">
+          {avisoSolicitud && !enRevision && (
+            <div role="alert" className={`lv-note lv-note--${avisoSolicitud.tipo} seller-apply__notice`}>
+              {avisoSolicitud.texto}
+            </div>
+          )}
 
           {suspendido ? (
-            <section className="lv-panel">
-              <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>Tu cuenta de vendedor está suspendida</div>
-              <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55 }}>
-                Escríbenos por soporte para revisar tu caso.
-              </p>
-              <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 14 }} onClick={() => router.push("/support")}>
-                Contactar soporte
+            <section className="seller-apply__status-card">
+              <span className="seller-apply__status-kicker">Cuenta en pausa</span>
+              <h2>Vamos a revisar tu caso.</h2>
+              <p>Tu tienda no puede publicar por el momento. El equipo de Vendeloo puede ayudarte a entender qué pasó y recuperarla.</p>
+              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => router.push("/support")}>
+                Hablar con soporte
               </button>
             </section>
           ) : enRevision ? (
-            <section className="lv-panel">
-              <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>Tu solicitud está en revisión ⏳</div>
-              <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55 }}>
-                Un administrador la revisa a mano. Te avisamos apenas quede aprobada
-                y podrás publicar subastas y hacer shows en vivo.
-              </p>
+            <section className="seller-apply__status-card">
+              <span className="seller-apply__status-kicker seller-apply__status-kicker--ok">Solicitud recibida</span>
+              <h2>Tu tienda está en revisión.</h2>
+              <p>Estamos verificando la información de <strong>{(profile as any).shopName || "tu tienda"}</strong>. Cuando la aprobemos, aparecerán aquí las opciones para publicar y vender en vivo.</p>
+              <div className="seller-apply__timeline" aria-label="Estado de la solicitud">
+                <div className="is-done"><span>1</span><div><b>Solicitud enviada</b><small>Información recibida</small></div></div>
+                <div className="is-current"><span>2</span><div><b>Revisión de Vendeloo</b><small>Estamos validando tu tienda</small></div></div>
+                <div><span>3</span><div><b>Lista para vender</b><small>Publica tu primera subasta</small></div></div>
+              </div>
+              <button className="lv-btn lv-btn--soft lv-btn--block" onClick={() => router.push("/account")}>
+                Volver a mi cuenta
+              </button>
             </section>
           ) : (
             <>
-              <section className="lv-panel">
-                <div style={{ fontSize: "1rem", fontWeight: 800, marginBottom: 6 }}>{`Vende en ${BRAND.name}`}</div>
-                <p className="lv-dim" style={{ fontSize: "0.82rem", lineHeight: 1.55 }}>
-                  Cuéntanos de tu tienda y un administrador revisa tu solicitud.
-                  Es lo que evita que cualquiera publique a nombre de otro.
-                </p>
+              <section className="seller-apply__benefits" aria-label="Cómo funciona">
+                <div><span>01</span><p><b>Cuéntanos qué vendes</b><small>Solo toma un minuto</small></p></div>
+                <div><span>02</span><p><b>Revisamos tu tienda</b><small>Protegemos a la comunidad</small></p></div>
+                <div><span>03</span><p><b>Empieza a vender</b><small>Subastas y shows en vivo</small></p></div>
               </section>
 
-              <section className="lv-panel">
+              <form className="seller-apply__form" onSubmit={e => { e.preventDefault(); enviarSolicitudVendedor(); }}>
+                <div className="seller-apply__form-head">
+                  <div>
+                    <span className="lv-eyebrow">Solicitud de vendedor</span>
+                    <h2>Hablemos de tu tienda</h2>
+                  </div>
+                  <span>1 min</span>
+                </div>
+
                 <div className="lv-field">
                   <label className="lv-field__label" htmlFor="sol-tienda">Nombre de tu tienda</label>
                   <input id="sol-tienda" className="lv-input" value={solTienda} onChange={e => setSolTienda(e.target.value)}
-                    placeholder="Ej: Tecno Caracas" maxLength={40}/>
+                    placeholder="Ej: Tecno Caracas" maxLength={40} autoComplete="organization"/>
                 </div>
 
                 <div className="lv-field">
-                  <span className="lv-field__label">Qué vendes</span>
-                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                    {CATEGORIAS.map(c => (
-                      <button key={c} onClick={() => setSolCat(c)}
-                        className={`lv-chip${solCat === c ? " lv-chip--active" : ""}`}>{c}</button>
-                    ))}
+                  <label className="lv-field__label" htmlFor="sol-cat">Categoría principal</label>
+                  <select id="sol-cat" className="lv-input seller-apply__select" value={solCat} onChange={e => setSolCat(e.target.value)}>
+                    {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div className="seller-apply__form-grid">
+                  <div className="lv-field">
+                    <label className="lv-field__label" htmlFor="sol-wa">WhatsApp</label>
+                    <input id="sol-wa" className="lv-input" type="tel" inputMode="tel" value={solWhatsapp} onChange={e => setSolWhatsapp(e.target.value)}
+                      placeholder="+58 414 1234567" maxLength={20} autoComplete="tel"/>
+                  </div>
+                  <div className="lv-field">
+                    <label className="lv-field__label" htmlFor="sol-ciudad">Ciudad</label>
+                    <input id="sol-ciudad" className="lv-input" value={solCiudad} onChange={e => setSolCiudad(e.target.value)}
+                      placeholder="Caracas" maxLength={40} autoComplete="address-level2"/>
                   </div>
                 </div>
 
-                <div className="lv-field">
-                  <label className="lv-field__label" htmlFor="sol-wa">Tu WhatsApp</label>
-                  <input id="sol-wa" className="lv-input" type="tel" value={solWhatsapp} onChange={e => setSolWhatsapp(e.target.value)}
-                    placeholder="Ej: +58 414 1234567" maxLength={20}/>
-                  <div className="lv-field__hint">Por ahí coordinas pagos y entregas con tus compradores.</div>
-                </div>
+                <p className="seller-apply__privacy">Revisamos cada solicitud para mantener compras y ventas más seguras. Tu WhatsApp no se publica en tu perfil.</p>
 
-                <div className="lv-field">
-                  <label className="lv-field__label" htmlFor="sol-ciudad">Ciudad</label>
-                  <input id="sol-ciudad" className="lv-input" value={solCiudad} onChange={e => setSolCiudad(e.target.value)}
-                    placeholder="Ej: Caracas" maxLength={40}/>
-                </div>
-
-                <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={solOcupado} onClick={enviarSolicitudVendedor}>
-                  {solOcupado ? "Enviando…" : "Enviar solicitud"}
+                <button type="submit" className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={solOcupado || !solicitudLista}>
+                  {solOcupado ? "Enviando…" : `Quiero vender en ${BRAND.name}`}
                 </button>
-              </section>
+              </form>
             </>
           )}
-        </div>
+        </main>
       </div>
     );
   }

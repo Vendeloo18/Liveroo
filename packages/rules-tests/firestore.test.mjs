@@ -172,6 +172,30 @@ describe("Datos privados de usuarios", () => {
     );
   });
 
+  test("el perfil exacto de registro nace con métricas en cero", async () => {
+    await assertSucceeds(
+      setDoc(doc(as("buyer_app"), "users", "buyer_app"), {
+        uid: "buyer_app", email: "app@correo.com", displayName: "Desde la app",
+        whatsapp: null, role: "buyer", sellerStatus: "none",
+        ratingAvg: 0, ratingCount: 0, totalSales: 0, totalPurchases: 0,
+        createdAt: new Date(), updatedAt: new Date(),
+      })
+    );
+  });
+
+  test("un comprador puede enviar su solicitud de vendedor", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(BUYER), "users", BUYER), {
+        sellerStatus: "pending",
+        shopName: "Bodega Juan",
+        sellerCat: "Hogar",
+        whatsapp: "+584141234567",
+        city: "Caracas",
+        updatedAt: new Date(),
+      })
+    );
+  });
+
   test("pero sí puede cambiar su nombre y teléfono", async () => {
     await assertSucceeds(
       updateDoc(doc(as(BUYER), "users", BUYER), { displayName: "Juancho", phone: "0424-9999999" })
