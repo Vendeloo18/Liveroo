@@ -21,6 +21,10 @@ export interface UserProfile {
   photoURL?: string;
   phoneNumber?: string;
   whatsapp?: string;
+  cedula?: string;
+  city?: string;
+  shopName?: string;
+  sellerCat?: string;
   role: UserRole;
   // Solo para vendedores
   sellerStatus?: SellerStatus;

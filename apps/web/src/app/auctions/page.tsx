@@ -3,12 +3,10 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 import { db } from "../../lib/firebase";
+import { CATEGORIAS as CATEGORIAS_MARKETPLACE } from "../../lib/marketplace";
 import { AuctionCard, AuctionCardData } from "../../components/auction/AuctionCard";
 
-const CATEGORIAS = [
-  "Todas", "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes",
-  "Hogar", "Colecciones", "Autos y Motos", "Deportes", "Arte", "Juguetes",
-];
+const CATEGORIAS = ["Todas", ...CATEGORIAS_MARKETPLACE];
 
 const ORDENES = [
   ["cierre", "Cierran pronto"],

@@ -12,7 +12,7 @@ import { SIMBOLO_PATH, formatUsd } from "@subastas-ve/shared";
 interface Usuario {
   id: string; displayName?: string; email?: string; role?: string;
   sellerStatus?: string; shopName?: string; sellerCat?: string;
-  whatsapp?: string; city?: string; avatar?: string; createdAt?: any;
+  cedula?: string; whatsapp?: string; city?: string; avatar?: string; createdAt?: any;
   totalPurchases?: number; totalSales?: number; ratingAvg?: number; ratingCount?: number;
 }
 type Seccion = "resumen" | "usuarios" | "vendedores" | "pagos" | "ordenes" | "ajustes";
@@ -408,6 +408,7 @@ export default function AdminPage() {
                         </div>
                         <div className="adm-row__meta" style={{ whiteSpace: "normal", lineHeight: 1.7 }}>
                           Rol: <b style={{ color: "var(--ink-2)" }}>{ROL_ETIQUETA[u.role ?? "buyer"] ?? u.role}</b>
+                          {" · "}Cédula: <b style={{ color: "var(--ink-2)" }}>{u.cedula || "—"}</b>
                           {" · "}WhatsApp: {u.whatsapp ? <a href={`https://wa.me/${String(u.whatsapp).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-strong)", fontWeight: 700 }}>{u.whatsapp}</a> : "—"}
                           {" · "}Ciudad: {u.city || "—"}
                           {u.sellerCat ? <> · Vende: {u.sellerCat}</> : null}
@@ -433,7 +434,7 @@ export default function AdminPage() {
             <>
               {pendientes.length > 0 && (
                 <div className="adm-panel"><div className="adm-panel__h"><span className="t">Solicitudes pendientes · {pendientes.length}</span></div>
-                  {pendientes.map(u => (<div key={u.id} className="adm-row"><div className="adm-row__main"><Ava u={u}/><div style={{ minWidth: 0 }}><div className="adm-row__name">{u.displayName ?? "Sin nombre"}</div><div className="adm-row__meta">{u.shopName ? `${u.shopName} · ` : ""}{u.email}</div></div></div><div className="adm-row__act"><button className="lv-btn lv-btn--accent lv-btn--sm" disabled={ocupado === `ap_${u.id}`} onClick={() => aprobar(u)}>{ocupado === `ap_${u.id}` ? "…" : "Aprobar"}</button></div></div>))}
+                  {pendientes.map(u => (<div key={u.id} className="adm-row"><div className="adm-row__main"><Ava u={u}/><div style={{ minWidth: 0 }}><div className="adm-row__name">{u.displayName ?? "Sin nombre"}</div><div className="adm-row__meta">{u.shopName ? `${u.shopName} · ` : ""}{u.email}</div><div className="adm-row__meta">{u.cedula || "Sin cédula"} · {u.city || "Sin ciudad"}{u.sellerCat ? ` · ${u.sellerCat}` : ""}</div></div></div><div className="adm-row__act"><button className="lv-btn lv-btn--accent lv-btn--sm" disabled={ocupado === `ap_${u.id}`} onClick={() => aprobar(u)}>{ocupado === `ap_${u.id}` ? "…" : "Aprobar"}</button></div></div>))}
                 </div>
               )}
               {interesados.length > 0 && (

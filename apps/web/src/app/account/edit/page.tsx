@@ -4,11 +4,7 @@ import { useRouter } from "next/navigation";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
-
-const CATEGORIAS = [
-  "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar",
-  "Colecciones", "Autos y Motos", "Deportes", "Arte", "Juguetes", "Comida", "Mascotas",
-];
+import { CATEGORIAS, CIUDADES_VENEZUELA } from "../../../lib/marketplace";
 
 // buildWhatsappLink hace phone.replace(/\D/g,"") y arma wa.me/<digitos>,
 // así que el número tiene que llevar código de país o el enlace no abre
@@ -164,7 +160,11 @@ export default function EditProfilePage() {
 
         <div className="lv-field">
           <label className="lv-field__label" htmlFor="ciudad">Ciudad</label>
-          <input id="ciudad" className="lv-input" value={city} onChange={e => setCity(e.target.value)} placeholder="Caracas"/>
+          <select id="ciudad" className="lv-input" value={city} onChange={e => setCity(e.target.value)} autoComplete="address-level2">
+            <option value="">Selecciona tu ciudad</option>
+            {city && !CIUDADES_VENEZUELA.includes(city as any) && <option value={city}>{city}</option>}
+            {CIUDADES_VENEZUELA.map(ciudad => <option key={ciudad} value={ciudad}>{ciudad}</option>)}
+          </select>
         </div>
 
         {esVendedor && (

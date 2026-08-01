@@ -3,23 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { CATEGORIAS as NOMBRES_CATEGORIAS } from "../../lib/marketplace";
 
 // El nombre tiene que ser idéntico al que guarda /auctions.category,
 // porque es el que viaja como filtro a /auctions?cat=
-const CATEGORIAS = [
-  { nombre: "Moda y Ropa", icono: "👗" },
-  { nombre: "Electronica", icono: "💻" },
-  { nombre: "Calzado", icono: "👟" },
-  { nombre: "Joyas y Relojes", icono: "💍" },
-  { nombre: "Hogar", icono: "🏠" },
-  { nombre: "Colecciones", icono: "🏆" },
-  { nombre: "Autos y Motos", icono: "🚗" },
-  { nombre: "Deportes", icono: "⚽" },
-  { nombre: "Arte", icono: "🎨" },
-  { nombre: "Juguetes", icono: "🎮" },
-  { nombre: "Comida", icono: "🍕" },
-  { nombre: "Mascotas", icono: "🐾" },
-];
+const CATEGORIAS = NOMBRES_CATEGORIAS.map(nombre => ({ nombre }));
 
 export default function CategoriesPage() {
   const router = useRouter();

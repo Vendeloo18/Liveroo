@@ -8,13 +8,16 @@ import { BRAND, formatUsd } from "@subastas-ve/shared";
 import { ImageUploader } from "../../components/ui/ImageUploader";
 import { Logo } from "../../components/ui/Logo";
 import { useCountdown } from "../../hooks/useCountdown";
+import {
+  CATEGORIAS,
+  CIUDADES_VENEZUELA,
+  cedulaVenezolanaValida,
+  formatearCedulaVenezolana,
+  formatearTelefonoVenezolano,
+  telefonoVenezolanoValido,
+} from "../../lib/marketplace";
 
 type Pantalla = "hub" | "subasta" | "show" | "producto";
-
-const CATEGORIAS = [
-  "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar",
-  "Colecciones", "Autos y Motos", "Deportes", "Arte", "Juguetes", "Comida", "Mascotas",
-];
 
 const DURACIONES: [string, string][] = [
   ["6", "6 horas"], ["24", "1 día"], ["72", "3 días"], ["168", "7 días"],
@@ -95,7 +98,8 @@ export default function SellerPage() {
   // Solicitud de vendedor (estado no-aprobado)
   const [solTienda, setSolTienda] = useState("");
   const [solCat, setSolCat] = useState("Moda y Ropa");
-  const [solWhatsapp, setSolWhatsapp] = useState((profile as any)?.whatsapp ?? "");
+  const [solCedula, setSolCedula] = useState(formatearCedulaVenezolana((profile as any)?.cedula ?? ""));
+  const [solWhatsapp, setSolWhatsapp] = useState(formatearTelefonoVenezolano((profile as any)?.whatsapp ?? (profile as any)?.phone ?? ""));
   const [solCiudad, setSolCiudad] = useState((profile as any)?.city ?? "");
   const [solOcupado, setSolOcupado] = useState(false);
   const [avisoSolicitud, setAvisoSolicitud] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
@@ -103,7 +107,8 @@ export default function SellerPage() {
   useEffect(() => {
     if (!profile) return;
     const p = profile as any;
-    setSolWhatsapp(actual => actual || p.whatsapp || p.phone || "");
+    setSolCedula(actual => actual !== "V-" ? actual : formatearCedulaVenezolana(p.cedula || ""));
+    setSolWhatsapp(actual => actual !== "+58" ? actual : formatearTelefonoVenezolano(p.whatsapp || p.phone || ""));
     setSolCiudad(actual => actual || p.city || "");
     setSolTienda(actual => actual || p.shopName || "");
     setSolCat(actual => p.sellerCat || actual);
@@ -129,8 +134,9 @@ export default function SellerPage() {
   const enviarSolicitudVendedor = async () => {
     if (!profile) return;
     if (solTienda.trim().length < 3) { setAvisoSolicitud({ tipo: "bad", texto: "El nombre de la tienda necesita al menos 3 caracteres" }); return; }
-    if (solWhatsapp.trim().length < 7) { setAvisoSolicitud({ tipo: "bad", texto: "Tu WhatsApp es obligatorio: por ahí vendes" }); return; }
-    if (solCiudad.trim().length < 2) { setAvisoSolicitud({ tipo: "bad", texto: "Indica la ciudad desde donde vas a vender" }); return; }
+    if (!cedulaVenezolanaValida(solCedula)) { setAvisoSolicitud({ tipo: "bad", texto: "Escribe una cédula válida, por ejemplo V-12345678" }); return; }
+    if (!telefonoVenezolanoValido(solWhatsapp)) { setAvisoSolicitud({ tipo: "bad", texto: "Escribe los 10 dígitos de tu WhatsApp después de +58" }); return; }
+    if (!CIUDADES_VENEZUELA.includes(solCiudad as any)) { setAvisoSolicitud({ tipo: "bad", texto: "Selecciona tu ciudad" }); return; }
     setSolOcupado(true);
     setAvisoSolicitud(null);
     try {
@@ -140,8 +146,9 @@ export default function SellerPage() {
         sellerStatus: "pending",
         shopName: solTienda.trim(),
         sellerCat: solCat,
-        whatsapp: solWhatsapp.trim(),
-        city: solCiudad.trim(),
+        cedula: solCedula,
+        whatsapp: `+${solWhatsapp.replace(/\D/g, "")}`,
+        city: solCiudad,
         updatedAt: serverTimestamp(),
       });
       setAvisoSolicitud({ tipo: "ok", texto: "¡Solicitud enviada! Te avisamos cuando esté aprobada." });
@@ -263,8 +270,9 @@ export default function SellerPage() {
     const enRevision = profile.sellerStatus === "pending";
     const suspendido = profile.sellerStatus === "suspended";
     const solicitudLista = solTienda.trim().length >= 3
-      && solWhatsapp.trim().length >= 7
-      && solCiudad.trim().length >= 2;
+      && cedulaVenezolanaValida(solCedula)
+      && telefonoVenezolanoValido(solWhatsapp)
+      && CIUDADES_VENEZUELA.includes(solCiudad as any);
     return (
       <div className="lv-app seller-apply">
         <header className="seller-apply__hero">
@@ -337,20 +345,32 @@ export default function SellerPage() {
                   </select>
                 </div>
 
+                <div className="lv-field">
+                  <label className="lv-field__label" htmlFor="sol-cedula">Cédula de identidad</label>
+                  <input id="sol-cedula" className="lv-input" type="text" inputMode="numeric" value={solCedula}
+                    onChange={e => setSolCedula(formatearCedulaVenezolana(e.target.value))}
+                    placeholder="V-12345678" maxLength={11} autoComplete="off"/>
+                  <div className="lv-field__hint">La usamos únicamente para verificar tu identidad como vendedor.</div>
+                </div>
+
                 <div className="seller-apply__form-grid">
                   <div className="lv-field">
                     <label className="lv-field__label" htmlFor="sol-wa">WhatsApp</label>
-                    <input id="sol-wa" className="lv-input" type="tel" inputMode="tel" value={solWhatsapp} onChange={e => setSolWhatsapp(e.target.value)}
-                      placeholder="+58 414 1234567" maxLength={20} autoComplete="tel"/>
+                    <input id="sol-wa" className="lv-input" type="tel" inputMode="tel" value={solWhatsapp}
+                      onChange={e => setSolWhatsapp(formatearTelefonoVenezolano(e.target.value))}
+                      placeholder="+58 4141234567" maxLength={14} autoComplete="tel"/>
                   </div>
                   <div className="lv-field">
                     <label className="lv-field__label" htmlFor="sol-ciudad">Ciudad</label>
-                    <input id="sol-ciudad" className="lv-input" value={solCiudad} onChange={e => setSolCiudad(e.target.value)}
-                      placeholder="Caracas" maxLength={40} autoComplete="address-level2"/>
+                    <select id="sol-ciudad" className="lv-input seller-apply__select" value={solCiudad}
+                      onChange={e => setSolCiudad(e.target.value)} autoComplete="address-level2">
+                      <option value="" disabled>Selecciona tu ciudad</option>
+                      {CIUDADES_VENEZUELA.map(ciudad => <option key={ciudad} value={ciudad}>{ciudad}</option>)}
+                    </select>
                   </div>
                 </div>
 
-                <p className="seller-apply__privacy">Revisamos cada solicitud para mantener compras y ventas más seguras. Tu WhatsApp no se publica en tu perfil.</p>
+                <p className="seller-apply__privacy">Revisamos cada solicitud para mantener compras y ventas más seguras. Tu cédula y WhatsApp son privados y no aparecen en tu perfil.</p>
 
                 <button type="submit" className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={solOcupado || !solicitudLista}>
                   {solOcupado ? "Enviando…" : `Quiero vender en ${BRAND.name}`}

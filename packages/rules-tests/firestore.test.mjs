@@ -189,7 +189,35 @@ describe("Datos privados de usuarios", () => {
         sellerStatus: "pending",
         shopName: "Bodega Juan",
         sellerCat: "Hogar",
+        cedula: "V-12345678",
         whatsapp: "+584141234567",
+        city: "Caracas",
+        updatedAt: new Date(),
+      })
+    );
+  });
+
+  test("una solicitud de vendedor necesita cédula", async () => {
+    await assertFails(
+      updateDoc(doc(as(BUYER), "users", BUYER), {
+        sellerStatus: "pending",
+        shopName: "Bodega Juan",
+        sellerCat: "Hogar",
+        whatsapp: "+584141234567",
+        city: "Caracas",
+        updatedAt: new Date(),
+      })
+    );
+  });
+
+  test("una solicitud rechaza cédula o teléfono con formato inválido", async () => {
+    await assertFails(
+      updateDoc(doc(as(BUYER), "users", BUYER), {
+        sellerStatus: "pending",
+        shopName: "Bodega Juan",
+        sellerCat: "Hogar",
+        cedula: "12345678",
+        whatsapp: "0414-1234567",
         city: "Caracas",
         updatedAt: new Date(),
       })

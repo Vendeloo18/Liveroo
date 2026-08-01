@@ -90,11 +90,17 @@ service cloud.firestore {
           // app podía escribir la solicitud que el panel espera revisar.
           isSignedIn()
           && uid() == userId
-          && onlyChanges(['sellerStatus', 'shopName', 'sellerCat', 'whatsapp', 'city', 'phone', 'updatedAt'])
+          && onlyChanges(['sellerStatus', 'shopName', 'sellerCat', 'cedula', 'whatsapp', 'city', 'phone', 'updatedAt'])
           && (!('sellerStatus' in resource.data) || resource.data.sellerStatus == 'none')
           && request.resource.data.sellerStatus == 'pending'
           && request.resource.data.shopName is string
           && request.resource.data.shopName.size() >= 3
+          && request.resource.data.cedula is string
+          && request.resource.data.cedula.matches('^V-[0-9]{6,9}$')
+          && request.resource.data.whatsapp is string
+          && request.resource.data.whatsapp.matches('^\\+58[0-9]{10}$')
+          && request.resource.data.city is string
+          && request.resource.data.sellerCat is string
         );
 
       allow delete: if false;
