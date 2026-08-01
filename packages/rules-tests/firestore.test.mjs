@@ -110,6 +110,11 @@ beforeEach(async () => {
       id: "showLive", title: "En vivo", sellerId: SELLER,
       status: "live", viewerCount: 12,
     });
+    // Show de OTRO vendedor: nadie cuela productos en un show ajeno
+    await setDoc(doc(db, "shows", "showAjeno"), {
+      id: "showAjeno", title: "Show de Alfred", sellerId: ADMIN,
+      status: "scheduled", viewerCount: 0,
+    });
 
     await setDoc(doc(db, "orders", "orden1"), {
       id: "orden1", auctionId: "sub1", buyerId: BUYER, sellerId: SELLER,
@@ -148,6 +153,22 @@ describe("Datos privados de usuarios", () => {
   test("nadie se auto-aprueba como vendedor", async () => {
     await assertFails(
       updateDoc(doc(as(BUYER), "users", BUYER), { sellerStatus: "approved" })
+    );
+  });
+
+  test("nadie nace con reputación inventada", async () => {
+    await assertFails(
+      setDoc(doc(as("buyer_nuevo"), "users", "buyer_nuevo"), {
+        uid: "buyer_nuevo", email: "nuevo@correo.com", displayName: "Nuevo",
+        role: "buyer", sellerStatus: "none",
+        ratingAvg: 5, ratingCount: 200, totalSales: 999,
+      })
+    );
+    await assertSucceeds(
+      setDoc(doc(as("buyer_nuevo"), "users", "buyer_nuevo"), {
+        uid: "buyer_nuevo", email: "nuevo@correo.com", displayName: "Nuevo",
+        role: "buyer", sellerStatus: "none",
+      })
     );
   });
 
@@ -253,6 +274,48 @@ describe("Subastas: creación", () => {
       addDoc(collection(as(SELLER), "auctions"), nueva({ endsAt: new Date(Date.now() - 1000) }))
     );
   });
+
+  test("un artículo en vivo nace en el show PROPIO", async () => {
+    await assertSucceeds(
+      addDoc(collection(as(SELLER), "auctions"),
+        nueva({ mode: "live", showId: "show1", status: "waiting", sortOrder: 2, endsAt: null }))
+    );
+  });
+
+  test("EL COLADO — nadie mete su producto en el show de otro vendedor", async () => {
+    await assertFails(
+      addDoc(collection(as(SELLER), "auctions"),
+        nueva({ mode: "live", showId: "showAjeno", status: "waiting", sortOrder: 2, endsAt: null }))
+    );
+  });
+});
+
+describe("Calificaciones: solo por la función submitRating", () => {
+  test("nadie crea ratings desde el cliente, ni con datos correctos", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "ratings"), {
+        fromUid: BUYER, toUid: SELLER, orderId: "orden1",
+        score: 5, comment: "excelente", createdAt: new Date(),
+      })
+    );
+  });
+
+  test("mucho menos una lluvia de estrellas falsas a un tercero", async () => {
+    await assertFails(
+      addDoc(collection(as(OTHER_BUYER), "ratings"), {
+        fromUid: OTHER_BUYER, toUid: OTHER_BUYER, score: 5, createdAt: new Date(),
+      })
+    );
+  });
+
+  test("los ratings existentes sí se leen (son públicos)", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "ratings", "orden1"), {
+        fromUid: BUYER, toUid: SELLER, score: 5,
+      });
+    });
+    await assertSucceeds(getDoc(doc(anon(), "ratings", "orden1")));
+  });
 });
 
 describe("Pujas: solo por la puerta de /pendingBids", () => {
@@ -333,6 +396,16 @@ describe("Shows", () => {
     );
   });
 
+  test("y resta 1 al salir, sin bajar de cero", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 11 })
+    );
+    // show1 está en 0: restarle es inventar audiencia negativa
+    await assertFails(
+      updateDoc(doc(as(BUYER), "shows", "show1"), { viewerCount: -1 })
+    );
+  });
+
   test("pero no puede inflar el contador de golpe", async () => {
     await assertFails(
       updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 99999 })
@@ -370,6 +443,12 @@ describe("Chat en vivo", () => {
     );
   });
 
+  test("ni chateando con un nombre que no es el suyo", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"), msg({ authorName: "CarlosVE" }))
+    );
+  });
+
   test("nadie se hace pasar por el sistema para anunciar un ganador falso", async () => {
     await assertFails(
       addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
@@ -382,6 +461,40 @@ describe("Chat en vivo", () => {
       addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
         msg({ text: "x".repeat(301) }))
     );
+  });
+});
+
+describe("Reacciones en vivo", () => {
+  test("nadie escribe reacciones directo: pasan por sendReaction", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "reactions"), {
+        authorId: BUYER,
+        emoji: "❤️",
+        createdAt: new Date(),
+      })
+    );
+  });
+
+  test("tampoco se pueden colar campos arbitrarios", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "reactions"), {
+        authorId: BUYER,
+        emoji: "❤️",
+        createdAt: new Date(),
+        payload: "x".repeat(1000),
+      })
+    );
+  });
+
+  test("las reacciones emitidas por el motor sí son públicas", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "shows", "showLive", "reactions", "r1"), {
+        authorId: BUYER,
+        emoji: "🔥",
+        createdAt: new Date(),
+      });
+    });
+    await assertSucceeds(getDoc(doc(anon(), "shows", "showLive", "reactions", "r1")));
   });
 });
 
@@ -412,8 +525,11 @@ describe("Órdenes", () => {
     );
   });
 
-  test("el vendedor confirma el pago", async () => {
-    await assertSucceeds(
+  // El ciclo (pending_payment → … → delivered) lo mueve SOLO la función
+  // advanceOrder, que valida la transición de origen. Desde el cliente,
+  // el status es intocable — hasta para las partes de la orden.
+  test("el vendedor ya NO confirma el pago escribiendo el status a mano", async () => {
+    await assertFails(
       updateDoc(doc(as(SELLER), "orders", "orden1"), { status: "payment_confirmed" })
     );
   });
@@ -430,22 +546,27 @@ describe("Órdenes", () => {
     );
   });
 
-  test("el comprador sí confirma que recibió, y eso habilita calificar", async () => {
+  test("ni el comprador mueve el status a mano: eso pasa por advanceOrder", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), "orders", "orden1"), {
         id: "orden1", buyerId: BUYER, sellerId: SELLER,
         bidAmountUsd: 35, commissionUsd: 3.5, status: "shipped",
       });
     });
-    await assertSucceeds(
+    await assertFails(
       updateDoc(doc(as(BUYER), "orders", "orden1"), { status: "delivered" })
     );
   });
 
-  test("el comprador no puede saltarse pasos", async () => {
-    // orden1 sigue en pending_payment: no se puede ir directo a delivered
-    await assertFails(
-      updateDoc(doc(as(BUYER), "orders", "orden1"), { status: "delivered" })
+  test("el vendedor sí anota el tracking, sin tocar el estado", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(SELLER), "orders", "orden1"), { trackingCode: "ZOOM-123", updatedAt: new Date() })
+    );
+  });
+
+  test("el comprador sí deja su WhatsApp de contacto", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(BUYER), "orders", "orden1"), { buyerWhatsapp: "0414-5556677", updatedAt: new Date() })
     );
   });
 
@@ -491,6 +612,16 @@ describe("Configuración y tasa de cambio", () => {
       setDoc(doc(as(SELLER), "config", "commission"), { platformFeePct: 0 })
     );
   });
+
+  test("las cuentas de recarga NO son para internet entera", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "config", "paymentAccounts"), {
+        pagoMovil: { banco: "Banesco", telefono: "0414-1112233", cedula: "V-12345678" },
+      });
+    });
+    await assertFails(getDoc(doc(anon(), "config", "paymentAccounts")));
+    await assertSucceeds(getDoc(doc(as(BUYER), "config", "paymentAccounts")));
+  });
 });
 
 describe("Colecciones sin regla", () => {
@@ -502,6 +633,19 @@ describe("Colecciones sin regla", () => {
   test("la billetera está cerrada a escritura", async () => {
     await assertFails(
       setDoc(doc(as(BUYER), "walletTransactions", "t1"), { userId: BUYER, amountUsd: 10000 })
+    );
+  });
+
+  test("las liquidaciones al vendedor: él las ve, nadie las escribe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "sellerPayouts", "pay1"), {
+        sellerId: SELLER, totalUsd: 90, orderIds: ["orden1"],
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(SELLER), "sellerPayouts", "pay1")));
+    await assertFails(getDoc(doc(as(BUYER), "sellerPayouts", "pay1")));
+    await assertFails(
+      setDoc(doc(as(SELLER), "sellerPayouts", "pay2"), { sellerId: SELLER, totalUsd: 9999 })
     );
   });
 

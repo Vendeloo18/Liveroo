@@ -21,12 +21,15 @@ interface Aviso {
   ir: string;
 }
 
-const ICONO: Record<Aviso["tipo"], { emoji: string; clase: string }> = {
-  ganaste: { emoji: "🏆", clase: "lv-badge--accent" },
-  superado: { emoji: "↑", clase: "lv-badge--live" },
-  ganando: { emoji: "★", clase: "lv-badge--accent" },
-  orden: { emoji: "📦", clase: "lv-badge--soft" },
-  cerrada: { emoji: "⏱", clase: "lv-badge--soft" },
+const svgIco = (p: React.ReactNode) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{p}</svg>
+);
+const ICONO: Record<Aviso["tipo"], { emoji: React.ReactNode; clase: string }> = {
+  ganaste: { emoji: svgIco(<path d="M20 6L9 17l-5-5"/>), clase: "lv-badge--accent" },
+  superado: { emoji: svgIco(<path d="M12 19V5M5 12l7-7 7 7"/>), clase: "lv-badge--live" },
+  ganando: { emoji: svgIco(<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>), clase: "lv-badge--accent" },
+  orden: { emoji: svgIco(<g><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5"/></g>), clase: "lv-badge--soft" },
+  cerrada: { emoji: svgIco(<g><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>), clase: "lv-badge--soft" },
 };
 
 const ESTADO_ORDEN: Record<string, string> = {

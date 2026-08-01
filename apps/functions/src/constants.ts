@@ -14,6 +14,8 @@ export const COLLECTIONS = {
   WALLETS: "wallets",
   WALLET_TXS: "walletTransactions",
   DEPOSITS: "deposits",
+  DEPOSIT_REFERENCE_CLAIMS: "depositReferenceClaims",
+  SELLER_PAYOUTS: "sellerPayouts",
 
   AUCTION_BIDS: (auctionId: string) => `auctions/${auctionId}/bids`,
   SHOW_MESSAGES: (showId: string) => `shows/${showId}/messages`,
@@ -71,6 +73,7 @@ export type BidRejectedReason =
   | "not_found"
   | "show_not_live"
   | "insufficient_funds"
+  | "es_muestra"
   | "race_condition";
 
 // --------------------------------------------------

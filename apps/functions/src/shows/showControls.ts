@@ -18,15 +18,49 @@ import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS, DEFAULT_LIVE_TIMER_S } from "../constants";
 
-// limit(2) y no 1: skipAuction necesita descartar la propia subasta
-// saltada si todavía figuraba en la cola, y quedarse con la siguiente real.
+// limit(5) y no 1: skipAuction necesita descartar la propia subasta
+// saltada, y además la cola puede traer artículos AJENOS colados antes
+// de que exigiéramos dueño (ver elegirSiguiente) — hay que poder
+// pasarlos de largo.
 const nextWaitingQuery = (showId: string) =>
   db
     .collection(COLLECTIONS.AUCTIONS)
     .where("showId", "==", showId)
     .where("status", "==", "waiting")
     .orderBy("sortOrder", "asc")
-    .limit(2);
+    .limit(5);
+
+// De los candidatos en cola, el primero que de verdad pertenece al dueño
+// del show. Un artículo de OTRO vendedor (colado antes del candado en las
+// reglas) se cancela en la misma transacción: nunca se subasta en un show
+// ajeno. Devuelve null si no queda ninguno legítimo en la página leída.
+function elegirSiguiente(params: {
+  tx: FirebaseFirestore.Transaction;
+  docs: FirebaseFirestore.QueryDocumentSnapshot[];
+  ownerId: string;
+  excluirId?: string;
+  now: Timestamp;
+}): FirebaseFirestore.QueryDocumentSnapshot | null {
+  const { tx, docs, ownerId, excluirId, now } = params;
+  for (const d of docs) {
+    if (excluirId && d.id === excluirId) continue;
+    if (d.data().sellerId === ownerId) return d;
+    functions.logger.warn("Artículo ajeno en cola de show, cancelado", { auctionId: d.id, ownerId });
+    tx.update(d.ref, { status: "cancelled", endedAt: now, updatedAt: now });
+  }
+  return null;
+}
+
+// El que opera un show tiene que seguir siendo vendedor aprobado: un
+// suspendido conserva sus shows viejos, pero no puede transmitir con ellos.
+function exigirAprobado(userSnap: FirebaseFirestore.DocumentSnapshot) {
+  if (userSnap.data()?.sellerStatus !== "approved") {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Tu cuenta de vendedor no está activa"
+    );
+  }
+}
 
 // =============================================================
 // startShow
@@ -50,7 +84,10 @@ export const startShow = functions
 
     await db.runTransaction(async (tx) => {
       // ── lecturas ──
-      const showSnap = await tx.get(showRef);
+      const [showSnap, userSnap] = await Promise.all([
+        tx.get(showRef),
+        tx.get(db.doc(`${COLLECTIONS.USERS}/${callerId}`)),
+      ]);
       if (!showSnap.exists) {
         throw new functions.https.HttpsError("not-found", "Show no encontrado");
       }
@@ -59,6 +96,7 @@ export const startShow = functions
       if (show.sellerId !== callerId) {
         throw new functions.https.HttpsError("permission-denied", "No eres el dueño del show");
       }
+      exigirAprobado(userSnap);
       if (!["scheduled", "draft"].includes(show.status)) {
         throw new functions.https.HttpsError(
           "failed-precondition",
@@ -67,38 +105,125 @@ export const startShow = functions
       }
 
       const firstSnap = await tx.get(nextWaitingQuery(showId));
-      if (firstSnap.empty) {
-        throw new functions.https.HttpsError(
-          "failed-precondition",
-          "El show no tiene subastas. Agrega al menos una antes de iniciar."
-        );
-      }
+      const now = Timestamp.now();
 
       // ── escrituras ──
-      const first = firstSnap.docs[0];
-      const firstData = first.data();
-      const timerS = (firstData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
+      // Modelo "vende en vivo": se puede salir en vivo con la cola vacía y
+      // agregar los artículos mientras transmites (presentAuction los activa
+      // al momento). Si ya hay algo en cola, se activa la primera de una vez.
+      const first = elegirSiguiente({ tx, docs: firstSnap.docs, ownerId: callerId, now });
+      if (!first) {
+        tx.update(showRef, {
+          status: "live",
+          startedAt: now,
+          currentAuctionId: null,
+          currentAuctionIndex: null,
+          updatedAt: now,
+        });
+      } else {
+        const firstData = first.data();
+        const timerS = (firstData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
+
+        tx.update(showRef, {
+          status: "live",
+          startedAt: now,
+          currentAuctionId: first.id,
+          currentAuctionIndex: firstData.sortOrder ?? 0,
+          updatedAt: now,
+        });
+
+        tx.update(first.ref, {
+          status: "active",
+          currentBidUsd: firstData.startingPriceUsd,
+          startsAt: now,
+          endsAt: Timestamp.fromMillis(now.toMillis() + timerS * 1000),
+          updatedAt: now,
+        });
+      }
+    });
+
+    functions.logger.info("Show iniciado", { showId, callerId });
+    return { success: true, message: "¡Show iniciado!" };
+  });
+
+// =============================================================
+// presentAuction — "vende en vivo": activa un artículo al instante
+// =============================================================
+// Mientras el show está en vivo, el vendedor agrega un artículo y lo
+// subasta al momento. Pone la subasta activa (con su timer) y la marca
+// como la actual del show. No deja dos activas a la vez.
+
+export const presentAuction = functions
+  .region("us-central1")
+  .runWith({ timeoutSeconds: 30 })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
+    }
+    const { showId, auctionId } = (data ?? {}) as { showId?: string; auctionId?: string };
+    if (!showId || !auctionId) {
+      throw new functions.https.HttpsError("invalid-argument", "showId y auctionId son requeridos");
+    }
+
+    const callerId = context.auth.uid;
+    const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
+    const auctionRef = db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`);
+
+    await db.runTransaction(async (tx) => {
+      const [showSnap, auctionSnap, userSnap] = await Promise.all([
+        tx.get(showRef),
+        tx.get(auctionRef),
+        tx.get(db.doc(`${COLLECTIONS.USERS}/${callerId}`)),
+      ]);
+      if (!showSnap.exists || !auctionSnap.exists) {
+        throw new functions.https.HttpsError("not-found", "Show o subasta no encontrada");
+      }
+      const show = showSnap.data()!;
+      const auction = auctionSnap.data()!;
+
+      if (show.sellerId !== callerId) {
+        throw new functions.https.HttpsError("permission-denied", "No eres el dueño del show");
+      }
+      exigirAprobado(userSnap);
+      if (show.status !== "live") {
+        throw new functions.https.HttpsError("failed-precondition", "El show no está en vivo");
+      }
+      if (auction.showId !== showId || auction.sellerId !== show.sellerId) {
+        throw new functions.https.HttpsError("invalid-argument", "Ese artículo no pertenece a este show");
+      }
+      if (auction.status !== "waiting") {
+        throw new functions.https.HttpsError("failed-precondition", "Ese artículo ya no está en espera");
+      }
+
+      // Nunca dos subastas activas a la vez: si la actual sigue viva, hay
+      // que esperar a que cierre.
+      const currentId = show.currentAuctionId as string | undefined;
+      if (currentId && currentId !== auctionId) {
+        const currentSnap = await tx.get(db.doc(`${COLLECTIONS.AUCTIONS}/${currentId}`));
+        if (currentSnap.exists && currentSnap.data()!.status === "active") {
+          throw new functions.https.HttpsError("failed-precondition", "Ya hay un artículo subastándose. Espera a que cierre.");
+        }
+      }
+
+      const timerS = (auction.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
       const now = Timestamp.now();
 
       tx.update(showRef, {
-        status: "live",
-        startedAt: now,
-        currentAuctionId: first.id,
-        currentAuctionIndex: firstData.sortOrder ?? 0,
+        currentAuctionId: auctionId,
+        currentAuctionIndex: auction.sortOrder ?? 0,
         updatedAt: now,
       });
-
-      tx.update(first.ref, {
+      tx.update(auctionRef, {
         status: "active",
-        currentBidUsd: firstData.startingPriceUsd,
+        currentBidUsd: auction.startingPriceUsd,
         startsAt: now,
         endsAt: Timestamp.fromMillis(now.toMillis() + timerS * 1000),
         updatedAt: now,
       });
     });
 
-    functions.logger.info("Show iniciado", { showId, callerId });
-    return { success: true, message: "¡Show iniciado!" };
+    functions.logger.info("Artículo presentado en vivo", { showId, auctionId, callerId });
+    return { success: true };
   });
 
 // =============================================================
@@ -134,6 +259,23 @@ export const endShow = functions
     const isAdmin = userSnap.data()?.role === "admin";
     if (!isOwner && !isAdmin) {
       throw new functions.https.HttpsError("permission-denied", "Sin permiso para terminar el show");
+    }
+
+    // El vendedor NO puede terminar mientras el artículo en subasta tiene
+    // pujas encima: si se arrepiente a mitad de una puja, deja colgado al
+    // comprador que iba ganando. Tiene que esperar a que ese cierre (son
+    // segundos). El admin sí puede forzar el cierre (moderación).
+    if (isOwner && !isAdmin) {
+      const currentId = showSnap.data()!.currentAuctionId as string | undefined;
+      if (currentId) {
+        const cur = (await db.doc(`${COLLECTIONS.AUCTIONS}/${currentId}`).get()).data();
+        if (cur && cur.status === "active" && cur.currentBidderId) {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            "No puedes terminar el show mientras un artículo tiene pujas. Espera a que cierre — son segundos."
+          );
+        }
+      }
     }
 
     const now = Timestamp.now();
@@ -191,13 +333,26 @@ export const skipAuction = functions
       if (!showSnap.exists || !auctionSnap.exists) {
         throw new functions.https.HttpsError("not-found", "Show o subasta no encontrada");
       }
-      if (showSnap.data()!.sellerId !== callerId) {
+      const show = showSnap.data()!;
+      if (show.sellerId !== callerId) {
         throw new functions.https.HttpsError("permission-denied", "No eres el dueño");
+      }
+      // Solo se salta LO QUE SE ESTÁ SUBASTANDO en un show EN VIVO. Sin
+      // esto se podía "saltar" un artículo histórico o activar una segunda
+      // subasta en paralelo.
+      if (show.status !== "live") {
+        throw new functions.https.HttpsError("failed-precondition", "El show no está en vivo");
+      }
+      if (show.currentAuctionId !== auctionId) {
+        throw new functions.https.HttpsError("failed-precondition", "Ese artículo no es el que se está subastando");
       }
 
       const auction = auctionSnap.data()!;
       if (auction.showId !== showId) {
         throw new functions.https.HttpsError("invalid-argument", "La subasta no es de este show");
+      }
+      if (auction.status !== "active") {
+        throw new functions.https.HttpsError("failed-precondition", "Ese artículo no está en subasta");
       }
       // Con pujas encima no se salta: alguien ya puso plata.
       if (auction.currentBidderId) {
@@ -224,14 +379,14 @@ export const skipAuction = functions
         createdAt: now,
       });
 
-      // La saltada puede ser la misma que devuelve la query si estaba
-      // en waiting; en ese caso no hay siguiente real.
-      const next = nextSnap.docs.find((d) => d.id !== auctionId);
+      // Siguiente legítimo de la cola (excluye la saltada y descarta lo
+      // ajeno). Sin siguiente, el show SIGUE EN VIVO con la cola vacía:
+      // en el modelo "vende en vivo" el vendedor agrega el próximo
+      // artículo en el momento; terminar es decisión suya (endShow).
+      const next = elegirSiguiente({ tx, docs: nextSnap.docs, ownerId: callerId, excluirId: auctionId, now });
 
       if (!next) {
         tx.update(showRef, {
-          status: "ended",
-          endedAt: now,
           currentAuctionId: null,
           updatedAt: now,
         });

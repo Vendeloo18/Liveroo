@@ -14,6 +14,7 @@ export interface AuctionCardData {
   bidsCount?: number;
   status?: string;
   mode?: string;
+  isDemo?: boolean;
 }
 
 /**
@@ -88,11 +89,11 @@ export function AuctionCard({ auction, onClick }: { auction: AuctionCardData; on
       <div className="lv-card__body">
         <h3 className="lv-card__title">{auction.title ?? "Sin título"}</h3>
         <div className="lv-card__foot">
-          <div style={{ minWidth: 0 }}>
-            <div className="lv-eyebrow">{pujas > 0 ? "Puja actual" : "Desde"}</div>
-            <div className="lv-price">${precio.toFixed(2)}</div>
+          <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
+            <div className="lv-price">${precio % 1 === 0 ? precio : precio.toFixed(2)}</div>
+            {pujas > 0 && <span className="lv-dim" style={{ fontSize: "0.7rem", fontWeight: 600 }}>{pujas} {pujas === 1 ? "puja" : "pujas"}</span>}
           </div>
-          <span className="lv-btn lv-btn--accent lv-btn--sm">Pujar</span>
+          <span className="lv-btn lv-btn--sm lv-btn--accent">Pujar</span>
         </div>
       </div>
     </article>

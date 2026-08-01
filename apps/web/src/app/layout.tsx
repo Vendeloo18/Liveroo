@@ -5,6 +5,7 @@ import { BRAND, brandCssVariables } from "@subastas-ve/shared";
 import { AuthProvider } from "../components/ui/AuthProvider";
 import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
 import { PushForeground } from "../components/ui/PushForeground";
+import { AutoActualizar } from "../components/ui/AutoActualizar";
 
 // Tres tipografías, cada una con un trabajo, siguiendo los assets de marca:
 //
@@ -73,7 +74,8 @@ export const viewport: Viewport = {
   themeColor: BRAND.palette.accent,
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Sin maximumScale: bloquear el zoom rompe la accesibilidad (WCAG) y a
+  // quien necesita agrandar para leer. iOS moderno lo ignoraba igual.
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -89,6 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style dangerouslySetInnerHTML={{ __html: `:root{${brandCssVariables()}}` }}/>
       </head>
       <body>
+        <AutoActualizar/>
         <AuthProvider>
           {children}
           <PushForeground/>

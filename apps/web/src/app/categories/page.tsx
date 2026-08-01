@@ -79,7 +79,7 @@ export default function CategoriesPage() {
                 className="lv-panel"
                 style={{ textAlign: "left", padding: "16px 14px" }}
               >
-                <div style={{ fontSize: "1.7rem", lineHeight: 1, marginBottom: 10 }} aria-hidden="true">{c.icono}</div>
+                <div aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent-tint)", color: "var(--accent-strong)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--f-display)", fontSize: "1.15rem", marginBottom: 10 }}>{c.nombre[0]}</div>
                 <div style={{ fontSize: "0.88rem", fontWeight: 750, letterSpacing: "-0.015em", marginBottom: 3 }}>
                   {c.nombre}
                 </div>

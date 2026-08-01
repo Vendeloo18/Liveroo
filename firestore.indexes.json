@@ -35,6 +35,21 @@
       ]
     },
     {
+      "_comment": "Panel del vendedor: toda la cola de un show (sin filtrar por estado)",
+      "collectionGroup": "auctions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "showId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sortOrder",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "_comment": "Panel del vendedor: sus subastas",
       "collectionGroup": "auctions",
       "queryScope": "COLLECTION",
@@ -103,6 +118,25 @@
       "fields": [
         {
           "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scheduledAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "_comment": "Aviso 'show por empezar' (notifyShowStartingSoon)",
+      "collectionGroup": "shows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "notifiedScheduled",
           "order": "ASCENDING"
         },
         {

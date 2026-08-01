@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 
 /**
  * Cuenta regresiva hasta `endsAt`, que puede venir como Timestamp de
- * Firestore, Date o milisegundos. Se actualiza cada segundo mientras
- * falte menos de una hora, y cada minuto si falta más — no tiene
- * sentido re-renderizar 60 veces por minuto para mover un "3d 4h".
+ * Firestore, Date o milisegundos. Tictaquea cada segundo mientras falte
+ * menos de un día (para que se vea bajar en tiempo real) y cada minuto si
+ * falta más — no tiene sentido re-renderizar cada segundo un "3d 4h".
  */
 export function useCountdown(endsAt: any) {
   const [ms, setMs] = useState<number | null>(null);
@@ -19,7 +19,9 @@ export function useCountdown(endsAt: any) {
     tick();
 
     const restante = fin - Date.now();
-    const intervalo = restante > 3600_000 ? 60_000 : 1000;
+    // Bajo un día: cada segundo, para que se vea correr el reloj. Más de un
+    // día: cada minuto (los segundos no se muestran).
+    const intervalo = restante > 86400_000 ? 60_000 : 1000;
     const t = setInterval(tick, intervalo);
     return () => clearInterval(t);
   }, [endsAt]);
@@ -36,13 +38,13 @@ export function useCountdown(endsAt: any) {
     const h = Math.floor((s % 86400) / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
+    const p2 = (n: number) => String(n).padStart(2, "0");
+    // Más de un día: "3d 4h". Bajo un día: reloj corriendo con segundos —
+    // "1:37:05" con hora, "37:05" sin hora. Se lee como tiempo (dos puntos)
+    // y se ve bajar en vivo.
     if (d > 0) texto = `${d}d ${h}h`;
-    else if (h > 0) texto = `${h}h ${m}m`;
-    // 10-60 min: "38m" (claro). "38:48" se leía como 38 horas al lado
-    // de "2h 39m". El formato MM:SS con segundos corriendo se reserva
-    // para los últimos 10 min, donde la urgencia justifica el tic-tac.
-    else if (m >= 10) texto = `${m}m`;
-    else texto = `${m}:${String(sec).padStart(2, "0")}`;
+    else if (h > 0) texto = `${h}:${p2(m)}:${p2(sec)}`;
+    else texto = `${m}:${p2(sec)}`;
   }
 
   return { texto, urgente, vencida, ms };

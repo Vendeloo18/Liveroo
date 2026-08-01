@@ -7,12 +7,12 @@ export function useUpload() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const upload = async (file: File, path: string): Promise<string> => {
+  const upload = async (file: Blob | File, path: string): Promise<string> => {
     setUploading(true);
     setProgress(0);
     return new Promise((resolve, reject) => {
       const storageRef = ref(storage, path);
-      const task = uploadBytesResumable(storageRef, file);
+      const task = uploadBytesResumable(storageRef, file, { contentType: file.type || "image/jpeg" });
       task.on("state_changed",
         snap => setProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)),
         err => { setUploading(false); reject(err); },

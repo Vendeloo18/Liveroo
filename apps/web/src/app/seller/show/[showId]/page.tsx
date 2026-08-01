@@ -1,13 +1,14 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { doc, collection, onSnapshot, query, orderBy, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, onSnapshot, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../../../../lib/firebase";
 import { useAuthStore } from "../../../../store/authStore";
 import { useAgora } from "../../../../hooks/useAgora";
 import { useCountdown } from "../../../../hooks/useCountdown";
 import { ImageUploader } from "../../../../components/ui/ImageUploader";
+import { BRAND } from "@subastas-ve/shared";
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   waiting: { texto: "En cola", clase: "lv-badge--soft" },
@@ -18,7 +19,7 @@ const ESTADO: Record<string, { texto: string; clase: string }> = {
   cancelled: { texto: "Cancelada", clase: "lv-badge--soft" },
 };
 
-function FilaProducto({ p, onSaltar, saltando }: { p: any; onSaltar: () => void; saltando: boolean }) {
+function FilaProducto({ p, onSaltar, saltando, onPresentar, presentando }: { p: any; onSaltar?: () => void; saltando?: boolean; onPresentar?: () => void; presentando?: boolean }) {
   const { texto, vencida } = useCountdown(p.endsAt);
   const e = ESTADO[p.status] ?? { texto: p.status, clase: "lv-badge--soft" };
   const activa = p.status === "active" && !vencida;
@@ -43,8 +44,13 @@ function FilaProducto({ p, onSaltar, saltando }: { p: any; onSaltar: () => void;
         </div>
       </div>
 
-      {/* Solo se puede saltar lo que nadie ha pujado: el motor lo rechaza igual */}
-      {p.status === "active" && !p.currentBidderId && (
+      {/* En cola: subastarla ahora. Activa sin pujas: saltarla. */}
+      {p.status === "waiting" && onPresentar && (
+        <button className="lv-btn lv-btn--accent lv-btn--sm" disabled={presentando} onClick={onPresentar}>
+          {presentando ? "…" : "Subastar"}
+        </button>
+      )}
+      {p.status === "active" && !p.currentBidderId && onSaltar && (
         <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={saltando} onClick={onSaltar}>
           {saltando ? "…" : "Saltar"}
         </button>
@@ -65,11 +71,10 @@ export default function SellerShowPage() {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
 
-  const [agregando, setAgregando] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
   const [incremento, setIncremento] = useState("1");
-  const [timer, setTimer] = useState("30");
+  const [timer, setTimer] = useState("1"); // minutos
   const [fotos, setFotos] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLDivElement>(null);
@@ -79,10 +84,17 @@ export default function SellerShowPage() {
 
   useEffect(() => {
     const u1 = onSnapshot(doc(db, "shows", showId), s => { if (s.exists()) setShow({ id: s.id, ...s.data() }); });
-    // Las subastas del show viven en /auctions con mode:"live"
+    // Las subastas del show viven en /auctions con mode:"live". Filtramos
+    // solo por showId (índice de un campo, que Firestore crea solo) y
+    // ordenamos por sortOrder en el cliente: la cola es pequeña y así no
+    // dependemos de un índice compuesto que tarda en construirse.
     const u2 = onSnapshot(
-      query(collection(db, "auctions"), where("showId", "==", showId), orderBy("sortOrder", "asc")),
-      s => setProductos(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+      query(collection(db, "auctions"), where("showId", "==", showId)),
+      s => setProductos(
+        s.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      ),
       e => setAviso({ tipo: "bad", texto: `No se pudo cargar la cola (${e.code})` }));
     return () => { u1(); u2(); };
   }, [showId]);
@@ -129,22 +141,52 @@ export default function SellerShowPage() {
     setOcupado("add");
     try {
       const p = parseFloat(precio);
-      await addDoc(collection(db, "auctions"), {
+      const ref = await addDoc(collection(db, "auctions"), {
         mode: "live", showId,
         sellerId: profile.uid, sellerName: profile.displayName ?? "Vendedor",
         title: titulo.trim(), description: "",
         startingPriceUsd: p, currentBidUsd: p, minIncrementUsd: parseFloat(incremento),
-        timerSeconds: parseInt(timer),
+        timerSeconds: Math.max(1, parseInt(timer) || 1) * 60,
         status: "waiting", sortOrder: productos.length,
         bidsCount: 0, currentBidderId: null, winnerId: null, orderId: null,
         imageURL: fotos[0] ?? null, imageURLs: fotos,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-      setTitulo(""); setPrecio(""); setFotos([]); setAgregando(false);
-      avisar("ok", "Agregada a la cola");
+      setTitulo(""); setPrecio(""); setFotos([]);
+      // En vivo y sin nada subastándose → arranca este al instante.
+      if (show?.status === "live" && !productos.some(p => p.status === "active")) {
+        await httpsCallable(functions, "presentAuction")({ showId, auctionId: ref.id });
+        avisar("ok", "¡Subastando!");
+      } else {
+        avisar("ok", "Agregado a la cola");
+      }
     } catch (e: any) {
       avisar("bad", e?.message ?? "No se pudo agregar");
     } finally { setOcupado(null); }
+  };
+
+  // Poner en vivo un artículo que estaba en cola (cuando el anterior cerró).
+  const presentar = async (auctionId: string) => {
+    setOcupado(`present_${auctionId}`);
+    try {
+      await httpsCallable(functions, "presentAuction")({ showId, auctionId });
+    } catch (e: any) {
+      avisar("bad", e?.message ?? "No se pudo subastar");
+    } finally { setOcupado(null); }
+  };
+
+  // Invitar gente: comparte el link del show (WhatsApp/redes) o lo copia.
+  const compartir = async () => {
+    const url = `${window.location.origin}/shows/${showId}`;
+    const texto = `🔴 Estoy EN VIVO rematando en ${BRAND.name}. ¡Entra a pujar! ${url}`;
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title: `${BRAND.name} — En vivo`, text: texto, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        avisar("ok", "Link copiado — mándaselo a tu gente");
+      }
+    } catch { /* el usuario canceló el compartir */ }
   };
 
   if (!show) {
@@ -152,9 +194,11 @@ export default function SellerShowPage() {
   }
 
   const enVivo = show.status === "live";
-  const enCola = productos.filter(p => p.status === "waiting").length;
+  const waiting = productos.filter(p => p.status === "waiting");
+  const activa = productos.find(p => p.status === "active");
   const vendidas = productos.filter(p => p.status === "sold").length;
-  const puedeIniciar = ["scheduled", "draft"].includes(show.status) && enCola > 0;
+  // Ya no exige cola: se sale en vivo y se agrega en el momento.
+  const puedeIniciar = ["scheduled", "draft"].includes(show.status);
 
   return (
     <div className="lv-app">
@@ -166,6 +210,9 @@ export default function SellerShowPage() {
           <h1 className="lv-topbar__title" style={{ fontSize: "1rem" }}>{show.title}</h1>
           <div className="lv-dim" style={{ fontSize: "0.7rem" }}>{show.viewerCount ?? 0} viendo</div>
         </div>
+        <button className="lv-icon-btn" onClick={compartir} aria-label="Invitar gente">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
         {enVivo && <span className="lv-badge lv-badge--live"><i className="lv-dot"/> EN VIVO</span>}
       </header>
 
@@ -176,6 +223,11 @@ export default function SellerShowPage() {
         {enVivo && (
           <div style={{ position: "relative", aspectRatio: "16 / 10", borderRadius: 14, overflow: "hidden", background: "#000" }}>
             <div ref={videoRef} style={{ position: "absolute", inset: 0 }}/>
+            {agora.joined && (
+              <span className="lv-badge lv-badge--live" style={{ position: "absolute", top: 10, left: 10, background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(6px)" }}>
+                <i className="lv-dot"/> Transmitiendo · te ven
+              </span>
+            )}
             {!agora.joined && (
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "rgba(255,255,255,0.5)", fontSize: "0.8rem", textAlign: "center", padding: "0 24px" }}>
                 {agora.loading ? "Conectando cámara…" : agora.error ? agora.error : "Cámara desconectada"}
@@ -208,102 +260,107 @@ export default function SellerShowPage() {
           </div>
         )}
 
-        {/* Métricas */}
-        <div className="lv-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {[["En cola", enCola], ["Vendidas", vendidas], ["Viendo", show.viewerCount ?? 0]].map(([l, v]) => (
-            <div key={String(l)} className="lv-panel" style={{ padding: "13px 12px", textAlign: "center" }}>
-              <div className="lv-price" style={{ fontSize: "1.25rem" }}>{v}</div>
-              <div className="lv-eyebrow" style={{ marginTop: 2 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Control */}
-        {enVivo ? (
-          <div style={{ display: "grid", gap: 10 }}>
-            <button className="lv-btn lv-btn--soft lv-btn--block" onClick={() => router.push(`/shows/${showId}`)}>
-              Ver el show como lo ve la gente
-            </button>
-            <button className="lv-btn lv-btn--danger lv-btn--block lv-btn--lg" disabled={ocupado === "end"} onClick={terminar}>
-              {ocupado === "end" ? "Terminando…" : "Terminar show"}
-            </button>
+        {enVivo && agora.joined && (
+          <div className="lv-dim" style={{ fontSize: "0.72rem", textAlign: "center", lineHeight: 1.45, marginTop: -6 }}>
+            ¿Se ve negro aquí? Es normal en el teléfono — <strong style={{ color: "var(--ink-2)" }}>tu público sí te está viendo</strong>.
           </div>
-        ) : show.status === "ended" ? (
-          <div className="lv-note">Este show ya terminó.</div>
-        ) : (
-          <>
-            {enCola === 0 && (
-              <div className="lv-note lv-note--warn">
-                Agrega al menos una subasta a la cola antes de salir en vivo.
-              </div>
-            )}
-            <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={!puedeIniciar || ocupado === "start"} onClick={iniciar}>
-              {ocupado === "start" ? "Iniciando…" : "Salir en vivo"}
-            </button>
-          </>
         )}
 
-        {/* Cola */}
-        <section className="lv-panel" style={{ padding: "2px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
-            <span className="lv-eyebrow">Cola de subastas</span>
-            {show.status !== "ended" && (
-              <button className="lv-btn lv-btn--soft lv-btn--sm" onClick={() => setAgregando(a => !a)}>
-                {agregando ? "Cerrar" : "Agregar"}
-              </button>
-            )}
-          </div>
-
-          {productos.length === 0 && !agregando && (
-            <p className="lv-dim" style={{ fontSize: "0.82rem", padding: "6px 0 16px" }}>
-              Todavía no hay nada en la cola.
+        {show.status === "ended" ? (
+          <div className="lv-note">Este show ya terminó.</div>
+        ) : !enVivo ? (
+          /* ── Antes de salir en vivo ── */
+          <section className="lv-panel" style={{ textAlign: "center", padding: "24px 18px" }}>
+            <div style={{ fontFamily: "var(--f-display)", fontSize: "1.4rem", textTransform: "uppercase", lineHeight: 1.05 }}>Todo listo</div>
+            <p className="lv-dim" style={{ fontSize: "0.86rem", lineHeight: 1.5, margin: "9px 0 18px" }}>
+              Sal en vivo y ve agregando lo que vendes, uno por uno.{waiting.length > 0 ? ` Tienes ${waiting.length} en cola.` : ""}
             </p>
-          )}
-
-          {productos.map(p => (
-            <FilaProducto
-              key={p.id}
-              p={p}
-              saltando={ocupado === `skip_${p.id}`}
-              onSaltar={() => saltar(p.id)}
-            />
-          ))}
-        </section>
-
-        {/* Alta rápida */}
-        {agregando && (
-          <section className="lv-panel">
-            <div className="lv-eyebrow" style={{ marginBottom: 10 }}>Nueva subasta</div>
-
-            <div className="lv-field">
-              <span className="lv-field__label">Fotos</span>
-              <ImageUploader images={fotos} onChange={setFotos} path={`products/${profile?.uid ?? "anon"}`} max={5}/>
-            </div>
-
-            <div className="lv-field">
-              <label className="lv-field__label" htmlFor="t">Producto</label>
-              <input id="t" className="lv-input" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Nombre del producto"/>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-              <div className="lv-field">
-                <label className="lv-field__label" htmlFor="p">Precio</label>
-                <input id="p" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="10"/>
-              </div>
-              <div className="lv-field">
-                <label className="lv-field__label" htmlFor="i">Incremento</label>
-                <input id="i" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={incremento} onChange={e => setIncremento(e.target.value)}/>
-              </div>
-              <div className="lv-field">
-                <label className="lv-field__label" htmlFor="s">Timer (s)</label>
-                <input id="s" className="lv-input" type="number" inputMode="numeric" min="10" step="5" value={timer} onChange={e => setTimer(e.target.value)}/>
-              </div>
-            </div>
-
-            <button className="lv-btn lv-btn--accent lv-btn--block" disabled={ocupado === "add" || !titulo.trim() || !precio} onClick={agregar}>
-              {ocupado === "add" ? "Agregando…" : "Agregar a la cola"}
+            <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={!puedeIniciar || ocupado === "start"} onClick={iniciar}>
+              {ocupado === "start" ? "Saliendo…" : "Salir en vivo"}
             </button>
           </section>
+        ) : (
+          /* ── En vivo: agrega y vende uno por uno ── */
+          <>
+            {activa ? (
+              <section className="lv-panel" style={{ padding: "2px 16px", boxShadow: "inset 0 0 0 2px var(--accent)" }}>
+                <div className="lv-eyebrow" style={{ padding: "12px 0 2px", color: "var(--accent-strong)" }}>Subastando ahora</div>
+                <FilaProducto p={activa} saltando={ocupado === `skip_${activa.id}`} onSaltar={() => saltar(activa.id)}/>
+              </section>
+            ) : (
+              <div className="lv-note lv-note--warn">Nada en subasta. Agrega un artículo abajo y sale al instante.</div>
+            )}
+
+            {/* Agregar lo que vendes — rápido: nombre, precio y minutos */}
+            <section className="lv-panel">
+              <div className="lv-eyebrow" style={{ marginBottom: 10 }}>{activa ? "Preparar el siguiente" : "¿Qué vas a vender?"}</div>
+
+              <div className="lv-field">
+                <input id="t" className="lv-input" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="¿Qué vendes? Ej: Proyector portátil" style={{ fontSize: "1rem", fontWeight: 600 }}/>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                <div className="lv-field" style={{ marginBottom: 0 }}>
+                  <label className="lv-field__label" htmlFor="p">Precio inicial</label>
+                  <input id="p" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="$10"/>
+                </div>
+                <div className="lv-field" style={{ marginBottom: 0 }}>
+                  <label className="lv-field__label" htmlFor="i">Sube de</label>
+                  <input id="i" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={incremento} onChange={e => setIncremento(e.target.value)} placeholder="$1"/>
+                </div>
+              </div>
+
+              {/* Duración en minutos con selector rápido */}
+              <div className="lv-field">
+                <span className="lv-field__label">¿Cuánto dura?</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button type="button" aria-label="menos" onClick={() => setTimer(t => String(Math.max(1, (parseInt(t) || 1) - 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>−</button>
+                  <div style={{ flex: 1, textAlign: "center", fontWeight: 800, fontSize: "1.1rem" }}>{parseInt(timer) || 1} min</div>
+                  <button type="button" aria-label="más" onClick={() => setTimer(t => String(Math.min(30, (parseInt(t) || 1) + 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>+</button>
+                </div>
+              </div>
+
+              <div className="lv-field">
+                <span className="lv-field__label">Foto <span className="lv-dim" style={{ fontWeight: 400 }}>· opcional, hace que se vea brutal en el feed</span></span>
+                <ImageUploader images={fotos} onChange={setFotos} path={`products/${profile?.uid ?? "anon"}`} max={3}/>
+              </div>
+
+              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado === "add" || !titulo.trim() || !precio} onClick={agregar}>
+                {ocupado === "add" ? "Un momento…" : activa ? "Agregar a la cola" : "Subastar ahora"}
+              </button>
+            </section>
+
+            {/* En cola */}
+            {waiting.length > 0 && (
+              <section className="lv-panel" style={{ padding: "2px 16px" }}>
+                <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>En cola · {waiting.length}</div>
+                {waiting.map(p => (
+                  <FilaProducto
+                    key={p.id}
+                    p={p}
+                    onPresentar={!activa ? () => presentar(p.id) : undefined}
+                    presentando={ocupado === `present_${p.id}`}
+                  />
+                ))}
+              </section>
+            )}
+
+            <button className="lv-btn lv-btn--block" onClick={compartir} style={{ background: "var(--accent-tint)", color: "var(--accent-strong)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+              Invitar gente al vivo
+            </button>
+            <button className="lv-btn lv-btn--soft lv-btn--block" onClick={() => router.push(`/shows/${showId}`)}>
+              Ver como lo ve la gente{vendidas > 0 ? ` · ${vendidas} vendidas` : ""}
+            </button>
+            {activa?.currentBidderId && (
+              <div className="lv-note lv-note--warn" style={{ fontSize: "0.8rem" }}>
+                No puedes terminar mientras “{activa.title}” tiene pujas. Espera a que cierre — son segundos.
+              </div>
+            )}
+            <button className="lv-btn lv-btn--danger lv-btn--block" disabled={ocupado === "end" || !!activa?.currentBidderId} onClick={terminar}>
+              {ocupado === "end" ? "Terminando…" : "Terminar show"}
+            </button>
+          </>
         )}
       </div>
     </div>

@@ -105,9 +105,21 @@ export default function AccountPage() {
 
         {/* Vender */}
         {profile.sellerStatus === "approved" ? (
-          <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => router.push("/seller")}>
-            Panel de vendedor
-          </button>
+          <>
+            <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => router.push("/seller")}>
+              Panel de vendedor
+            </button>
+            <button className="lv-panel" onClick={() => router.push("/ventas")} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%" }}>
+              <span className="lv-avatar" style={{ background: "var(--accent-tint)", color: "var(--accent-strong)", borderRadius: 11 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z"/></svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.9rem", fontWeight: 750 }}>Mis ventas</div>
+                <div className="lv-dim" style={{ fontSize: "0.74rem" }}>Quién compró qué · pagos y envíos</div>
+              </div>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </>
         ) : (
           <section className="lv-panel">
             <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 4 }}>{`¿Quieres vender en ${BRAND.name}?`}</div>

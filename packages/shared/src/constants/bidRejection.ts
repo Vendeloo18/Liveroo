@@ -8,6 +8,7 @@ export const MOTIVO_RECHAZO: Record<string, string> = {
   own_bid: "Ya vas ganando esta subasta.",
   show_not_live: "El show no está transmitiendo.",
   insufficient_funds: "Saldo insuficiente. Recarga tu billetera para pujar.",
+  es_muestra: "Esta es una subasta de muestra, solo para explorar. No se puede pujar.",
   not_found: "No encontramos esta subasta.",
   race_condition: "No pudimos procesar la puja. Intenta de nuevo.",
 };

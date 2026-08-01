@@ -56,11 +56,15 @@ service cloud.firestore {
       allow get: if isSignedIn() && (uid() == userId || isAdmin());
       allow list: if isAdmin();
 
-      // Al registrarse nadie nace vendedor ni admin
+      // Al registrarse nadie nace vendedor ni admin, y nadie se inventa
+      // reputación: las métricas las escribe solo el motor.
       allow create: if isSignedIn()
         && uid() == userId
         && request.resource.data.role == 'buyer'
-        && request.resource.data.sellerStatus == 'none';
+        && request.resource.data.sellerStatus == 'none'
+        && !request.resource.data.keys().hasAny(
+             ['ratingAvg', 'ratingCount', 'totalSales', 'totalPurchases']
+           );
 
       // El rol, el estado de vendedor y las métricas las mueve el motor
       allow update: if (isSignedIn()
@@ -117,10 +121,13 @@ service cloud.firestore {
         && request.resource.data.winnerId == null
         && request.resource.data.orderId == null
         && (
-          // En vivo: nace en cola; la activa el motor cuando le toca
+          // En vivo: nace en cola, y SOLO en un show del propio vendedor.
+          // Sin el get, cualquier vendedor podía colar su producto en el
+          // show de otro y el motor lo subastaba ahí.
           (request.resource.data.mode == 'live'
             && request.resource.data.status == 'waiting'
-            && request.resource.data.showId is string)
+            && request.resource.data.showId is string
+            && get(/databases/$(database)/documents/shows/$(request.resource.data.showId)).data.sellerId == uid())
           ||
           // Suelta: nace activa y con fecha de cierre en el futuro
           (request.resource.data.mode == 'standalone'
@@ -201,11 +208,16 @@ service cloud.firestore {
              'scheduledAt', 'updatedAt'
            ])
       ) || (
-        // Contador de espectadores: solo suma de uno en uno. Es una
-        // métrica de vanidad; si se vuelve importante, la mueve una Function.
+        // Contador de espectadores: de uno en uno, sube al entrar y baja
+        // al salir (nunca bajo cero). Es una métrica de vanidad; si se
+        // vuelve importante, la mueve una Function con presencia real.
         isSignedIn()
         && onlyChanges(['viewerCount'])
-        && request.resource.data.viewerCount == resource.data.viewerCount + 1
+        && (
+          request.resource.data.viewerCount == resource.data.viewerCount + 1
+          || (request.resource.data.viewerCount == resource.data.viewerCount - 1
+              && resource.data.viewerCount > 0)
+        )
       );
 
       allow delete: if isApprovedSeller()
@@ -218,6 +230,9 @@ service cloud.firestore {
 
         allow create: if isSignedIn()
           && request.resource.data.authorId == uid()
+          // El nombre que se muestra es el del perfil real: sin esto se
+          // podía chatear suplantando a cualquiera con authorId propio.
+          && request.resource.data.authorName == get(/databases/$(database)/documents/users/$(uid())).data.displayName
           && request.resource.data.type == 'chat'
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
@@ -227,6 +242,13 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isAdmin()
           || get(/databases/$(database)/documents/shows/$(showId)).data.sellerId == uid();
+      }
+
+      // Reacciones: solo por sendReaction, que valida el show, el emoji y
+      // aplica límite de frecuencia. cleanupOldReactions las elimina luego.
+      match /reactions/{reactionId} {
+        allow read: if true;
+        allow write: if false;
       }
     }
 
@@ -243,33 +265,19 @@ service cloud.firestore {
 
       allow create: if false;
 
-      // El ciclo de una orden va: pending_payment → payment_confirmed →
-      // shipped → delivered. El vendedor mueve los tres primeros pasos;
-      // el último lo da el comprador, porque es el único que sabe si le
-      // llegó. Ese paso es además el que habilita la calificación.
+      // El ciclo (pending_payment → payment_confirmed → shipped →
+      // delivered) lo mueve SOLO la función advanceOrder, que valida la
+      // transición de origen. Antes las reglas validaban el destino y un
+      // vendedor podía saltar a 'shipped', devolver una entregada o
+      // cancelar una pagada. El cliente solo toca metadatos sin estado.
       allow update: if isSignedIn() && (
-        // El vendedor confirma el pago y despacha
+        // El vendedor anota el tracking o marca el mensaje enviado
         (resource.data.sellerId == uid()
-          && onlyChanges([
-               'status', 'paymentMethod', 'paymentReference',
-               'paymentConfirmedAt', 'paymentConfirmedBy',
-               'whatsappMessageSent', 'trackingCode', 'shippedAt', 'updatedAt'
-             ])
-          && request.resource.data.status in
-             ['pending_payment', 'payment_confirmed', 'shipped', 'cancelled']
-          && unchanged('bidAmountUsd')
-          && unchanged('commissionUsd'))
+          && onlyChanges(['whatsappMessageSent', 'trackingCode', 'updatedAt']))
         ||
         // El comprador deja su contacto
         (resource.data.buyerId == uid()
           && onlyChanges(['buyerWhatsapp', 'updatedAt']))
-        ||
-        // El comprador confirma que recibió: solo desde 'shipped', y solo
-        // hacia 'delivered'. No puede saltarse pasos ni devolverse.
-        (resource.data.buyerId == uid()
-          && onlyChanges(['status', 'deliveredAt', 'updatedAt'])
-          && resource.data.status == 'shipped'
-          && request.resource.data.status == 'delivered')
         ||
         isAdmin()
       );
@@ -282,14 +290,11 @@ service cloud.firestore {
     match /ratings/{ratingId} {
       allow read: if true;
 
-      // Nombres de campo según onRatingCreated: toUid + score
-      allow create: if isSignedIn()
-        && request.resource.data.fromUid == uid()
-        && request.resource.data.score is int
-        && request.resource.data.score >= 1
-        && request.resource.data.score <= 5
-        && request.resource.data.toUid is string
-        && request.resource.data.toUid != uid();
+      // Las crea SOLO la función submitRating: exige orden entregada, que
+      // el autor sea el comprador y una única calificación por orden (el
+      // ID del rating es el orderId). Antes cualquier usuario podía crear
+      // ratings ilimitados a cualquier UID y inflar o hundir reputaciones.
+      allow create: if false;
 
       allow update, delete: if false;
     }
@@ -297,10 +302,12 @@ service cloud.firestore {
     // ── Configuración — pública para leer, admin vía Function ───
 
     match /config/{docId} {
-      allow read: if true;
-      // paymentAccounts (cuentas de recarga que ve el que deposita) y
-      // wallet (interruptor "pujar exige saldo") los edita el admin desde
-      // el panel. commission sigue moviéndose solo por Function.
+      // paymentAccounts trae teléfono, cédula y correo de Zelle: eso no
+      // se le muestra a internet entera, solo a quien tiene sesión (el
+      // que va a recargar). El resto de la config sí es pública.
+      allow read: if docId != 'paymentAccounts' || isSignedIn();
+      // paymentAccounts y wallet (interruptor "pujar exige saldo") los
+      // edita el admin desde el panel. commission solo por Function.
       allow write: if isAdmin() && docId in ["paymentAccounts", "wallet"];
     }
 
@@ -326,6 +333,13 @@ service cloud.firestore {
     // (pago móvil, Zelle…) y el admin decide por manageDeposit, que
     // acredita en la misma transacción. La solicitud no se puede editar
     // ni borrar después de creada: es la constancia de ambas partes.
+    // ── /sellerPayouts — liquidaciones de la plataforma al vendedor ──
+    // Las escribe solo markSellerPaid. El vendedor ve las suyas.
+    match /sellerPayouts/{payoutId} {
+      allow read: if isSignedIn() && (resource.data.sellerId == uid() || isAdmin());
+      allow write: if false;
+    }
+
     match /deposits/{depositId} {
       allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
 

@@ -5,10 +5,15 @@ import {
   doc, collection, query, orderBy, limit, onSnapshot, addDoc,
   serverTimestamp, getDoc, updateDoc, increment,
 } from "firebase/firestore";
-import { db } from "../../../lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
 import { useAgora } from "../../../hooks/useAgora";
 import { useCountdown } from "../../../hooks/useCountdown";
+import { useWallet } from "../../../hooks/useWallet";
+import { Confetti } from "../../../components/ui/Confetti";
+import { SlideToBid } from "../../../components/ui/SlideToBid";
+import { BidAmount, VasGanandoPill, TeSuperaronBanner } from "../../../components/ui/BidBar";
 import { formatUsd, formatBs, calcMinNextBid, MOTIVO_RECHAZO } from "@subastas-ve/shared";
 
 interface Show {
@@ -20,7 +25,10 @@ interface Subasta {
   minIncrementUsd: number; status?: string; endsAt?: any;
   currentBidderName?: string; currentBidderId?: string; bidsCount?: number;
 }
-interface Mensaje { id: string; authorName?: string; text?: string; type?: string; createdAt?: any }
+interface Mensaje { id: string; authorName?: string; text?: string; type?: string; createdAt?: any; winnerName?: string; productTitle?: string }
+interface Corazon { id: number; x: number; hue: number; emoji: string }
+
+const EMOJIS = ["❤️", "🔥", "😂", "👏"];
 
 export default function ShowPage() {
   const { showId } = useParams() as { showId: string };
@@ -37,7 +45,16 @@ export default function ShowPage() {
   const [error, setError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [celebra, setCelebra] = useState<{ name: string; product: string } | null>(null);
+  const [corazones, setCorazones] = useState<Corazon[]>([]);
+  const [menuReacciones, setMenuReacciones] = useState(false);
+  const [superado, setSuperado] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
+  const celebradoRef = useRef<string | null>(null);
+  const ultimoCorazon = useRef(0);
+  const eraLider = useRef(false);
+  const itemRef = useRef<string | undefined>(undefined);
   const chatRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLDivElement>(null);
@@ -45,6 +62,7 @@ export default function ShowPage() {
   const esHost = !!show?.sellerId && show.sellerId === profile?.uid;
   const agora = useAgora(showId, esHost ? "host" : "audience");
   const { texto: cuenta, urgente, vencida } = useCountdown(subasta?.endsAt);
+  const { disponible, exigeSaldo } = useWallet();
 
   useEffect(() => {
     getDoc(doc(db, "exchangeRates", "current"))
@@ -54,8 +72,15 @@ export default function ShowPage() {
 
   useEffect(() => {
     const ref = doc(db, "shows", showId);
+    // Entra +1, sale −1 (las reglas no dejan bajar de cero). Es mejor
+    // esfuerzo: si el navegador muere sin cleanup, el conteo queda alto
+    // hasta que otro ciclo lo compense.
     updateDoc(ref, { viewerCount: increment(1) }).catch(() => undefined);
-    return onSnapshot(ref, s => { if (s.exists()) setShow({ id: s.id, ...s.data() } as Show); });
+    const unsub = onSnapshot(ref, s => { if (s.exists()) setShow({ id: s.id, ...s.data() } as Show); });
+    return () => {
+      unsub();
+      updateDoc(ref, { viewerCount: increment(-1) }).catch(() => undefined);
+    };
   }, [showId]);
 
   useEffect(() => {
@@ -77,7 +102,7 @@ export default function ShowPage() {
       if (!s.exists()) return;
       const a = { id: s.id, ...s.data() } as Subasta;
       setSubasta(a);
-      setBidInput(calcMinNextBid(a.currentBidUsd, a.minIncrementUsd).toFixed(2));
+      setBidInput(calcMinNextBid(a.currentBidUsd, a.minIncrementUsd, (a.bidsCount ?? 0) > 0).toFixed(2));
     });
   }, [show?.currentAuctionId]);
 
@@ -90,12 +115,65 @@ export default function ShowPage() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [mensajes]);
 
-  const pujar = async () => {
+  // Corazones que mandan otros: animarlos también (no los propios, que ya se
+  // animaron al instante). Se ignora la primera carga para no soltar viejos.
+  useEffect(() => {
+    const q = query(collection(db, "shows", showId, "reactions"), orderBy("createdAt", "desc"), limit(15));
+    let primera = true;
+    return onSnapshot(q, snap => {
+      if (primera) { primera = false; return; }
+      snap.docChanges().forEach(ch => {
+        if (ch.type === "added" && ch.doc.data().authorId !== profile?.uid) soltarCorazon(ch.doc.data().emoji ?? "❤️");
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showId, profile?.uid]);
+
+  // "Te superaron": ibas ganando y otro pasó por encima. Reinicia al cambiar
+  // de artículo. Dispara el aviso con re-puja de un toque.
+  useEffect(() => {
+    if (!subasta || !profile) { itemRef.current = undefined; eraLider.current = false; setSuperado(false); return; }
+    if (subasta.id !== itemRef.current) {
+      itemRef.current = subasta.id;
+      eraLider.current = subasta.currentBidderId === profile.uid;
+      setSuperado(false);
+      return;
+    }
+    const lider = subasta.currentBidderId;
+    if (lider === profile.uid) { eraLider.current = true; setSuperado(false); }
+    else if (eraLider.current && lider && subasta.status === "active") { setSuperado(true); eraLider.current = false; }
+  }, [subasta?.id, subasta?.currentBidderId, subasta?.status, profile?.uid]);
+
+  // El menú de reacciones se cierra solo tras unos segundos.
+  useEffect(() => {
+    if (!menuReacciones) return;
+    const t = setTimeout(() => setMenuReacciones(false), 4500);
+    return () => clearTimeout(t);
+  }, [menuReacciones]);
+
+  // Confetti + nombre del ganador cuando cierra una subasta (mensaje reciente).
+  useEffect(() => {
+    for (let i = mensajes.length - 1; i >= 0; i--) {
+      const m = mensajes[i];
+      if (m.type !== "auction_won") continue;
+      if (m.id !== celebradoRef.current) {
+        celebradoRef.current = m.id;
+        const ts = m.createdAt?.toMillis?.() ?? 0;
+        if (m.winnerName && Date.now() - ts < 20000) {
+          setCelebra({ name: m.winnerName, product: m.productTitle ?? "" });
+          setTimeout(() => setCelebra(null), 5200);
+        }
+      }
+      break;
+    }
+  }, [mensajes]);
+
+  const pujar = async (montoArg?: number) => {
     if (!subasta) return;
     if (!profile) { router.push("/login"); return; }
 
-    const monto = parseFloat(bidInput);
-    const minimo = calcMinNextBid(subasta.currentBidUsd, subasta.minIncrementUsd);
+    const minimo = calcMinNextBid(subasta.currentBidUsd, subasta.minIncrementUsd, (subasta.bidsCount ?? 0) > 0);
+    const monto = montoArg ?? parseFloat(bidInput);
     if (!isFinite(monto) || monto < minimo) {
       setError(`Mínimo ${formatUsd(minimo)}`);
       setEstado("err");
@@ -103,6 +181,7 @@ export default function ShowPage() {
       return;
     }
 
+    setSuperado(false); // vuelvo a la carga: quito el aviso de "te superaron"
     setEstado("pending");
     setError(null);
     try {
@@ -137,9 +216,41 @@ export default function ShowPage() {
     }).catch(() => setChatInput(texto));
   };
 
+  // ── Reacciones (corazones y emojis) ──
+  const soltarCorazon = (emoji = "❤️") => {
+    const id = Date.now() + Math.random();
+    setCorazones(c => [...c.slice(-28), { id, x: Math.random() * 46, hue: Math.random(), emoji }]);
+    setTimeout(() => setCorazones(c => c.filter(h => h.id !== id)), 2800);
+  };
+
+  const mandarReaccion = (emoji: string) => {
+    soltarCorazon(emoji); // respuesta inmediata en tu pantalla
+    const ahora = Date.now();
+    if (profile && ahora - ultimoCorazon.current > 300) {
+      ultimoCorazon.current = ahora;
+      httpsCallable(functions, "sendReaction")({ showId, emoji }).catch(() => undefined);
+    }
+  };
+
+  // Invitar: compartir el link del vivo (WhatsApp/redes) o copiarlo.
+  const compartir = async () => {
+    const url = `${window.location.origin}/shows/${showId}`;
+    const texto = `🔴 ${show?.sellerName ?? "Un vendedor"} está EN VIVO en Vendeloo. ¡Entra a pujar! ${url}`;
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title: "Vendeloo — En vivo", text: texto, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 2200);
+      }
+    } catch { /* el usuario canceló */ }
+  };
+
   const voyGanando = !!profile && subasta?.currentBidderId === profile.uid;
   const activa = subasta?.status === "active" && !vencida;
-  const minimo = subasta ? calcMinNextBid(subasta.currentBidUsd, subasta.minIncrementUsd) : 0;
+  const minimo = subasta ? calcMinNextBid(subasta.currentBidUsd, subasta.minIncrementUsd, (subasta.bidsCount ?? 0) > 0) : 0;
+  const saldoCorto = exigeSaldo && !!profile && !voyGanando && disponible < minimo;
 
   const colorMensaje = (t?: string) =>
     t === "bid_placed" ? "var(--accent)"
@@ -206,6 +317,9 @@ export default function ShowPage() {
 
         <div style={{ flex: 1 }}/>
 
+        <button onClick={compartir} aria-label="Invitar" style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        </button>
         {show?.status === "live" && (
           <span className="lv-badge lv-badge--live"><i className="lv-dot"/> EN VIVO</span>
         )}
@@ -213,6 +327,14 @@ export default function ShowPage() {
           {show?.viewerCount ?? 0}
         </span>
       </div>
+
+      {copiado && (
+        <div style={{ position: "absolute", top: 60, left: 0, right: 0, zIndex: 20, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+          <span style={{ background: "rgba(0,0,0,0.8)", color: "#fff", borderRadius: 999, padding: "8px 16px", fontSize: "0.8rem", fontWeight: 700 }}>
+            Link copiado ✓
+          </span>
+        </div>
+      )}
 
       <div style={{ flex: 1 }}/>
 
@@ -258,9 +380,9 @@ export default function ShowPage() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: voyGanando || superado ? 800 : 400, color: voyGanando ? "#4ade80" : superado ? "#ff6b6b" : "rgba(255,255,255,0.55)", marginTop: 2 }}>
                   {subasta.currentBidderName
-                    ? `${voyGanando ? "Vas ganando" : `Va ganando ${subasta.currentBidderName}`}`
+                    ? (voyGanando ? "✓ Vas ganando" : superado ? "Te superaron" : `Va ganando ${subasta.currentBidderName}`)
                     : "Nadie ha pujado"}
                 </div>
               </div>
@@ -297,26 +419,45 @@ export default function ShowPage() {
       <div style={{ position: "relative", zIndex: 3, padding: "0 14px calc(14px + env(safe-area-inset-bottom))" }}>
 
         {activa && !esHost && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 9 }}>
-            <input
-              type="number" inputMode="decimal" step={subasta?.minIncrementUsd} min={minimo}
-              value={bidInput} onChange={e => setBidInput(e.target.value)}
-              aria-label="Monto de tu puja"
-              style={{
-                width: 96, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.16)", borderRadius: 12, padding: "0 12px",
-                height: 48, color: "#fff", fontSize: "1rem", fontWeight: 800, outline: "none",
-              }}
-            />
-            <button
-              onClick={pujar}
-              disabled={estado === "pending" || voyGanando}
-              className="lv-btn lv-btn--accent"
-              style={{ flex: 1, height: 48, opacity: voyGanando ? 0.55 : 1 }}
-            >
-              {estado === "pending" ? "Validando…" : voyGanando ? "Vas ganando" : `Pujar ${formatUsd(minimo)}`}
-            </button>
-          </div>
+          <>
+            {superado && !voyGanando && <TeSuperaronBanner/>}
+            {exigeSaldo && profile && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, color: "rgba(255,255,255,0.72)", fontSize: "0.76rem" }}>
+                <span>
+                  Saldo disponible: <strong style={{ color: saldoCorto ? "#ff6b6b" : "#fff" }}>{formatUsd(disponible)}</strong>
+                </span>
+                <button
+                  onClick={() => router.push("/wallet")}
+                  style={{ color: "#fff", fontWeight: 800, textDecoration: "underline", textUnderlineOffset: 3 }}
+                >
+                  Recargar
+                </button>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginBottom: 9, alignItems: "center" }}>
+              <BidAmount dark value={bidInput} onChange={setBidInput} step={subasta?.minIncrementUsd} min={minimo} disabled={voyGanando}/>
+              <div style={{ flex: 1 }}>
+                {voyGanando ? (
+                  <VasGanandoPill/>
+                ) : saldoCorto ? (
+                  <button
+                    onClick={() => router.push("/wallet")}
+                    className="lv-btn lv-btn--accent"
+                    style={{ width: "100%", height: 48, borderRadius: 999 }}
+                  >
+                    Recargar para pujar
+                  </button>
+                ) : (
+                  <SlideToBid
+                    label={estado === "pending" ? "Validando…" : `Puja ${formatUsd(parseFloat(bidInput) || minimo)}`}
+                    color={superado ? "var(--error)" : "var(--accent)"}
+                    disabled={estado === "pending"}
+                    onConfirm={() => pujar(parseFloat(bidInput) || minimo)}
+                  />
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -334,6 +475,30 @@ export default function ShowPage() {
               padding: "0 16px", height: 44, color: "#fff", fontSize: "0.85rem", outline: "none",
             }}
           />
+
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {menuReacciones && (
+              <div style={{ position: "absolute", bottom: 52, right: 0, display: "flex", flexDirection: "column", gap: 7, animation: "reaccionesIn .18s ease-out" }}>
+                {EMOJIS.map(em => (
+                  <button
+                    key={em}
+                    onClick={() => mandarReaccion(em)}
+                    aria-label={`Enviar ${em}`}
+                    style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21 }}
+                  >
+                    {em}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setMenuReacciones(o => !o)}
+              aria-label="Reacciones"
+              style={{ width: 44, height: 44, borderRadius: "50%", background: menuReacciones ? "var(--accent)" : "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.16)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}
+            >
+              ❤️
+            </button>
+          </div>
 
           {esHost && agora.joined && (
             <>
@@ -361,6 +526,45 @@ export default function ShowPage() {
           )}
         </div>
       </div>
+
+      {/* ── Corazoncitos flotantes ── */}
+      <div style={{ position: "absolute", right: 8, bottom: 92, width: 72, height: 360, pointerEvents: "none", zIndex: 6, overflow: "hidden" }}>
+        {corazones.map(h => (
+          <span
+            key={h.id}
+            style={{
+              position: "absolute", bottom: 0, right: h.x, fontSize: 20 + Math.round(h.hue * 12),
+              ["--dx" as any]: `${(h.hue - 0.5) * 60}px`,
+              animation: "corazonUp 2.7s ease-out forwards",
+            }}
+          >
+            {h.emoji}
+          </span>
+        ))}
+      </div>
+
+      {/* ── Ganador: nombre + confetti ── */}
+      {celebra && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 21, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.42)", pointerEvents: "none", textAlign: "center", padding: 24 }}>
+          <Confetti/>
+          <div style={{ animation: "ganadorPop .55s cubic-bezier(.2,1.5,.4,1) both" }}>
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", margin: "0 auto" }}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21 1.18.54 2.03 2.03 2.03 3.79M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+            <div style={{ fontFamily: "var(--f-display)", fontSize: "clamp(1.9rem,9vw,2.7rem)", color: "#fff", textTransform: "uppercase", lineHeight: 1.02, marginTop: 8, textShadow: "0 3px 16px rgba(0,0,0,0.55)" }}>
+              ¡{celebra.name}<br/>ganó!
+            </div>
+            {celebra.product && (
+              <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 700, marginTop: 10, fontSize: "0.95rem" }}>{celebra.product}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes corazonUp { 0%{transform:translateY(0) scale(.5);opacity:0} 14%{opacity:1;transform:translateY(-12px) scale(1)} 100%{transform:translateY(-330px) translateX(var(--dx,12px)) scale(1.15) rotate(10deg);opacity:0} }
+        @keyframes ganadorPop { 0%{transform:scale(.3);opacity:0} 65%{opacity:1} 100%{transform:scale(1);opacity:1} }
+        @keyframes superadoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.035)} }
+        @keyframes reaccionesIn { 0%{transform:translateY(8px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+      `}</style>
     </div>
   );
 }

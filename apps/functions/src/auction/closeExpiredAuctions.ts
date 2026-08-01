@@ -78,8 +78,42 @@ export const closeExpiredAuctions = functions
     if (totalClosed > 0) {
       functions.logger.info(`Barrido: ${totalClosed} subasta(s) cerrada(s)`);
     }
+
+    await cerrarShowsZombis();
     return null;
   });
+
+// Con el modelo "vende en vivo" un show ya no se termina solo al vaciarse
+// la cola — pero si el vendedor cierra la app y lo abandona, quedaba EN
+// VIVO para siempre en el home. Un show sin subasta actual y sin actividad
+// por 45 minutos se termina de oficio.
+async function cerrarShowsZombis(): Promise<void> {
+  try {
+    const ahora = Timestamp.now();
+    const limite = Timestamp.fromMillis(ahora.toMillis() - 45 * 60_000);
+    const vivos = await db
+      .collection(COLLECTIONS.SHOWS)
+      .where("status", "==", "live")
+      .limit(20)
+      .get();
+
+    const zombis = vivos.docs.filter((d) => {
+      const s = d.data();
+      const upd = s.updatedAt as Timestamp | undefined;
+      return !s.currentAuctionId && upd && upd.toMillis() < limite.toMillis();
+    });
+    if (zombis.length === 0) return;
+
+    const lote = db.batch();
+    zombis.forEach((d) =>
+      lote.update(d.ref, { status: "ended", endedAt: ahora, updatedAt: ahora, currentAuctionId: null })
+    );
+    await lote.commit();
+    functions.logger.info(`Shows zombis terminados: ${zombis.length}`);
+  } catch (e) {
+    functions.logger.warn("cerrarShowsZombis falló", e);
+  }
+}
 
 // --------------------------------------------------
 // Cierre inmediato pedido por el cliente
@@ -220,7 +254,9 @@ async function closeOneAuction(params: {
         ? await tx.get(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`))
         : null;
 
-      // Siguiente de la cola del show (si esto es parte de un show)
+      // Siguiente de la cola del show (si esto es parte de un show).
+      // limit(5): la cola puede traer artículos ajenos colados antes del
+      // candado de dueño; advanceShow los descarta y necesita alternativas.
       const nextSnap =
         mode === "live" && showId
           ? await tx.get(
@@ -229,11 +265,33 @@ async function closeOneAuction(params: {
                 .where("showId", "==", showId)
                 .where("status", "==", "waiting")
                 .orderBy("sortOrder", "asc")
-                .limit(1)
+                .limit(5)
             )
+          : null;
+      // Dueño real del show: la vara contra la que se filtra la cola.
+      const showOwnerId =
+        mode === "live" && showId
+          ? ((await tx.get(db.doc(`${COLLECTIONS.SHOWS}/${showId}`))).data()?.sellerId as string | undefined) ?? null
           : null;
 
       // ════ A PARTIR DE AQUÍ, SOLO ESCRITURAS ════
+
+      // Vitrina demo: se puja de verdad, pero al cierre NO se cobra ni se
+      // crea orden — no existe vendedor que entregue. Se libera la
+      // retención del líder y la subasta queda sin ganador.
+      if (auction.isDemo === true) {
+        tx.update(auctionRef, { status: "unsold", endedAt: now, updatedAt: now });
+        if (hasWinner && winnerWalletSnap?.exists) {
+          const r2demo = (x: number) => Math.round(x * 100) / 100;
+          const heldDemo = r2demo((winnerWalletSnap.data()?.heldUsd as number) ?? 0);
+          tx.set(db.doc(`${COLLECTIONS.WALLETS}/${auction.currentBidderId}`), {
+            userId: auction.currentBidderId,
+            heldUsd: Math.max(0, r2demo(heldDemo - (auction.currentBidUsd as number))),
+            updatedAt: now,
+          }, { merge: true });
+        }
+        return null;
+      }
 
       if (hasWinner) {
         const finalUsd = auction.currentBidUsd as number;
@@ -301,6 +359,9 @@ async function closeOneAuction(params: {
 
         tx.set(orderRef, {
           id: orderRef.id,
+          // Número corto y legible para que comprador y vendedor se
+          // refieran a la orden ("pedido #K7X2P9") sin cantar el id largo.
+          orderNumber: orderRef.id.slice(-6).toUpperCase(),
           auctionId,
           showId,
           productTitle: auction.title ?? "",
@@ -329,6 +390,12 @@ async function closeOneAuction(params: {
           paymentReference: pagaConSaldo ? `billetera ${orderRef.id}` : null,
           paymentConfirmedAt: pagaConSaldo ? now : null,
           paymentConfirmedBy: pagaConSaldo ? "engine" : null,
+
+          // Contabilidad de beta: si pagó la billetera, la plata la tiene
+          // la PLATAFORMA y al vendedor se le debe su parte hasta que el
+          // admin lo liquide a mano (markSellerPaid).
+          payoutStatus: pagaConSaldo ? "pending" : null,
+          payoutUsd: pagaConSaldo ? Math.round((finalUsd - commissionUsd) * 100) / 100 : null,
           whatsappMessageSent: false,
 
           ratingGiven: null,
@@ -343,7 +410,8 @@ async function closeOneAuction(params: {
           writeSystemMessage(
             tx, showId,
             `🏆 ¡${auction.currentBidderName} ganó "${auction.title}" por ${formatUsd(finalUsd)}!`,
-            "auction_won", now
+            "auction_won", now,
+            { winnerName: auction.currentBidderName ?? "", productTitle: auction.title ?? "", amountUsd: finalUsd },
           );
         }
 
@@ -359,7 +427,7 @@ async function closeOneAuction(params: {
         }
 
         // Avanzar la cola del show antes de salir
-        if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, now });
+        if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, ownerId: showOwnerId, now });
 
         return {
           winnerId: auction.currentBidderId as string,
@@ -376,7 +444,7 @@ async function closeOneAuction(params: {
         writeSystemMessage(tx, showId, `❌ "${auction.title}" quedó sin ganador.`, "system", now);
       }
 
-      if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, now });
+      if (mode === "live" && showId) advanceShow({ tx, showId, nextSnap, ownerId: showOwnerId, now });
 
       return null;
     });
@@ -399,22 +467,37 @@ function advanceShow(params: {
   tx: admin.firestore.Transaction;
   showId: string;
   nextSnap: admin.firestore.QuerySnapshot | null;
+  ownerId: string | null;
   now: Timestamp;
 }) {
-  const { tx, showId, nextSnap, now } = params;
+  const { tx, showId, nextSnap, ownerId, now } = params;
   const showRef = db.doc(`${COLLECTIONS.SHOWS}/${showId}`);
 
-  if (!nextSnap || nextSnap.empty) {
+  // Solo puede subastarse lo que pertenece al dueño del show. Un artículo
+  // ajeno en la cola (colado antes del candado de reglas) se cancela aquí
+  // mismo: jamás se activa en un show que no es suyo.
+  let next: admin.firestore.QueryDocumentSnapshot | null = null;
+  for (const d of nextSnap?.docs ?? []) {
+    if (ownerId && d.data().sellerId !== ownerId) {
+      functions.logger.warn("Artículo ajeno en cola de show, cancelado", { auctionId: d.id, showId });
+      tx.update(d.ref, { status: "cancelled", endedAt: now, updatedAt: now });
+      continue;
+    }
+    next = d;
+    break;
+  }
+
+  // Cola vacía: el show SIGUE EN VIVO sin subasta actual. En el modelo
+  // "vende en vivo" el vendedor agrega el próximo artículo en el momento;
+  // terminar el show es decisión suya (endShow).
+  if (!next) {
     tx.update(showRef, {
-      status: "ended",
-      endedAt: now,
       currentAuctionId: null,
       updatedAt: now,
     });
     return;
   }
 
-  const next = nextSnap.docs[0];
   const nextData = next.data();
   const timerS = (nextData.timerSeconds as number) ?? DEFAULT_LIVE_TIMER_S;
 
@@ -440,7 +523,8 @@ function writeSystemMessage(
   showId: string,
   text: string,
   type: string,
-  now: Timestamp
+  now: Timestamp,
+  extra?: Record<string, any>,
 ) {
   const ref = db.collection(COLLECTIONS.SHOW_MESSAGES(showId)).doc();
   tx.set(ref, {
@@ -451,6 +535,7 @@ function writeSystemMessage(
     type,
     text,
     createdAt: now,
+    ...(extra ?? {}),
   });
 }
 

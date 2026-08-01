@@ -13,6 +13,42 @@ interface Props {
 // (solo imágenes, hasta 5 MB): el cliente avisa temprano, el servidor decide.
 const MAX_BYTES = 5 * 1024 * 1024;
 
+// Reencodea la foto a JPEG y limita el lado mayor a 1600px. Esto:
+//  · convierte fotos de iPhone (HEIC) a un formato que se ve en todos lados
+//  · baja el peso muy por debajo de 5 MB (las fotos de celular pesan más)
+//  · normaliza la orientación al dibujarla en el canvas
+// Si el navegador no puede decodificar el archivo, se avisa y se cae al
+// original (que el chequeo de tamaño atrapa si es muy pesado).
+async function comprimirAJpeg(file: File): Promise<Blob> {
+  const dataUrl: string = await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result as string);
+    fr.onerror = () => rej(new Error("no se pudo leer"));
+    fr.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error("no se pudo decodificar"));
+    im.src = dataUrl;
+  });
+  const MAX = 1600;
+  let { width, height } = img;
+  if (Math.max(width, height) > MAX) {
+    const s = MAX / Math.max(width, height);
+    width = Math.round(width * s);
+    height = Math.round(height * s);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("sin canvas");
+  ctx.drawImage(img, 0, 0, width, height);
+  return await new Promise((res, rej) =>
+    canvas.toBlob(b => (b ? res(b) : rej(new Error("sin blob"))), "image/jpeg", 0.85));
+}
+
 export function ImageUploader({ images, onChange, path, max = 5 }: Props) {
   const { upload, uploading, progress } = useUpload();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,17 +63,28 @@ export function ImageUploader({ images, onChange, path, max = 5 }: Props) {
 
     let acumuladas = [...images];
     for (const file of Array.from(files).slice(0, quedan)) {
-      if (!file.type.startsWith("image/")) { setError("Solo se aceptan imágenes"); continue; }
-      if (file.size > MAX_BYTES) { setError(`"${file.name}" pesa más de 5 MB`); continue; }
+      // iOS a veces manda el tipo vacío para HEIC: aceptamos también por
+      // extensión para no rechazar fotos válidas del celular.
+      const pareceImagen = file.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(file.name);
+      if (!pareceImagen) { setError("Solo se aceptan imágenes"); continue; }
       try {
-        const nombre = `${path}/${Date.now()}_${file.name.replace(/\s/g, "_")}`;
-        const url = await upload(file, nombre);
+        // Comprimir/convertir a JPEG. Si el navegador no puede, subimos el
+        // original (y ahí sí exigimos que no pase de 5 MB).
+        let dato: Blob = file;
+        try {
+          dato = await comprimirAJpeg(file);
+        } catch {
+          if (file.size > MAX_BYTES) { setError(`"${file.name}" pesa más de 5 MB. Tómale una captura o bájale la resolución.`); continue; }
+        }
+        const nombre = `${path}/${Date.now()}_foto.jpg`;
+        const url = await upload(dato, nombre);
         // Se acumula en una variable local: onChange con `images` dentro
         // del bucle perdería todas menos la última.
         acumuladas = [...acumuladas, url];
         onChange(acumuladas);
-      } catch {
-        setError("No se pudo subir la imagen");
+      } catch (e: any) {
+        // Mostrar el motivo real ayuda a diagnosticar (permiso, red, config).
+        setError(`No se pudo subir la foto (${e?.code ?? e?.message ?? "error"})`);
       }
     }
 

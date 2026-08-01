@@ -38,13 +38,18 @@ export function usdToBs(amountUsd: number, rate: number): number {
 }
 
 /**
- * Calcula el mínimo de la próxima puja
+ * Calcula el mínimo de la próxima puja.
+ *
+ * Sin pujas todavía, el mínimo es el precio de salida TAL CUAL — igual que
+ * valida el motor (onPendingBidCreated). Antes el cliente exigía salida +
+ * incremento y el "DESDE $10" de la tarjeta era imposible de pujar.
  */
 export function calcMinNextBid(
   currentBidUsd: number,
-  minIncrementUsd: number
+  minIncrementUsd: number,
+  hasBids: boolean = true
 ): number {
-  return roundToTwoDecimals(currentBidUsd + minIncrementUsd);
+  return roundToTwoDecimals(hasBids ? currentBidUsd + minIncrementUsd : currentBidUsd);
 }
 
 /**

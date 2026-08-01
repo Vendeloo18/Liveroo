@@ -8,6 +8,7 @@
 // Fuentes en orden (la primera que responda con un número sano gana):
 //   1. ve.dolarapi.com — JSON limpio de la tasa oficial
 //   2. pydolarve.org  — monitor "bcv"
+//   3. ve.dolarapi.com (lista) — red de seguridad si cambia la ruta /oficial
 //
 // El BCV no publica una API propia; estos servicios espejan su valor
 // oficial. Si ambos fallan, NO se toca nada: queda la última tasa buena
@@ -47,6 +48,14 @@ const FUENTES: { nombre: string; traer: () => Promise<number> }[] = [
   {
     nombre: "pydolarve.org",
     traer: async () => (await conTimeout("https://pydolarve.org/api/v1/dollar?monitor=bcv")).price,
+  },
+  {
+    nombre: "ve.dolarapi.com/lista",
+    traer: async () => {
+      const lista = await conTimeout("https://ve.dolarapi.com/v1/dolares");
+      const oficial = Array.isArray(lista) ? lista.find((d: any) => d?.fuente === "oficial") : null;
+      return oficial?.promedio;
+    },
   },
 ];
 

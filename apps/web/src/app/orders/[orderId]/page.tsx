@@ -1,8 +1,9 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, addDoc, updateDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "../../../lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
 import { BRAND, formatUsd, formatBs, buildWhatsappMessage, buildWhatsappLink } from "@subastas-ve/shared";
 
@@ -63,18 +64,14 @@ export default function OrderPage() {
     });
   }, [orderId]);
 
-  // El vendedor empuja hasta "enviado"; el último paso lo da el comprador,
-  // porque es el único que sabe si le llegó. Las reglas lo hacen cumplir.
-  const avanzar = async (nuevo: string, extra: Record<string, any> = {}) => {
+  // El ciclo lo mueve el servidor (advanceOrder): valida quién eres y
+  // desde qué estado vienes, así nadie salta ni devuelve pasos.
+  const avanzar = async (action: string) => {
     if (!order) return;
     setAvanzando(true);
     setErrorEstado(null);
     try {
-      await updateDoc(doc(db, "orders", order.id), {
-        status: nuevo,
-        ...extra,
-        updatedAt: serverTimestamp(),
-      });
+      await httpsCallable(functions, "advanceOrder")({ orderId: order.id, action });
     } catch (e: any) {
       setErrorEstado(e?.message ?? "No se pudo actualizar la orden");
     } finally {
@@ -82,20 +79,17 @@ export default function OrderPage() {
     }
   };
 
+  // La calificación también la escribe el servidor (submitRating): solo el
+  // comprador, solo con la orden entregada, y una única vez por orden.
   const calificar = async () => {
     if (!order || !profile || estrellas === 0) return;
     setEnviando(true);
     setErrorRating(null);
     try {
-      // Nombres de campo según onRatingCreated: toUid + score
-      await addDoc(collection(db, "ratings"), {
-        fromUid: profile.uid,
-        fromName: profile.displayName ?? "",
-        toUid: order.sellerId,
+      await httpsCallable(functions, "submitRating")({
         orderId: order.id,
         score: estrellas,
         comment: comentario.trim(),
-        createdAt: serverTimestamp(),
       });
       setYaCalifique(true);
     } catch (e: any) {
@@ -115,18 +109,15 @@ export default function OrderPage() {
   const soyVendedor = profile?.uid === order.sellerId;
 
   // Qué acción toca según quién mira y en qué estado va la orden
-  const accion: { label: string; estado: string; extra?: Record<string, any>; nota: string } | null =
+  const accion: { label: string; action: string; nota: string } | null =
     soyVendedor && order.status === "pending_payment"
-      ? { label: "Ya recibí el pago", estado: "payment_confirmed",
-          extra: { paymentConfirmedAt: serverTimestamp(), paymentConfirmedBy: profile!.uid },
+      ? { label: "Ya recibí el pago", action: "confirm_payment",
           nota: "Confírmalo solo cuando el dinero esté en tu cuenta." }
       : soyVendedor && order.status === "payment_confirmed"
-      ? { label: "Marcar como enviado", estado: "shipped",
-          extra: { shippedAt: serverTimestamp() },
+      ? { label: "Marcar como enviado", action: "mark_shipped",
           nota: "El comprador confirmará cuando lo reciba." }
       : soyComprador && order.status === "shipped"
-      ? { label: "Ya lo recibí", estado: "delivered",
-          extra: { deliveredAt: serverTimestamp() },
+      ? { label: "Ya lo recibí", action: "mark_delivered",
           nota: "Al confirmar podrás calificar al vendedor." }
       : null;
 
@@ -183,7 +174,7 @@ export default function OrderPage() {
             <button
               className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
               disabled={avanzando}
-              onClick={() => avanzar(accion.estado, accion.extra)}
+              onClick={() => avanzar(accion.action)}
             >
               {avanzando ? "Guardando…" : accion.label}
             </button>
@@ -194,6 +185,14 @@ export default function OrderPage() {
           <div className="lv-note">
             Estás viendo esta orden como <strong>vendedor</strong>.
             {order.buyerName ? ` Le vendiste a ${order.buyerName}.` : ""}
+          </div>
+        )}
+
+        {soyVendedor && order.paymentMethod === "wallet" && order.status !== "cancelled" && (
+          <div className={`lv-note${order.payoutStatus === "paid" ? " lv-note--ok" : ""}`}>
+            {order.payoutStatus === "paid"
+              ? <>Tu parte de esta venta ({formatUsd(order.payoutUsd ?? order.sellerReceivesUsd ?? 0)}) ya te fue <strong>liquidada por {BRAND.name}</strong>.</>
+              : <>El comprador pagó con su billetera: el dinero lo tiene {BRAND.name} y te <strong>liquida tu parte ({formatUsd(order.payoutUsd ?? order.sellerReceivesUsd ?? 0)})</strong> por fuera.</>}
           </div>
         )}
 

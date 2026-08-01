@@ -17,7 +17,8 @@
 // =============================================================
 
 import * as functions from "firebase-functions";
-import { Timestamp, FieldValue } from "firebase-admin/firestore";
+import * as crypto from "crypto";
+import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS } from "../constants";
 
@@ -67,6 +68,46 @@ export const manageDeposit = functions
         throw new functions.https.HttpsError("failed-precondition", "La solicitud está malformada");
       }
 
+      // La misma referencia bancaria no se acredita dos veces: el clásico
+      // "mando dos solicitudes con el mismo comprobante" (o dos personas
+      // con el mismo pantallazo). Se compara contra las ya APROBADAS del
+      // mismo método, dentro de la transacción.
+      const referencia = String(dep.reference ?? "").trim();
+      const metodo = String(dep.method ?? "").trim().toLowerCase();
+      const referenciaNormalizada = referencia.toLowerCase();
+      const claimId = crypto
+        .createHash("sha256")
+        .update(`${metodo}:${referenciaNormalizada}`)
+        .digest("hex");
+      const claimRef = db.doc(`${COLLECTIONS.DEPOSIT_REFERENCE_CLAIMS}/${claimId}`);
+      const claimSnap = action === "approve" && referencia
+        ? await tx.get(claimRef)
+        : null;
+
+      if (claimSnap?.exists && claimSnap.data()?.depositId !== depositId) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          `La referencia ${referencia} ya fue acreditada en otra solicitud.`
+        );
+      }
+
+      if (action === "approve" && referencia) {
+        const dupSnap = await tx.get(
+          db
+            .collection(COLLECTIONS.DEPOSITS)
+            .where("reference", "==", referencia)
+            .where("method", "==", dep.method ?? null)
+            .where("status", "==", "approved")
+            .limit(1)
+        );
+        if (!dupSnap.empty) {
+          throw new functions.https.HttpsError(
+            "already-exists",
+            `La referencia ${referencia} ya fue acreditada en otra solicitud. Verifica el comprobante antes de aprobar.`
+          );
+        }
+      }
+
       const now = Timestamp.now();
 
       if (action === "reject") {
@@ -86,6 +127,21 @@ export const manageDeposit = functions
 
       // ── escrituras ──
       tx.update(depositRef, { status: "approved", decidedBy: adminUid, decidedAt: now });
+
+      // Documento de exclusión con ID determinístico. Dos aprobaciones
+      // concurrentes de la misma referencia chocan sobre ESTE documento:
+      // una confirma y la otra reintenta, ve el claim y se rechaza.
+      if (referencia) {
+        tx.set(claimRef, {
+          depositId,
+          userId,
+          method: metodo,
+          reference: referencia,
+          referenceNormalized: referenciaNormalizada,
+          approvedAt: now,
+          approvedBy: adminUid,
+        });
+      }
 
       tx.set(walletRef, {
         userId,
@@ -197,5 +253,104 @@ export const adjustWallet = functions
     });
 
     functions.logger.info("Ajuste de billetera", { userId, monto, por: adminUid });
+    return resultado;
+  });
+
+// =============================================================
+// markSellerPaid — liquidación manual al vendedor
+// =============================================================
+// Cuando el comprador paga con billetera, la plata entra a la
+// PLATAFORMA y al vendedor se le debe su parte (la orden queda con
+// payoutStatus "pending"). El admin le paga por fuera (pago móvil,
+// Zelle…) y aquí lo deja asentado: marca las órdenes como liquidadas
+// y escribe el registro de auditoría en /sellerPayouts. Sin esto, lo
+// que se le debía a cada vendedor vivía solo en la memoria de quien
+// opera.
+
+export const markSellerPaid = functions
+  .region("us-central1")
+  .runWith({ timeoutSeconds: 30 })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
+    }
+    if (!(await esAdmin(context.auth.uid))) {
+      throw new functions.https.HttpsError("permission-denied", "Solo un administrador");
+    }
+
+    const { orderIds, note } = (data ?? {}) as { orderIds?: string[]; note?: string };
+    if (!Array.isArray(orderIds) || orderIds.length === 0 || orderIds.length > 50
+        || orderIds.some((x) => typeof x !== "string" || !x)) {
+      throw new functions.https.HttpsError("invalid-argument", "orderIds debe ser una lista de 1 a 50 órdenes");
+    }
+    if (new Set(orderIds).size !== orderIds.length) {
+      throw new functions.https.HttpsError(
+        "invalid-argument",
+        "orderIds no puede contener la misma orden más de una vez"
+      );
+    }
+
+    const adminUid = context.auth.uid;
+
+    const resultado = await db.runTransaction(async (tx) => {
+      const snaps = await Promise.all(
+        orderIds.map((id) => tx.get(db.doc(`${COLLECTIONS.ORDERS}/${id}`)))
+      );
+
+      let sellerId: string | null = null;
+      let sellerName = "";
+      let total = 0;
+
+      for (const s of snaps) {
+        if (!s.exists) {
+          throw new functions.https.HttpsError("not-found", `La orden ${s.id} no existe`);
+        }
+        const o = s.data()!;
+        if (o.paymentMethod !== "wallet") {
+          throw new functions.https.HttpsError("failed-precondition", `La orden ${s.id} no se pagó por billetera: ahí no hay nada que liquidar`);
+        }
+        if (o.status === "cancelled") {
+          throw new functions.https.HttpsError("failed-precondition", `La orden ${s.id} está cancelada`);
+        }
+        if (o.payoutStatus === "paid") {
+          throw new functions.https.HttpsError("already-exists", `La orden ${s.id} ya fue liquidada`);
+        }
+        if (sellerId && o.sellerId !== sellerId) {
+          throw new functions.https.HttpsError("invalid-argument", "Todas las órdenes deben ser del mismo vendedor");
+        }
+        sellerId = o.sellerId as string;
+        sellerName = (o.sellerName as string) ?? "";
+        total += redondear((o.payoutUsd as number) ?? (o.sellerReceivesUsd as number) ?? 0);
+      }
+      total = redondear(total);
+
+      const now = Timestamp.now();
+      const payRef = db.collection(COLLECTIONS.SELLER_PAYOUTS).doc();
+
+      snaps.forEach((s) =>
+        tx.update(s.ref, {
+          payoutStatus: "paid",
+          payoutAt: now,
+          payoutBy: adminUid,
+          payoutId: payRef.id,
+          updatedAt: now,
+        })
+      );
+
+      tx.set(payRef, {
+        id: payRef.id,
+        sellerId,
+        sellerName,
+        orderIds,
+        totalUsd: total,
+        note: (note ?? "").trim().slice(0, 200) || null,
+        paidBy: adminUid,
+        createdAt: now,
+      });
+
+      return { totalUsd: total, orders: snaps.length, sellerName };
+    });
+
+    functions.logger.info("Liquidación a vendedor", { ...resultado, por: adminUid });
     return resultado;
   });

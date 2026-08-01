@@ -14,8 +14,9 @@ ui-debug.log
 serviceAccountKey.json
 scripts/seedProd.js
 
-# Respaldos locales de Firestore
+# Respaldos locales de Firestore (data sensible + llave + zip con .env)
 backups/
+vendeloo-backup/
 
 # Salida compilada de las functions (la regenera el predeploy)
 apps/functions/lib/

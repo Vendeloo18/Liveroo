@@ -16,3 +16,5 @@ packages:
 allowBuilds:
   '@sentry/cli': true
   protobufjs: true
+  # Resolver nativo opcional de ESLint; la versión JavaScript basta para lint.
+  unrs-resolver: false

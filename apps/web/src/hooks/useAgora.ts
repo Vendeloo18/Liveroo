@@ -37,14 +37,31 @@ export function useAgora(showId: string, role: "host" | "audience") {
   const [loading, setLoading] = useState(false);
 
   const pedirCredenciales = async (): Promise<Credenciales> => {
-    const r = await httpsCallable<
-      { showId: string; role: "publisher" | "subscriber" },
-      Credenciales
-    >(functions, "generateAgoraToken")({
-      showId,
-      role: role === "host" ? "publisher" : "subscriber",
-    });
-    return r.data;
+    // La red móvil se cae por segundos; un solo intento fallido tumbaba
+    // todo el video. Reintentamos hasta 3 veces los errores de red/internal
+    // (como ERR_SOCKET_NOT_CONNECTED), pero NO los de negocio (permiso,
+    // sesión, no-configurado): esos no mejoran reintentando.
+    let ultimo: any;
+    for (let intento = 0; intento < 3; intento++) {
+      try {
+        const r = await httpsCallable<
+          { showId: string; role: "publisher" | "subscriber" },
+          Credenciales
+        >(functions, "generateAgoraToken")({
+          showId,
+          role: role === "host" ? "publisher" : "subscriber",
+        });
+        return r.data;
+      } catch (e: any) {
+        ultimo = e;
+        const c = String(e?.code ?? "");
+        if (["permission-denied", "unauthenticated", "failed-precondition", "not-found", "invalid-argument"].some(x => c.includes(x))) {
+          throw e;
+        }
+        await new Promise(res => setTimeout(res, 600 * (intento + 1)));
+      }
+    }
+    throw ultimo;
   };
 
   const join = async (localVideoRef?: HTMLDivElement | null) => {
@@ -90,6 +107,9 @@ export function useAgora(showId: string, role: "host" | "audience") {
       client.on("user-published", async (user: any, mediaType: string) => {
         await client.subscribe(user, mediaType as any);
         if (mediaType === "video") setRemoteUsers(prev => [...prev.filter(u => u.uid !== user.uid), user]);
+        // El audio hay que REPRODUCIRLO, no solo suscribirse: sin esto el
+        // público veía el video pero no oía nada.
+        if (mediaType === "audio") user.audioTrack?.play();
       });
       client.on("user-unpublished", (user: any) => setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid)));
       client.on("user-left", (user: any) => setRemoteUsers(prev => prev.filter(u => u.uid !== user.uid)));
@@ -97,17 +117,17 @@ export function useAgora(showId: string, role: "host" | "audience") {
       setJoined(true);
     } catch (e: any) {
       console.error("AGORA ERROR:", e.code, e.name, e.message);
-      // Los errores del callable llegan como "functions/algo"; traducirlos
-      // porque el usuario no puede hacer nada con un código de Agora.
-      const codigo = String(e?.code ?? "");
+      // Traducir a algo accionable: el usuario no puede hacer nada con un
+      // código crudo de Agora o del callable.
+      const c = String(e?.code ?? "") + " " + String(e?.name ?? "") + " " + String(e?.message ?? "");
       setError(
-        codigo.includes("failed-precondition")
-          ? "El video en vivo todavía no está configurado en este proyecto."
-          : codigo.includes("permission-denied")
-          ? "Solo el vendedor del show puede transmitir."
-          : codigo.includes("unauthenticated")
-          ? "Tienes que entrar a tu cuenta para ver el vivo."
-          : e?.message ?? "No se pudo conectar al vivo."
+        /failed-precondition/i.test(c) ? "El video en vivo todavía no está configurado en este proyecto."
+        : /permission-denied/i.test(c) ? "Solo el vendedor del show puede transmitir."
+        : /unauthenticated/i.test(c) ? "Tienes que entrar a tu cuenta para ver el vivo."
+        : /NotAllowed|PERMISSION_DENIED|NotReadable|NotFound(Error)?/i.test(c) ? "Dale permiso a la cámara y el micrófono en el navegador, y vuelve a intentar."
+        : /GATEWAY|dynamic.?key|invalid.?token|CAN_NOT_GET/i.test(c) ? "El video rechazó la conexión. Revisa que las credenciales de Agora sean del proyecto correcto."
+        : /internal|network|socket|unavailable|timeout/i.test(c) ? "Se cayó la conexión al pedir el video. Toca reconectar."
+        : e?.message ?? "No se pudo conectar al vivo."
       );
     } finally {
       setLoading(false);

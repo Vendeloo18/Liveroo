@@ -6,6 +6,19 @@ const withPWA = require("next-pwa")({
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   runtimeCaching: [
+    // Las PÁGINAS siempre se piden a la red primero: con caché primero, un
+    // despliegue nuevo tardaba en llegar al teléfono y el usuario lo vivía
+    // como "no se cargó el cambio". La copia guardada queda solo de
+    // respaldo para cuando no hay señal.
+    {
+      urlPattern: ({ request }) => request.mode === "navigate",
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "paginas",
+        networkTimeoutSeconds: 4,
+        expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 },
+      },
+    },
     {
       urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
       handler: "NetworkFirst",
@@ -24,6 +37,8 @@ const withPWA = require("next-pwa")({
 
 const nextConfig = {
   reactStrictMode: true,
+  // No hay por qué anunciar el framework en cada respuesta
+  poweredByHeader: false,
   transpilePackages: ["@subastas-ve/shared"],
   images: {
     remotePatterns: [
@@ -33,6 +48,22 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ["firebase-admin"],
+  },
+  // Cabeceras de seguridad básicas. CSP queda pendiente a propósito: exige
+  // una lista blanca cuidadosa (Firebase, Agora, Vercel) y mal puesta
+  // tumba el video en vivo — se hará con calma en su propia pasada.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=()" },
+        ],
+      },
+    ];
   },
 };
 

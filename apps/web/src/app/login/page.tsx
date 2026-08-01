@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../../store/authStore";
-import { BRAND } from "@subastas-ve/shared";
+import { BRAND, SIMBOLO_PATH } from "@subastas-ve/shared";
 import { Hero } from "../../components/ui/Hero";
 import { Logo } from "../../components/ui/Logo";
 
@@ -62,27 +62,41 @@ export default function AuthPage() {
     );
   }
 
+  // Formulario en el MISMO lenguaje del onboarding: naranja pleno, la
+  // etiqueta de marca de agua, titular apilado en Anton y una tarjeta
+  // blanca con el contenido. Una sola voz desde el hero hasta adentro.
   return (
-    <div className="lv-app" style={{ paddingBottom: 32 }}>
+    <div style={{
+      minHeight: "100dvh", maxWidth: "var(--app-max)", margin: "0 auto",
+      background: "var(--accent)", position: "relative", overflow: "hidden",
+      display: "flex", flexDirection: "column",
+      padding: "calc(22px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom))",
+    }}>
+      <svg viewBox="0 0 24 24" aria-hidden style={{ position: "absolute", right: "-24%", top: "12%", width: "105%", fill: "var(--accent-light)", opacity: 0.5, pointerEvents: "none" }}>
+        <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
+      </svg>
 
-      <div className="lv-pad" style={{ paddingTop: 32 }}>
-        <button
-          onClick={() => setVista("hero")}
-          className="lv-icon-btn"
-          aria-label="Atrás"
-          style={{ marginBottom: 18 }}
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
-          </svg>
-        </button>
-        <Logo tamano={30} color="var(--accent)"/>
-        <p className="lv-muted" style={{ fontSize: "0.92rem", lineHeight: 1.5, marginTop: 10, maxWidth: 300 }}>
-          {BRAND.tagline}. Puja, gana y coordina con el vendedor.
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Logo tamano={26} color="#fff"/>
+          <button onClick={() => router.push("/")} style={{ color: "#fff", fontSize: "0.88rem", fontWeight: 700, padding: "6px 2px" }}>
+            Ver sin cuenta
+          </button>
+        </div>
+
+        <div style={{ flex: 1, minHeight: 12 }}/>
+
+        <div className="lv-eyebrow" style={{ color: "rgba(255,255,255,0.85)", letterSpacing: "0.16em" }}>
+          {modo === "crear" ? "Únete a Vendeloo" : "Qué bueno verte"}
+        </div>
+        <h1 className="lv-display" style={{ color: "#fff", fontSize: "clamp(2.1rem, 11vw, 3rem)", lineHeight: 0.92, marginTop: 10, whiteSpace: "pre-line" }}>
+          {modo === "crear" ? "Crea tu\ncuenta." : "Entra a\ntu cuenta."}
+        </h1>
+        <p style={{ color: "rgba(255,255,255,0.92)", fontSize: "0.98rem", fontWeight: 600, lineHeight: 1.45, marginTop: 14, maxWidth: 340 }}>
+          {modo === "crear" ? `${BRAND.tagline}. Puja, gana y coordina con el vendedor.` : "Tus pujas, tu saldo y tus órdenes te esperan."}
         </p>
-      </div>
 
-      <div className="lv-pad" style={{ paddingTop: 22 }}>
+        <div style={{ background: "var(--bg)", borderRadius: "var(--r-card)", padding: 18, marginTop: 20, boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}>
 
         {/* Google primero: es como entra casi todo el mundo */}
         <button
@@ -104,19 +118,6 @@ export default function AuthPage() {
           <div style={{ flex: 1, height: 1, background: "var(--line)" }}/>
           <span className="lv-dim" style={{ fontSize: "0.72rem", fontWeight: 600 }}>o con tu correo</span>
           <div style={{ flex: 1, height: 1, background: "var(--line)" }}/>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-          {([["crear", "Crear cuenta"], ["entrar", "Ya tengo cuenta"]] as [Modo, string][]).map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => { setModo(v); clearError(); }}
-              className={`lv-chip${modo === v ? " lv-chip--active" : ""}`}
-              style={{ flex: 1 }}
-            >
-              {label}
-            </button>
-          ))}
         </div>
 
         <form onSubmit={enviar}>
@@ -166,15 +167,36 @@ export default function AuthPage() {
           <button type="submit" className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !puedeEnviar}>
             {ocupado ? "Un momento…" : modo === "crear" ? "Crear mi cuenta" : "Entrar"}
           </button>
-        </form>
 
-        <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", marginTop: 18 }}>
+          {modo === "crear" && (
+            <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", marginTop: 12 }}>
+              Al crear tu cuenta aceptas los{" "}
+              <a href="/terminos" style={{ color: "var(--accent-strong)", fontWeight: 700 }}>Términos</a> y la{" "}
+              <a href="/privacidad" style={{ color: "var(--accent-strong)", fontWeight: 700 }}>Privacidad</a>.
+            </p>
+          )}
+        </form>
+        </div>
+
+        <p style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", marginTop: 14, color: "rgba(255,255,255,0.85)" }}>
           Tu correo y tu teléfono no son públicos: solo los ve el vendedor con quien cierres una compra.
         </p>
 
-        <button className="lv-btn lv-btn--soft lv-btn--block" style={{ marginTop: 18 }} onClick={() => router.push("/")}>
-          Ver subastas sin entrar
-        </button>
+        <div style={{ flex: 1, minHeight: 16 }}/>
+
+        {/* Pie idéntico al del onboarding: Atrás en píldora + acción clara */}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => setVista("hero")} className="lv-btn lv-btn--lg" style={{ background: "transparent", color: "#fff", boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.7)", flexShrink: 0, padding: "0 22px" }}>
+            Atrás
+          </button>
+          <button
+            onClick={() => { setModo(m => m === "crear" ? "entrar" : "crear"); clearError(); }}
+            className="lv-btn lv-btn--lg"
+            style={{ flex: 1, background: "#fff", color: "var(--accent)" }}
+          >
+            {modo === "crear" ? "Ya tengo cuenta" : "Quiero crear una cuenta"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -10,7 +10,9 @@ export { onPendingBidCreated } from "./auction/onPendingBidCreated";
 export { closeExpiredAuctions, closeAuctionNow } from "./auction/closeExpiredAuctions";
 
 // Show controls
-export { startShow, endShow, skipAuction } from "./shows/showControls";
+export { startShow, presentAuction, endShow, skipAuction } from "./shows/showControls";
+export { sendReaction, cleanupOldReactions } from "./shows/reactions";
+export { advanceOrder, submitRating } from "./orders/orderActions";
 export { generateAgoraToken } from "./shows/agoraToken";
 
 // Users
@@ -31,10 +33,10 @@ export {
 } from "./admin/adminFunctions";
 
 // Datos de demostración (herramienta de pre-lanzamiento, solo admin)
-export { manageDemoAuctions } from "./admin/demoData";
+export { manageDemoAuctions, refreshDemoAuctions } from "./admin/demoData";
 
 // Billetera (depósitos aprobados por admin, ajustes manuales con ledger)
-export { manageDeposit, adjustWallet } from "./admin/wallet";
+export { manageDeposit, adjustWallet, markSellerPaid } from "./admin/wallet";
 
 // Tasa oficial del BCV, cada 4 horas y a pedido del panel
 export { syncBcvRate, syncBcvRateNow } from "./admin/syncBcvRate";

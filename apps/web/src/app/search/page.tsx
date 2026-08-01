@@ -62,6 +62,15 @@ function Buscador() {
     if (q) { setTermino(q); buscar(q); }
   }, [params, buscar]);
 
+  // Busca sola mientras escribes (con debounce). El Enter y el botón
+  // quedan como refuerzo — nadie se queda mirando una pantalla muda.
+  useEffect(() => {
+    const t = termino.trim();
+    if (t.length < 2) return;
+    const id = setTimeout(() => buscar(t), 350);
+    return () => clearTimeout(id);
+  }, [termino, buscar]);
+
   const total = subastas.length + shows.length + vendedores.length;
 
   return (
@@ -74,8 +83,8 @@ function Buscador() {
       </header>
 
       <div className="lv-pad" style={{ paddingTop: 14 }}>
-        <form onSubmit={e => { e.preventDefault(); buscar(termino); }}>
-          <div style={{ position: "relative" }}>
+        <form onSubmit={e => { e.preventDefault(); buscar(termino); }} style={{ display: "flex", gap: 8 }}>
+          <div style={{ position: "relative", flex: 1 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round"
                  style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
               <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
@@ -83,6 +92,8 @@ function Buscador() {
             <input
               className="lv-input"
               style={{ paddingLeft: 38 }}
+              type="search"
+              enterKeyHint="search"
               value={termino}
               onChange={e => setTermino(e.target.value)}
               placeholder="Producto, show o vendedor"
@@ -90,6 +101,7 @@ function Buscador() {
               aria-label="Buscar"
             />
           </div>
+          <button type="submit" className="lv-btn lv-btn--accent" style={{ flexShrink: 0 }}>Buscar</button>
         </form>
       </div>
 

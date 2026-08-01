@@ -41,6 +41,22 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
 export const storage = getStorage(app);
 
+// App Check (anti-bots) — pre-cableado: se activa SOLO cuando exista
+// NEXT_PUBLIC_RECAPTCHA_SITE_KEY en Vercel. Sin la clave es un no-op,
+// así que se puede desplegar hoy y encender el día que se registre la
+// app en Firebase Console → App Check (reCAPTCHA v3, modo monitor).
+const recaptchaKey = env(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
+if (typeof window !== "undefined" && recaptchaKey) {
+  import("firebase/app-check")
+    .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(recaptchaKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    })
+    .catch(() => undefined);
+}
+
 // Mensajería (solo en browser)
 export async function getMessagingInstance() {
   if (typeof window === "undefined") return null;

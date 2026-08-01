@@ -1,123 +1,155 @@
 "use client";
+import { useEffect, useState } from "react";
 import { SIMBOLO_PATH } from "@subastas-ve/shared";
-import { useCountdown } from "../../hooks/useCountdown";
-import type { AuctionCardData } from "../auction/AuctionCard";
 
 // =============================================================
-// InicioHero — el banner de bienvenida del Inicio
+// InicioHero — el cuadro COMPLETO es el anuncio
 // =============================================================
-// Inicio y Explorar eran la misma grilla y se veían iguales. Este hero le
-// da al Inicio una identidad de "portada": franja naranja con la etiqueta
-// de marca de agua, titular en display, y la subasta que CIERRA PRIMERO
-// como gancho — dato real, no un ejemplo inventado. Si no hay ninguna
-// activa, el gancho no se muestra.
+// Todo el bloque es el espacio patrocinado: la foto del producto de
+// la tienda a sangre, su marca encima y la llamada a entrar. Rota
+// solo entre 4-5 tiendas con sus puntitos. Esto es lo que se vende
+// como destacado; sin patrocinadores cae al bloque naranja de marca.
 // =============================================================
+
+export interface TiendaDestacada {
+  id: string;
+  nombre: string;
+  avatar?: string;
+  activas: number;
+  foto?: string;
+  producto?: string;
+}
 
 export function InicioHero({
-  destacada,
+  tiendas,
   onExplorar,
-  onDestacada,
+  onTienda,
 }: {
-  destacada: AuctionCardData | null;
+  tiendas: TiendaDestacada[];
   onExplorar: () => void;
-  onDestacada: (id: string) => void;
+  onTienda: (id: string) => void;
 }) {
-  const { texto, urgente, vencida } = useCountdown((destacada as any)?.endsAt);
-  const foto = destacada?.imageURL ?? destacada?.imageURLs?.[0];
-  const precio = destacada?.currentBidUsd ?? destacada?.startingPriceUsd ?? 0;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => { setIdx(0); }, [tiendas.length]);
+  useEffect(() => {
+    if (tiendas.length < 2) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % tiendas.length), 4500);
+    return () => clearInterval(t);
+  }, [tiendas.length]);
+
+  const tienda = tiendas[idx] ?? null;
+
+  // Sin patrocinadores: el bloque de marca de siempre
+  if (!tienda) {
+    return (
+      <div style={{ padding: "10px 16px 4px" }}>
+        <div style={{
+          position: "relative", overflow: "hidden", borderRadius: "var(--r-card, 22px)",
+          background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-strong, #dc5a00) 100%)",
+          padding: "22px 18px", color: "#fff",
+        }}>
+          <svg viewBox="0 0 24 24" aria-hidden style={{ position: "absolute", right: "-14%", top: "-30%", width: "72%", fill: "var(--accent-light, #ff7d21)", opacity: 0.5 }}>
+            <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
+          </svg>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div className="lv-eyebrow" style={{ color: "#fff", opacity: 0.9 }}>Subastas en vivo · Venezuela</div>
+            <h1 className="lv-display" style={{ color: "#fff", fontSize: "clamp(1.9rem, 9vw, 2.5rem)", lineHeight: 0.94, marginTop: 8 }}>
+              Entra al vivo.<br/>Puja. Gana.
+            </h1>
+            <button onClick={onExplorar} className="lv-btn lv-btn--lg" style={{ marginTop: 16, background: "#fff", color: "var(--accent-strong, #dc5a00)" }}>
+              Explorar todas las subastas →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "10px 16px 4px" }}>
-      <div style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: "var(--r-card, 22px)",
-        background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-strong, #dc5a00) 100%)",
-        padding: "20px 18px",
-        color: "#fff",
-      }}>
-        {/* Etiqueta gigante de marca de agua */}
-        <svg viewBox="0 0 24 24" aria-hidden="true" style={{
-          position: "absolute", right: "-14%", top: "-30%",
-          width: "72%", height: "auto",
-          fill: "var(--accent-light, #ff7d21)", opacity: 0.5, pointerEvents: "none",
-        }}>
-          <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
-        </svg>
+      <style>{`@keyframes adIn{0%{opacity:0}100%{opacity:1}}`}</style>
 
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{
-            fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.14em",
-            textTransform: "uppercase", opacity: 0.9, marginBottom: 8,
-          }}>
-            Subastas en vivo · Venezuela
-          </div>
+      <button
+        onClick={() => onTienda(tienda.id)}
+        style={{
+          position: "relative", display: "block", width: "100%", textAlign: "left",
+          aspectRatio: "1 / 1", maxHeight: 400,
+          borderRadius: "var(--r-card, 22px)", overflow: "hidden",
+          // Fondo neutro oscuro: si la foto tarda o no carga, el cuadro se
+          // ve sobrio — con el naranja detrás, la imagen salía teñida.
+          background: tienda.foto ? "#16161a" : "linear-gradient(135deg, var(--accent) 0%, var(--accent-strong, #dc5a00) 100%)",
+          boxShadow: "0 12px 34px rgba(11,11,13,0.14)",
+        }}
+      >
+        {/* La foto del producto ocupa TODO el cuadro */}
+        {tienda.foto && (
+          <img
+            key={tienda.id}
+            src={tienda.foto}
+            alt=""
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", animation: "adIn 0.5s ease" }}
+          />
+        )}
 
-          <h1 className="lv-display" style={{
-            color: "#fff", fontSize: "clamp(1.9rem, 9vw, 2.5rem)", lineHeight: 0.94, letterSpacing: "0.01em",
-          }}>
-            Entra al vivo.<br/>Puja. Gana.
-          </h1>
+        {/* Marca de agua cuando no hay foto */}
+        {!tienda.foto && (
+          <svg viewBox="0 0 24 24" aria-hidden style={{ position: "absolute", right: "-20%", top: "8%", width: "90%", fill: "var(--accent-light, #ff7d21)", opacity: 0.5 }}>
+            <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
+          </svg>
+        )}
 
-          <p style={{
-            fontSize: "0.82rem", lineHeight: 1.45, opacity: 0.94, marginTop: 10, maxWidth: 320,
-          }}>
-            Precios en dólares, pago en bolívares. Puja en segundos y págalo cuando lo ganes.
-          </p>
+        {/* Degradados: arriba para el rótulo, abajo para la marca */}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(11,11,13,0.5) 0%, rgba(11,11,13,0) 26%, rgba(11,11,13,0) 46%, rgba(11,11,13,0.9) 100%)" }}/>
 
-          {/* Gancho: la subasta que cierra primero (dato real) */}
-          {destacada && foto && !vencida && (
-            <button
-              onClick={() => onDestacada(destacada.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 11, width: "100%",
-                marginTop: 16, padding: 8, borderRadius: 16, textAlign: "left",
-                background: "rgba(255,255,255,0.16)",
-                border: "1px solid rgba(255,255,255,0.22)",
-                backdropFilter: "blur(2px)",
-              }}
-            >
-              <div style={{
-                width: 54, height: 54, borderRadius: 12, overflow: "hidden", flexShrink: 0,
-                background: "rgba(255,255,255,0.2)",
-              }}>
-                <img src={foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: "0.6rem", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.85 }}>
-                  Cierra pronto
-                </div>
-                <div style={{ fontSize: "0.82rem", fontWeight: 750, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>
-                  {destacada.title ?? "Subasta"}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
-                  <span className="lv-mono" style={{ fontSize: "0.82rem", fontWeight: 800 }}>${precio.toFixed(2)}</span>
-                  <span style={{
-                    fontSize: "0.64rem", fontWeight: 700, padding: "1px 7px", borderRadius: 999,
-                    background: urgente ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.22)",
-                  }}>
-                    {texto}
-                  </span>
-                </div>
-              </div>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" style={{ flexShrink: 0, opacity: 0.9 }}>
-                <path d="M9 6l6 6-6 6"/>
-              </svg>
-            </button>
-          )}
-
-          <button
-            onClick={onExplorar}
-            style={{
-              marginTop: 14, background: "#fff", color: "var(--accent-strong, #dc5a00)",
-              fontWeight: 800, fontSize: "0.85rem", border: "none",
-              borderRadius: 999, padding: "11px 22px", cursor: "pointer",
-            }}
-          >
-            Explorar todas las subastas →
-          </button>
+        {/* Rótulo del anuncio */}
+        <div style={{ position: "absolute", top: 14, left: 14, right: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "0.62rem", fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+            Tienda destacada
+          </span>
+          <span style={{ fontSize: "0.56rem", fontWeight: 800, letterSpacing: "0.08em", padding: "3px 7px", borderRadius: 999, background: "rgba(255,255,255,0.22)", color: "#fff", backdropFilter: "blur(4px)", border: "1px solid rgba(255,255,255,0.28)" }}>
+            AD
+          </span>
         </div>
-      </div>
+
+        {/* Marca de la tienda, abajo */}
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: 16, color: "#fff" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            {tienda.avatar
+              ? <img src={tienda.avatar} alt="" style={{ width: 50, height: 50, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2.5px solid rgba(255,255,255,0.85)" }}/>
+              : <span style={{ width: 50, height: 50, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "1.15rem", flexShrink: 0, border: "2.5px solid rgba(255,255,255,0.85)" }}>{tienda.nombre[0]}</span>}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              {/* El nombre cabe entero: baja de tamaño si es largo en vez de cortarse */}
+              <div className="lv-display" style={{ color: "#fff", fontSize: tienda.nombre.length > 14 ? "1.2rem" : "clamp(1.4rem, 6.5vw, 1.75rem)", lineHeight: 1.02, textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}>
+                {tienda.nombre}
+              </div>
+              <div style={{ fontSize: "0.76rem", fontWeight: 600, opacity: 0.9, marginTop: 3, textShadow: "0 1px 4px rgba(0,0,0,0.55)" }}>
+                {tienda.activas} {tienda.activas === 1 ? "subasta activa" : "subastas activas"}
+              </div>
+            </div>
+            <span className="lv-btn lv-btn--sm" style={{ background: "#fff", color: "var(--accent-strong, #dc5a00)", flexShrink: 0, fontWeight: 800, alignSelf: "center" }}>
+              Ver tienda
+            </span>
+          </div>
+        </div>
+
+        {/* Puntitos */}
+        {tiendas.length > 1 && (
+          <div style={{ position: "absolute", top: 16, right: 14, display: "flex", gap: 4 }}>
+            {tiendas.map((t, i) => (
+              <span key={t.id} style={{ width: i === idx ? 16 : 5, height: 5, borderRadius: 999, background: i === idx ? "#fff" : "rgba(255,255,255,0.5)", transition: "width 0.25s" }}/>
+            ))}
+          </div>
+        )}
+      </button>
+
+      <button
+        onClick={onExplorar}
+        className="lv-btn lv-btn--soft lv-btn--block"
+        style={{ marginTop: 10 }}
+      >
+        Explorar todas las subastas →
+      </button>
     </div>
   );
 }

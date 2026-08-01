@@ -225,6 +225,15 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        <section className="lv-panel" style={{ padding: "2px 16px" }}>
+          {([["Términos y condiciones", "/terminos"], ["Privacidad", "/privacidad"], ["Soporte", "/support"]] as [string, string][]).map(([t, href]) => (
+            <a key={href} href={href} className="lv-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "inherit" }}>
+              <span style={{ fontSize: "0.86rem", fontWeight: 600 }}>{t}</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          ))}
+        </section>
+
         <button
           className="lv-btn lv-btn--soft lv-btn--block"
           style={{ color: "var(--live)" }}

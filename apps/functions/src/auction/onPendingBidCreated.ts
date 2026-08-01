@@ -92,6 +92,11 @@ export const onPendingBidCreated = functions
         const auction = auctionSnap.data()!;
         const mode = (auction.mode as AuctionMode) ?? "standalone";
 
+        // Las subastas del catálogo demo SÍ se pujan (retención incluida):
+        // la vitrina se siente viva. La protección del dinero está en el
+        // CIERRE: una demo nunca debita saldo ni crea orden (ver
+        // closeOneAuction), así que nadie paga por un vendedor ficticio.
+
         // Si es en vivo, el show tiene que estar transmitiendo
         if (mode === "live") {
           if (!auction.showId) return { ok: false, motivo: "not_found" };

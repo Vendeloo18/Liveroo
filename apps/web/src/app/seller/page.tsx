@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
-import { BRAND } from "@subastas-ve/shared";
+import { BRAND, formatUsd } from "@subastas-ve/shared";
 import { ImageUploader } from "../../components/ui/ImageUploader";
 import { useCountdown } from "../../hooks/useCountdown";
 
@@ -18,15 +18,6 @@ const CATEGORIAS = [
 const DURACIONES: [string, string][] = [
   ["6", "6 horas"], ["24", "1 día"], ["72", "3 días"], ["168", "7 días"],
 ];
-
-const ESTADO_ORDEN: Record<string, { texto: string; clase: string }> = {
-  pending_payment: { texto: "Esperando pago", clase: "lv-badge--soft" },
-  payment_confirmed: { texto: "Por enviar", clase: "lv-badge--soft" },
-  shipped: { texto: "Enviado", clase: "lv-badge--soft" },
-  delivered: { texto: "Entregado", clase: "lv-badge--accent" },
-  cancelled: { texto: "Cancelada", clase: "lv-badge--live" },
-  disputed: { texto: "En disputa", clase: "lv-badge--live" },
-};
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   waiting: { texto: "En cola", clase: "lv-badge--soft" },
@@ -46,21 +37,28 @@ function FilaSubasta({ a, onClick }: { a: any; onClick: () => void }) {
   const e = ESTADO[a.status] ?? { texto: a.status, clase: "lv-badge--soft" };
   const foto = a.imageURL ?? a.imageURLs?.[0];
 
+  const activa = a.status === "active" && !vencida;
+  const pujas = a.bidsCount ?? 0;
+
   return (
     <button className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={onClick}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-        <div style={{ width: 48, height: 48, borderRadius: 10, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
-          {foto && <img src={foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
+        <div style={{ width: 54, height: 54, borderRadius: 13, overflow: "hidden", flexShrink: 0, background: foto ? "var(--surface-2)" : "var(--accent-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {foto
+            ? <img src={foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-strong)" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>}
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: "0.9rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {a.title}
           </div>
-          <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
-            ${(a.currentBidUsd ?? 0).toFixed(2)} · {a.bidsCount ?? 0} {(a.bidsCount ?? 0) === 1 ? "puja" : "pujas"}
-            {a.status === "active" && !vencida ? ` · ${texto}` : ""}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+            <span className="lv-price" style={{ fontSize: "1.1rem" }}>{formatUsd(a.currentBidUsd ?? 0)}</span>
+            <span className="lv-dim" style={{ fontSize: "0.72rem" }}>{pujas} {pujas === 1 ? "puja" : "pujas"}</span>
           </div>
-          <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>{e.texto}</span>
+          {activa
+            ? <span className="lv-badge lv-badge--data" style={{ marginTop: 5, fontSize: "0.62rem" }}>{texto}</span>
+            : <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>{e.texto}</span>}
         </div>
       </div>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}>
@@ -76,7 +74,6 @@ export default function SellerPage() {
   const [pantalla, setPantalla] = useState<Pantalla>("hub");
   const [shows, setShows] = useState<any[]>([]);
   const [auctions, setAuctions] = useState<any[]>([]);
-  const [ventas, setVentas] = useState<any[]>([]);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
@@ -145,11 +142,7 @@ export default function SellerPage() {
       query(collection(db, "auctions"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
       s => setAuctions(s.docs.map(d => ({ id: d.id, ...d.data() }))),
       e => console.error("auctions:", e.code));
-    const u3 = onSnapshot(
-      query(collection(db, "orders"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
-      s => setVentas(s.docs.map(d => ({ id: d.id, ...d.data() }))),
-      e => console.error("ventas:", e.code));
-    return () => { u1(); u2(); u3(); };
+    return () => { u1(); u2(); };
   }, [profile]);
 
   const avisar = (tipo: "ok" | "bad", texto: string) => {
@@ -185,7 +178,7 @@ export default function SellerPage() {
     if (!tShow.trim() || !profile) return;
     setOcupado(true);
     try {
-      await addDoc(collection(db, "shows"), {
+      const ref = await addDoc(collection(db, "shows"), {
         sellerId: profile.uid, sellerName: profile.displayName ?? "Vendedor",
         title: tShow.trim(), description: dShow.trim(), category: catShow,
         status: "scheduled", agoraChannelName: `show_${Date.now()}`,
@@ -194,7 +187,8 @@ export default function SellerPage() {
       });
       setTShow(""); setDShow("");
       setPantalla("hub");
-      avisar("ok", "Show creado. Agrégale subastas antes de salir en vivo.");
+      // Directo a la página del show: ahí agrega las subastas y sale en vivo.
+      router.push(`/seller/show/${ref.id}`);
     } catch (e: any) {
       avisar("bad", e.message ?? "No se pudo crear el show");
     } finally { setOcupado(false); }
@@ -315,12 +309,12 @@ export default function SellerPage() {
     );
   }
 
-  const misSubastas = auctions.filter(a => a.mode !== "live");
-  const activas = misSubastas.filter(a => a.status === "active");
-  const vendidas = auctions.filter(a => a.status === "sold");
-  const enCola = auctions.filter(a => a.mode === "live" && a.status === "waiting");
-  // Órdenes esperando algo de él: confirmar el pago o despachar
-  const porAtender = ventas.filter(o => ["pending_payment", "payment_confirmed"].includes(o.status)).length;
+  // Solo lo que está vivo: subastas sueltas activas y shows sin terminar.
+  const activas = auctions.filter(a => a.mode !== "live" && a.status === "active");
+  const showsActivos = shows.filter(s => !["ended", "cancelled"].includes(s.status));
+
+  const shopName = (profile as any).shopName || profile.displayName || "Mi tienda";
+  const avatar = (profile as any).avatar as string | undefined;
 
   const Encabezado = ({ titulo }: { titulo: string }) => (
     <header className="lv-topbar">
@@ -425,11 +419,11 @@ export default function SellerPage() {
           </div>
 
           <div className="lv-note" style={{ marginBottom: 14 }}>
-            El show nace programado. Agrégale subastas y luego, desde su panel, sales en vivo.
+            Al crear el show entras directo a su panel: ahí le agregas las subastas y, cuando estés listo, sales en vivo por video.
           </div>
 
           <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !tShow.trim()} onClick={crearShow}>
-            {ocupado ? "Creando…" : "Crear show"}
+            {ocupado ? "Creando…" : "Crear show y continuar"}
           </button>
         </div>
       </div>
@@ -509,15 +503,34 @@ export default function SellerPage() {
   // ══ Hub ══
   return (
     <div className="lv-app">
-      <Encabezado titulo="Vender"/>
+      <header className="lv-topbar">
+        <h1 className="lv-topbar__title">Vender</h1>
+        <button className="lv-icon-btn lv-icon-btn--bare" style={{ marginLeft: "auto" }} onClick={() => router.push(`/seller/${profile.uid}`)} aria-label="Ver mi tienda">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg>
+        </button>
+      </header>
 
-      <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
+      <div className="lv-pad" style={{ paddingTop: 16, display: "grid", gap: 14 }}>
         {aviso && <div className={`lv-note lv-note--${aviso.tipo}`}>{aviso.texto}</div>}
+
+        {/* Identidad de la tienda */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {avatar
+            ? <img src={avatar} alt="" style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", flexShrink: 0 }}/>
+            : <span style={{ width: 46, height: 46, borderRadius: 14, background: "var(--accent-tint)", color: "var(--accent-strong)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "1.15rem", flexShrink: 0 }}>{shopName[0].toUpperCase()}</span>}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontFamily: "var(--f-display)", fontSize: "1.15rem", textTransform: "uppercase", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shopName}</div>
+            <div className="lv-eyebrow" style={{ marginTop: 3 }}>Panel de vendedor</div>
+          </div>
+          <span className="lv-badge lv-badge--soft" style={{ flexShrink: 0, color: "var(--ok)", background: "color-mix(in srgb, var(--ok) 12%, transparent)" }}>
+            <i style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }}/>Aprobado
+          </span>
+        </div>
 
         {/* El motor copia sellerWhatsapp a cada orden. Sin número, el
             ganador se queda sin forma de contactar al vendedor. */}
         {!(profile as any).whatsapp && (
-          <button className="lv-note lv-note--warn" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push("/account/edit")}>
+          <button className="lv-note lv-note--warn" style={{ width: "100%", textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start" }} onClick={() => router.push("/account/edit")}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -529,37 +542,32 @@ export default function SellerPage() {
           </button>
         )}
 
-        {/* Métricas */}
-        <div className="lv-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {[["Activas", activas.length], ["Vendidas", vendidas.length], ["En cola", enCola.length]].map(([l, v]) => (
-            <div key={String(l)} className="lv-panel" style={{ padding: "13px 12px", textAlign: "center" }}>
-              <div className="lv-price" style={{ fontSize: "1.3rem" }}>{v}</div>
-              <div className="lv-eyebrow" style={{ marginTop: 2 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Acciones */}
-        <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => setPantalla("subasta")}>
-          Publicar una subasta
+        {/* Acciones — Vender en vivo arriba y prominente; artículo, secundario */}
+        <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => setPantalla("show")} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Vender en vivo
         </button>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <button className="lv-btn lv-btn--outline" onClick={() => setPantalla("show")}>Nuevo show</button>
-          <button className="lv-btn lv-btn--outline" onClick={() => setPantalla("producto")}>Agregar a show</button>
-        </div>
+        <button className="lv-btn lv-btn--outline lv-btn--block" onClick={() => setPantalla("subasta")} style={{ marginTop: -4 }}>
+          Vender un artículo
+        </button>
 
-        {/* Shows */}
-        {shows.length > 0 && (
+        {/* Shows activos */}
+        {showsActivos.length > 0 && (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>
-            <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Mis shows</div>
-            {shows.map(s => {
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
+              <span className="lv-eyebrow">Shows</span>
+              {showsActivos.some(s => s.status === "live")
+                ? <span className="lv-badge lv-badge--live" style={{ fontSize: "0.6rem" }}><i className="lv-dot"/> EN VIVO</span>
+                : <span className="lv-badge lv-badge--soft" style={{ fontSize: "0.6rem" }}>{showsActivos.length}</span>}
+            </div>
+            {showsActivos.map(s => {
               const e = ESTADO[s.status] ?? { texto: s.status, clase: "lv-badge--soft" };
-              const cola = auctions.filter(a => a.showId === s.id).length;
+              const cola = auctions.filter(a => a.showId === s.id && a.status === "waiting").length;
               return (
                 <button key={s.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/seller/show/${s.id}`)}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: "0.86rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
-                    <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>{cola} en cola · {s.viewerCount ?? 0} viendo</div>
+                    <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>{s.status === "live" ? `${s.viewerCount ?? 0} viendo ahora` : "Listo para salir en vivo"}</div>
                     <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>
                       {s.status === "live" && <i className="lv-dot"/>}{e.texto}
                     </span>
@@ -571,57 +579,25 @@ export default function SellerPage() {
           </section>
         )}
 
-        {/* Ventas — sin esta pantalla las órdenes se congelaban en
-            pending_payment porque nadie podía avanzarlas */}
-        {ventas.length > 0 && (
+        {/* Subastas activas */}
+        {activas.length > 0 && (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
-              <span className="lv-eyebrow">Mis ventas</span>
-              {porAtender > 0 && (
-                <span className="lv-badge lv-badge--accent">{porAtender} por atender</span>
-              )}
+              <span className="lv-eyebrow">Subastas activas</span>
+              <span className="lv-badge lv-badge--accent" style={{ fontSize: "0.62rem" }}>{activas.length}</span>
             </div>
-            {ventas.map(o => {
-              const e = ESTADO_ORDEN[o.status] ?? { texto: o.status, clase: "lv-badge--soft" };
-              const tuTurno = ["pending_payment", "payment_confirmed"].includes(o.status);
-              return (
-                <button key={o.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/orders/${o.id}`)}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 9, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
-                      {o.productImageURL && <img src={o.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {o.productTitle ?? "Producto"}
-                      </div>
-                      <div className="lv-dim" style={{ fontSize: "0.72rem", marginTop: 1 }}>
-                        ${o.bidAmountUsd?.toFixed(2)} · {o.buyerName ?? "Comprador"}
-                      </div>
-                      <span className={`lv-badge ${tuTurno ? "lv-badge--accent" : e.clase}`} style={{ marginTop: 4 }}>
-                        {tuTurno ? "Te toca" : e.texto}
-                      </span>
-                    </div>
-                  </div>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              );
-            })}
+            {activas.map(a => (
+              <FilaSubasta key={a.id} a={a} onClick={() => router.push(`/auctions/${a.id}`)}/>
+            ))}
           </section>
         )}
 
-        {/* Subastas */}
-        <section className="lv-panel" style={{ padding: "2px 16px" }}>
-          <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Mis subastas</div>
-          {misSubastas.length === 0 ? (
-            <p className="lv-dim" style={{ fontSize: "0.82rem", padding: "6px 0 16px" }}>
-              Todavía no has publicado ninguna.
-            </p>
-          ) : (
-            misSubastas.map(a => (
-              <FilaSubasta key={a.id} a={a} onClick={() => router.push(`/auctions/${a.id}`)}/>
-            ))
-          )}
-        </section>
+        {/* Nada activo todavía */}
+        {showsActivos.length === 0 && activas.length === 0 && (
+          <div className="lv-dim" style={{ fontSize: "0.84rem", textAlign: "center", lineHeight: 1.6, padding: "18px 12px" }}>
+            No tienes nada activo ahora mismo.<br/>Toca <strong style={{ color: "var(--ink-2)" }}>Vender en vivo</strong> o <strong style={{ color: "var(--ink-2)" }}>Vender un artículo</strong> para empezar.
+          </div>
+        )}
       </div>
     </div>
   );

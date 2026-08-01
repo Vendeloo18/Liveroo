@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, onSnapshot, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { db } from "../lib/firebase";
+import { useAuthStore } from "../store/authStore";
 import { AuctionCard, AuctionCardData } from "../components/auction/AuctionCard";
 import { Logo } from "../components/ui/Logo";
 import { InicioHero } from "../components/ui/InicioHero";
+import { LiveShowCard } from "../components/ui/LiveShowCard";
 
 interface Show {
   id: string; sellerName?: string; title?: string; status?: string;
@@ -20,6 +22,22 @@ export default function Home() {
   const [auctions, setAuctions] = useState<AuctionCardData[]>([]);
   const [cat, setCat] = useState("Para Ti");
   const [cargando, setCargando] = useState(true);
+
+  const { profile, loading: authLoading } = useAuthStore();
+
+  // Onboarding al entrar: UNA vez de verdad, no una vez por sesión.
+  // Anónimo: una vez por dispositivo (localStorage). Con cuenta: hasta
+  // que el perfil diga onboardingDone (se guarda al terminarlo).
+  useEffect(() => {
+    try {
+      const vistoAqui = localStorage.getItem("vlo_onb") === "1";
+      if (profile) {
+        if ((profile as any).onboardingDone !== true && !vistoAqui) router.replace("/onboarding");
+      } else if (!authLoading && !vistoAqui) {
+        router.replace("/onboarding");
+      }
+    } catch { /* modo privado del navegador: no bloquea la entrada */ }
+  }, [profile, authLoading, router]);
 
   // Los onSnapshot llevan callback de error a propósito: sin él, una
   // regla que deniegue o un índice que falte fallan en silencio y la
@@ -41,10 +59,38 @@ export default function Home() {
       e => { console.error("No se pudieron cargar las subastas:", e.code, e.message); setCargando(false); });
   }, []);
 
+  // Avatares de los vendedores, para el slider de tiendas destacadas
+  const [avatares, setAvatares] = useState<Record<string, string>>({});
+  useEffect(() => {
+    getDocs(query(collection(db, "publicProfiles"), where("role", "==", "seller"), limit(40)))
+      .then(s => {
+        const m: Record<string, string> = {};
+        s.docs.forEach(d => { const a = (d.data() as any).avatar; if (a) m[d.id] = a; });
+        setAvatares(m);
+      })
+      .catch(() => undefined);
+  }, []);
+
   const ms = (v: any) => v?.toMillis?.() ?? new Date(v ?? 0).getTime();
-  const destacada = auctions.length
-    ? [...auctions].sort((a, b) => ms((a as any).endsAt) - ms((b as any).endsAt))[0]
-    : null;
+
+  // Tiendas destacadas: las 5 con más subastas activas. Hoy es orgánico;
+  // mañana este espacio se vende como destacado/publicidad.
+  const porTienda: Record<string, { id: string; nombre: string; activas: number; foto?: string; producto?: string }> = {};
+  for (const a of auctions as any[]) {
+    if (!a.sellerId) continue;
+    if (!porTienda[a.sellerId]) porTienda[a.sellerId] = { id: a.sellerId, nombre: a.sellerName ?? "Tienda", activas: 0 };
+    porTienda[a.sellerId].activas += 1;
+    // La foto del anuncio: el primer producto con imagen de esa tienda
+    const f = a.imageURL ?? a.imageURLs?.[0];
+    if (f && !porTienda[a.sellerId].foto) {
+      porTienda[a.sellerId].foto = f;
+      porTienda[a.sellerId].producto = a.title;
+    }
+  }
+  const tiendas = Object.values(porTienda)
+    .sort((a, b) => b.activas - a.activas)
+    .slice(0, 5)
+    .map(t => ({ ...t, avatar: avatares[t.id] }));
 
   const visibles = auctions
     .filter(a => cat === "Para Ti" || (a as any).category === cat)
@@ -69,11 +115,11 @@ export default function Home() {
         </button>
       </header>
 
-      {/* Hero de portada: le da identidad al Inicio frente a Explorar */}
+      {/* Hero de portada: slider de tiendas destacadas (futuro espacio de ads) */}
       <InicioHero
-        destacada={destacada}
+        tiendas={tiendas}
         onExplorar={() => router.push("/auctions")}
-        onDestacada={(id) => router.push(`/auctions/${id}`)}
+        onTienda={(id) => router.push(`/seller/${id}`)}
       />
 
       {/* Categorías */}
@@ -96,37 +142,7 @@ export default function Home() {
           </div>
           <div className="lv-pad" style={{ display:"flex", gap:12, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
             {shows.map(show => (
-              <article
-                key={show.id}
-                onClick={() => router.push(`/shows/${show.id}`)}
-                className="lv-card"
-                style={{ minWidth: 176, flexShrink: 0 }}
-              >
-                <div className="lv-card__media" style={{ aspectRatio: "3 / 4" }}>
-                  {show.coverImageURL
-                    ? <img src={show.coverImageURL} alt={show.title ?? ""}/>
-                    : <div style={{ width:"100%", height:"100%", background:"var(--surface-3)" }}/>}
-                  <span className="lv-badge lv-badge--live lv-badge--float" style={{ top:8, left:8 }}>
-                    <i className="lv-dot"/> LIVE
-                  </span>
-                  {(show.viewerCount ?? 0) > 0 && (
-                    <span className="lv-badge lv-badge--float" style={{ top:8, right:8 }}>
-                      {show.viewerCount} viendo
-                    </span>
-                  )}
-                </div>
-                <div className="lv-card__body">
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
-                    <span className="lv-avatar" style={{ width:20, height:20, fontSize:"0.6rem" }}>
-                      {(show.sellerName ?? "?")[0]}
-                    </span>
-                    <span className="lv-dim" style={{ fontSize:"0.72rem", fontWeight:600, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                      {show.sellerName}
-                    </span>
-                  </div>
-                  <h3 className="lv-card__title" style={{ minHeight:0, marginBottom:0 }}>{show.title}</h3>
-                </div>
-              </article>
+              <LiveShowCard key={show.id} show={show} onClick={() => router.push(`/shows/${show.id}`)}/>
             ))}
           </div>
         </>
