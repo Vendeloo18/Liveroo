@@ -41,20 +41,23 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
 export const storage = getStorage(app);
 
-// App Check (anti-bots) — pre-cableado: se activa SOLO cuando exista
-// NEXT_PUBLIC_RECAPTCHA_SITE_KEY en Vercel. Sin la clave es un no-op,
-// así que se puede desplegar hoy y encender el día que se registre la
-// app en Firebase Console → App Check (reCAPTCHA v3, modo monitor).
-const recaptchaKey = env(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
-if (typeof window !== "undefined" && recaptchaKey) {
+// App Check (anti-bots) usa reCAPTCHA Enterprise en producción y previews.
+// En desarrollo local queda desactivado; para probarlo localmente se debe
+// usar un debug token de App Check, no reutilizar la clave de producción.
+const recaptchaEnterpriseKey = env(
+  process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY,
+);
+if (typeof window !== "undefined" && recaptchaEnterpriseKey) {
   import("firebase/app-check")
-    .then(({ initializeAppCheck, ReCaptchaV3Provider }) => {
+    .then(({ initializeAppCheck, ReCaptchaEnterpriseProvider }) => {
       initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaKey),
+        provider: new ReCaptchaEnterpriseProvider(recaptchaEnterpriseKey),
         isTokenAutoRefreshEnabled: true,
       });
     })
-    .catch(() => undefined);
+    .catch((error: unknown) => {
+      console.warn("App Check no pudo inicializarse", error);
+    });
 }
 
 // Mensajería (solo en browser)
