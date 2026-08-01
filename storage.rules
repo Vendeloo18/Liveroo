@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // =============================================================
-// LIVEROO — Reglas de Storage
+// VENDELOO — Reglas de Storage
 // =============================================================
 // Las imágenes de producto son públicas (se muestran en la web),
 // pero cada quien solo escribe dentro de su propia carpeta, y solo

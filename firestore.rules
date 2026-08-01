@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // =============================================================
-// LIVEROO — Reglas de seguridad de Firestore
+// VENDELOO — Reglas de seguridad de Firestore
 // =============================================================
 // Principio: el cliente NUNCA fija un precio ni cierra una subasta.
 // Solo puede pedir una puja creando un doc en /pendingBids; el resto
