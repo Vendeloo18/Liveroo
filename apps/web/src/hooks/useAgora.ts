@@ -47,7 +47,7 @@ export function useAgora(showId: string, role: "host" | "audience") {
         const r = await httpsCallable<
           { showId: string; role: "publisher" | "subscriber" },
           Credenciales
-        >(functions, "generateAgoraToken")({
+        >(functions, "generateAgoraTokenV2")({
           showId,
           role: role === "host" ? "publisher" : "subscriber",
         });

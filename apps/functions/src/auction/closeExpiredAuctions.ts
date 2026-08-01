@@ -43,7 +43,10 @@ interface WonNotice {
   finalUsd: number;
 }
 
-const BATCH_LIMIT = 20;
+// Una sola pasada debe poder absorber el objetivo operativo completo:
+// 100 vendedores venciendo al mismo tiempo. Las Cloud Tasks son el reloj
+// principal; este lote es la red de seguridad si una tarea no se entrega.
+const BATCH_LIMIT = 100;
 const SWEEP_BUDGET_MS = 50_000; // margen dentro del timeout de 540s
 const SWEEP_INTERVAL_MS = 5_000;
 
@@ -94,7 +97,7 @@ async function cerrarShowsZombis(): Promise<void> {
     const vivos = await db
       .collection(COLLECTIONS.SHOWS)
       .where("status", "==", "live")
-      .limit(20)
+      .limit(200)
       .get();
 
     const zombis = vivos.docs.filter((d) => {
@@ -140,24 +143,7 @@ export const closeAuctionNow = functions
       throw new functions.https.HttpsError("invalid-argument", "auctionId es requerido");
     }
 
-    const auctionRef = db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`);
-    const snap = await auctionRef.get();
-    if (!snap.exists) {
-      throw new functions.https.HttpsError("not-found", "Subasta no encontrada");
-    }
-
-    const auction = snap.data()!;
-    const now = Timestamp.now();
-    const endsAt = auction.endsAt as Timestamp | undefined;
-
-    // Todavía no vence: el reloj del cliente va adelantado. No es error.
-    if (auction.status !== "active" || !endsAt || now.toMillis() < endsAt.toMillis()) {
-      return { closed: false };
-    }
-
-    const cfg = await loadConfig();
-    await closeOneAuction({ auctionSnap: snap, ...cfg, now });
-    return { closed: true };
+    return { closed: await closeAuctionById(auctionId) };
   });
 
 // --------------------------------------------------
@@ -202,6 +188,25 @@ async function loadConfig() {
     commissionMode: (commissionSnap.data()?.mode as CommissionMode) ?? "seller_collects",
     platformFeePct: (commissionSnap.data()?.platformFeePct as number) ?? 10,
   };
+}
+
+// Puerta compartida por el callable, el barrido y la Cloud Task exacta.
+// Siempre relee el documento antes de cerrar: si una puja anti-sniping
+// extendió el reloj, la tarea vieja se vuelve un no-op seguro.
+export async function closeAuctionById(auctionId: string): Promise<boolean> {
+  const snap = await db.doc(`${COLLECTIONS.AUCTIONS}/${auctionId}`).get();
+  if (!snap.exists) return false;
+
+  const auction = snap.data()!;
+  const now = Timestamp.now();
+  const endsAt = auction.endsAt as Timestamp | undefined;
+  if (auction.status !== "active" || !endsAt || now.toMillis() < endsAt.toMillis()) {
+    return false;
+  }
+
+  const cfg = await loadConfig();
+  await closeOneAuction({ auctionSnap: snap, ...cfg, now });
+  return true;
 }
 
 // --------------------------------------------------

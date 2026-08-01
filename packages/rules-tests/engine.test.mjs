@@ -37,6 +37,17 @@ async function esperarVeredictos(ids, timeoutMs = 25_000) {
   throw new Error(`Timeout: quedaron pujas sin veredicto → ${JSON.stringify(estados)}`);
 }
 
+async function esperarSubasta(auctionId, cumple, timeoutMs = 20_000) {
+  const limite = Date.now() + timeoutMs;
+  while (Date.now() < limite) {
+    const snap = await db.doc(`auctions/${auctionId}`).get();
+    const data = snap.data();
+    if (data && cumple(data)) return data;
+    await esperar(200);
+  }
+  throw new Error(`Timeout esperando auctions/${auctionId}`);
+}
+
 async function limpiar() {
   for (const col of ["auctions", "pendingBids", "users", "shows", "orders", "config", "exchangeRates"]) {
     const snap = await db.collection(col).get();
@@ -54,6 +65,9 @@ async function limpiar() {
 async function montarEscenario({ postores, startingPrice = 20, minIncrement = 1 }) {
   const lote = db.batch();
 
+  lote.set(db.doc("exchangeRates/current"), { usdToBs: 100, source: "test" });
+  lote.set(db.doc("config/commission"), { mode: "seller_collects", platformFeePct: 10 });
+  lote.set(db.doc("config/wallet"), { biddingRequiresBalance: false });
   lote.set(db.doc("users/vendedor"), {
     uid: "vendedor", displayName: "VendedorVE", role: "seller", sellerStatus: "approved",
   });
@@ -252,5 +266,46 @@ describe("Anti-sniping", () => {
       sub.endsAt.toMillis() > finOriginal.toMillis(),
       "el cierre debió estirarse para que no gane quien dispara en el último segundo"
     );
+  });
+});
+
+describe("Cierre exacto con Cloud Tasks", () => {
+  test("una subasta sin pujas se cierra segundos después de endsAt", async () => {
+    await limpiar();
+    await montarEscenario({ postores: 0 });
+
+    const endsAtMs = Date.now() + 1_500;
+    await db.doc("auctions/sub").update({
+      endsAt: admin.firestore.Timestamp.fromMillis(endsAtMs),
+    });
+
+    const cerrada = await esperarSubasta("sub", (a) => a.status !== "active");
+    assert.equal(cerrada.status, "unsold");
+    assert.ok(Date.now() >= endsAtMs, "no puede cerrar antes del endsAt");
+    assert.ok(Date.now() - endsAtMs < 6_000, "el cierre exacto se retrasó más de 6s");
+  });
+
+  test("una tarea vieja no cierra una subasta cuyo reloj fue extendido", async () => {
+    await limpiar();
+    await montarEscenario({ postores: 0 });
+
+    const primerFin = Date.now() + 2_000;
+    await db.doc("auctions/sub").update({
+      endsAt: admin.firestore.Timestamp.fromMillis(primerFin),
+    });
+    await esperar(500);
+
+    const finExtendido = Date.now() + 4_500;
+    await db.doc("auctions/sub").update({
+      endsAt: admin.firestore.Timestamp.fromMillis(finExtendido),
+    });
+
+    await esperar(Math.max(0, primerFin + 1_500 - Date.now()));
+    const todaviaActiva = (await db.doc("auctions/sub").get()).data();
+    assert.equal(todaviaActiva.status, "active", "la tarea vieja cerró antes del reloj nuevo");
+
+    const cerrada = await esperarSubasta("sub", (a) => a.status !== "active");
+    assert.equal(cerrada.status, "unsold");
+    assert.ok(Date.now() >= finExtendido, "la tarea nueva cerró antes de tiempo");
   });
 });

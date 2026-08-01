@@ -228,7 +228,7 @@ export default function ShowPage() {
     const ahora = Date.now();
     if (profile && ahora - ultimoCorazon.current > 300) {
       ultimoCorazon.current = ahora;
-      httpsCallable(functions, "sendReaction")({ showId, emoji }).catch(() => undefined);
+      httpsCallable(functions, "sendReactionV2")({ showId, emoji }).catch(() => undefined);
     }
   };
 

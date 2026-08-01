@@ -19,6 +19,7 @@
 // =============================================================
 
 import * as functions from "firebase-functions";
+import { onCall } from "firebase-functions/v2/https";
 import * as crypto from "crypto";
 import { RtcTokenBuilder, RtcRole } from "agora-token";
 import { db } from "../firebase";
@@ -49,82 +50,109 @@ export const generateAgoraToken = functions
       throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
     }
 
-    const { showId, role } = (data ?? {}) as {
-      showId?: string;
-      role?: "publisher" | "subscriber";
-    };
-    if (!showId) {
-      throw new functions.https.HttpsError("invalid-argument", "showId es requerido");
-    }
-
-    const showSnap = await db.doc(`${COLLECTIONS.SHOWS}/${showId}`).get();
-    if (!showSnap.exists) {
-      throw new functions.https.HttpsError("not-found", "Show no encontrado");
-    }
-    const show = showSnap.data()!;
-
-    const canal = show.agoraChannelName as string | undefined;
-    if (!canal) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "El show no tiene canal asignado"
-      );
-    }
-
-    // El canal lo dice el show, no el cliente. Si viniera del cliente,
-    // cualquiera podría pedir un token de publicador para el canal de otro
-    // vendedor pasando el showId propio.
-    const esDueno = show.sellerId === context.auth.uid;
-    if (role === "publisher" && !esDueno) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "Solo el vendedor del show puede transmitir"
-      );
-    }
-
-    // El certificado se comprueba acá, DESPUÉS de los permisos, y no al
-    // entrar. Con el orden invertido, un tercero pidiendo permiso de
-    // publicar recibía "Agora no está configurado" en vez de "solo el
-    // vendedor puede transmitir": el mensaje equivocado, y encima imposible
-    // de distinguir al probarlo. Una petición que igual se va a rechazar no
-    // tiene por qué depender de que Agora esté configurado.
-    //
-    // Se valida el formato —32 hexadecimales— y no solo la presencia, porque
-    // runWith({secrets}) exige que el secret EXISTA para poder desplegar: si
-    // faltara, fallaría el despliegue completo de functions. Así el secret
-    // puede existir con un relleno mientras nadie configura Agora, y esto
-    // responde "no configurado" en vez de firmar un token inválido que el
-    // cliente tomaría por bueno.
-    const appId = process.env.AGORA_APP_ID;
-    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
-    const valido = (v?: string) => !!v && /^[0-9a-f]{32}$/i.test(v.trim());
-    if (!valido(appId) || !valido(appCertificate)) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Agora no está configurado en este proyecto: falta AGORA_APP_ID o " +
-          "AGORA_APP_CERTIFICATE en Secret Manager, o tienen un valor de relleno."
-      );
-    }
-
-    const uid = uidAgora(context.auth.uid);
-    const ahora = Math.floor(Date.now() / 1000);
-    const vence = ahora + VIGENCIA_S;
-
-    const token = RtcTokenBuilder.buildTokenWithUid(
-      appId!.trim(),
-      appCertificate!.trim(),
-      canal,
-      uid,
-      role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
-      VIGENCIA_S,
-      VIGENCIA_S
-    );
-
-    functions.logger.info("Token de Agora emitido", {
-      showId, canal, uid, rol: role ?? "subscriber", para: context.auth.uid,
-    });
-
-    // Devuelve también appId y uid para que el cliente no tenga que
-    // adivinarlos ni llevarlos escritos: un solo origen de verdad.
-    return { token, appId: appId!.trim(), uid, channelName: canal, expiresAt: vence * 1000 };
+    return buildAgoraCredentials(data, context.auth.uid);
   });
+
+// Segunda generación para absorber entradas masivas a los lives sin un
+// cold start por espectador. Se mantiene la v1 durante la transición.
+// App Check queda en modo observación hasta registrar la clave web: ponerlo
+// en true antes bloquearía a todos los clientes actuales.
+export const generateAgoraTokenV2 = onCall(
+  {
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    minInstances: 1,
+    maxInstances: 20,
+    concurrency: 80,
+    secrets: ["AGORA_APP_ID", "AGORA_APP_CERTIFICATE"],
+    enforceAppCheck: false,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado");
+    }
+    return buildAgoraCredentials(request.data, request.auth.uid);
+  },
+);
+
+async function buildAgoraCredentials(data: unknown, callerUid: string) {
+  const { showId, role } = (data ?? {}) as {
+    showId?: string;
+    role?: "publisher" | "subscriber";
+  };
+  if (!showId) {
+    throw new functions.https.HttpsError("invalid-argument", "showId es requerido");
+  }
+
+  const showSnap = await db.doc(`${COLLECTIONS.SHOWS}/${showId}`).get();
+  if (!showSnap.exists) {
+    throw new functions.https.HttpsError("not-found", "Show no encontrado");
+  }
+  const show = showSnap.data()!;
+
+  const canal = show.agoraChannelName as string | undefined;
+  if (!canal) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "El show no tiene canal asignado"
+    );
+  }
+
+  // El canal lo dice el show, no el cliente. Si viniera del cliente,
+  // cualquiera podría pedir un token de publicador para el canal de otro
+  // vendedor pasando el showId propio.
+  const esDueno = show.sellerId === callerUid;
+  if (role === "publisher" && !esDueno) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Solo el vendedor del show puede transmitir"
+    );
+  }
+
+  // El certificado se comprueba acá, DESPUÉS de los permisos, y no al
+  // entrar. Con el orden invertido, un tercero pidiendo permiso de
+  // publicar recibía "Agora no está configurado" en vez de "solo el
+  // vendedor puede transmitir": el mensaje equivocado, y encima imposible
+  // de distinguir al probarlo. Una petición que igual se va a rechazar no
+  // tiene por qué depender de que Agora esté configurado.
+  //
+  // Se valida el formato —32 hexadecimales— y no solo la presencia, porque
+  // runWith({secrets}) exige que el secret EXISTA para poder desplegar: si
+  // faltara, fallaría el despliegue completo de functions. Así el secret
+  // puede existir con un relleno mientras nadie configura Agora, y esto
+  // responde "no configurado" en vez de firmar un token inválido que el
+  // cliente tomaría por bueno.
+  const appId = process.env.AGORA_APP_ID;
+  const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+  const valido = (v?: string) => !!v && /^[0-9a-f]{32}$/i.test(v.trim());
+  if (!valido(appId) || !valido(appCertificate)) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Agora no está configurado en este proyecto: falta AGORA_APP_ID o " +
+        "AGORA_APP_CERTIFICATE en Secret Manager, o tienen un valor de relleno."
+    );
+  }
+
+  const uid = uidAgora(callerUid);
+  const ahora = Math.floor(Date.now() / 1000);
+  const vence = ahora + VIGENCIA_S;
+
+  const token = RtcTokenBuilder.buildTokenWithUid(
+    appId!.trim(),
+    appCertificate!.trim(),
+    canal,
+    uid,
+    role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER,
+    VIGENCIA_S,
+    VIGENCIA_S
+  );
+
+  functions.logger.info("Token de Agora emitido", {
+    showId, canal, uid, rol: role ?? "subscriber", para: callerUid,
+  });
+
+  // Devuelve también appId y uid para que el cliente no tenga que
+  // adivinarlos ni llevarlos escritos: un solo origen de verdad.
+  return { token, appId: appId!.trim(), uid, channelName: canal, expiresAt: vence * 1000 };
+}

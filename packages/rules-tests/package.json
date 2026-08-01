@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "firebase emulators:exec --only firestore --project demo-vendeloo \"node --test firestore.test.mjs\"",
-    "test:engine": "firebase emulators:exec --only firestore,functions --project demo-vendeloo \"node --test engine.test.mjs\""
+    "test:engine": "firebase emulators:exec --only firestore,functions --project demo-vendeloo \"node --test engine.test.mjs\"",
+    "test:scale:smoke": "VENDELOO_SCALE_AUCTIONS=10 VENDELOO_SCALE_BIDS_PER_AUCTION=10 firebase emulators:exec --only firestore,functions --project demo-vendeloo \"node scale.test.mjs\"",
+    "test:scale": "firebase emulators:exec --only firestore,functions --project demo-vendeloo \"node scale.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

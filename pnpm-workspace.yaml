@@ -14,6 +14,8 @@ packages:
 # las dependencias transitivas.
 
 allowBuilds:
+  # Paquete oficial de Firebase; selecciona artefactos ya publicados.
+  '@firebase/util': true
   '@sentry/cli': true
   protobufjs: true
   # Resolver nativo opcional de ESLint; la versión JavaScript basta para lint.

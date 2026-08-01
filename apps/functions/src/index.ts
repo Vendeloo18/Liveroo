@@ -8,12 +8,13 @@ admin.initializeApp();
 // Auction engine
 export { onPendingBidCreated } from "./auction/onPendingBidCreated";
 export { closeExpiredAuctions, closeAuctionNow } from "./auction/closeExpiredAuctions";
+export { scheduleAuctionCloseOnWrite, closeAuctionTask } from "./auction/auctionCloseTasks";
 
 // Show controls
 export { startShow, presentAuction, endShow, skipAuction } from "./shows/showControls";
-export { sendReaction, cleanupOldReactions } from "./shows/reactions";
+export { sendReaction, sendReactionV2, cleanupOldReactions } from "./shows/reactions";
 export { advanceOrder, submitRating } from "./orders/orderActions";
-export { generateAgoraToken } from "./shows/agoraToken";
+export { generateAgoraToken, generateAgoraTokenV2 } from "./shows/agoraToken";
 
 // Users
 export { syncPublicProfile } from "./users/syncPublicProfile";
