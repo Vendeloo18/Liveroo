@@ -103,6 +103,28 @@ export default function AccountPage() {
           ))}
         </div>
 
+        {/* LOOS — puntos de fidelidad */}
+        <button className="lv-panel" onClick={() => router.push("/premios")} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%" }}>
+          <span className="lv-avatar" style={{ background: "var(--accent-tint)", color: "var(--accent-strong)", borderRadius: 11 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8M12 8v13"/>
+              <path d="M12 8S9.5 8 8.2 6.7A2.4 2.4 0 1 1 12 4a2.4 2.4 0 1 1 3.8 2.7C14.5 8 12 8 12 8z"/>
+            </svg>
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>Premios</div>
+            <div className="lv-dim" style={{ fontSize: "0.74rem" }}>
+              {(profile.loos ?? 0) > 0
+                ? `Tienes ${profile.loos} LOOS para cambiar`
+                : "1 LOO por cada dólar que muevas"}
+            </div>
+          </div>
+          {(profile.loos ?? 0) > 0 && (
+            <span className="lv-badge lv-badge--accent" style={{ flexShrink: 0 }}>{profile.loos}</span>
+          )}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
         {/* Vender */}
         {profile.sellerStatus === "approved" ? (
           <>

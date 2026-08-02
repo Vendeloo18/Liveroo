@@ -17,6 +17,8 @@ import * as admin from "firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS, DEFAULT_LIVE_TIMER_S } from "../constants";
+import { otorgarLoosSeguro } from "../loyalty/loos";
+import { leerReglas } from "../loyalty/reglas";
 
 // limit(5) y no 1: skipAuction necesita descartar la propia subasta
 // saltada, y además la cola puede traer artículos AJENOS colados antes
@@ -141,6 +143,21 @@ export const startShow = functions
         });
       }
     });
+
+    // Bono de "primer show", fuera de la transacción: si otorgar puntos
+    // fallara, el show ya arrancó y eso es lo que importa. El ID por UID
+    // hace que se pague una sola vez, aunque transmita todas las noches.
+    const reglas = await leerReglas();
+    await otorgarLoosSeguro(
+      [{
+        movimientoId: `firstshow_${callerId}`,
+        userId: callerId,
+        tipo: "first_show",
+        cantidad: reglas.bonos.primerShow,
+        nota: "Bono por tu primer show en vivo",
+      }],
+      { showId, callerId },
+    );
 
     functions.logger.info("Show iniciado", { showId, callerId });
     return { success: true, message: "¡Show iniciado!" };

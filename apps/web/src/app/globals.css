@@ -2011,3 +2011,86 @@ button:disabled { cursor: not-allowed; }
   from { opacity: 0; transform: translateY(-10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* =============================================================
+   LOOS — puntos y catálogo de premios
+   =============================================================
+   Sin piel aparte: son las mismas superficies, radios y tokens del
+   resto de la app. Lo único propio es la retícula de dos columnas
+   del catálogo y el tratamiento del premio que todavía no está. */
+
+.lv-loos {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+.lv-loos__n {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+.lv-loos__u {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.lv-prizes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lv-prize {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.lv-prize--pronto { background: var(--surface-2); border-color: transparent; }
+.lv-prize--pronto .lv-prize__ic { opacity: 0.45; }
+
+.lv-prize__ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  margin-bottom: 4px;
+}
+.lv-prize__n { font-size: 0.88rem; font-weight: 750; letter-spacing: -0.015em; }
+.lv-prize__d { font-size: 0.72rem; color: var(--ink-3); line-height: 1.4; }
+.lv-prize__c {
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+/* La barra dice cuánto falta sin obligar a hacer la resta mental. */
+.lv-prize__bar {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+  margin: 6px 0 8px;
+}
+.lv-prize__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}

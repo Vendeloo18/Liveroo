@@ -16,6 +16,10 @@ export const COLLECTIONS = {
   DEPOSITS: "deposits",
   DEPOSIT_REFERENCE_CLAIMS: "depositReferenceClaims",
   SELLER_PAYOUTS: "sellerPayouts",
+  // LOOS — puntos de fidelidad. Ledger propio, aparte de la billetera:
+  // no son plata y no se mezclan con ella.
+  LOOS_TXS: "loosTxs",
+  REDEMPTIONS: "redemptions",
 
   AUCTION_BIDS: (auctionId: string) => `auctions/${auctionId}/bids`,
   SHOW_MESSAGES: (showId: string) => `shows/${showId}/messages`,
@@ -30,6 +34,10 @@ export const CONFIG_DOCS = {
   // Cuentas de cobro de la plataforma (pago móvil, Zelle…). Las llena el
   // admin desde el panel; la pantalla de recarga las muestra tal cual.
   PAYMENT_ACCOUNTS: "paymentAccounts",
+  // Reglas de LOOS: cuántos puntos deja un dólar, los bonos y el
+  // catálogo de premios con sus precios. Si el doc no existe, mandan
+  // los valores por defecto del código.
+  LOYALTY: "loyalty",
 } as const;
 
 export const EXCHANGE_RATE_DOCS = {

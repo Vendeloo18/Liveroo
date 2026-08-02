@@ -319,9 +319,10 @@ service cloud.firestore {
       // se le muestra a internet entera, solo a quien tiene sesión (el
       // que va a recargar). El resto de la config sí es pública.
       allow read: if docId != 'paymentAccounts' || isSignedIn();
-      // paymentAccounts y wallet (interruptor "pujar exige saldo") los
-      // edita el admin desde el panel. commission solo por Function.
-      allow write: if isAdmin() && docId in ["paymentAccounts", "wallet"];
+      // paymentAccounts, wallet (interruptor "pujar exige saldo") y
+      // loyalty (LOOS por dólar, bonos y precios del catálogo) los edita
+      // el admin desde el panel. commission solo por Function.
+      allow write: if isAdmin() && docId in ["paymentAccounts", "wallet", "loyalty"];
     }
 
     match /exchangeRates/{docId} {
@@ -368,6 +369,26 @@ service cloud.firestore {
         && request.resource.data.reference.size() <= 60;
 
       allow update, delete: if false;
+    }
+
+    // ── LOOS — puntos de fidelidad ──────────────────────────────
+    // No son plata: no se recargan, no se retiran y no pagan órdenes.
+    // Se ganan al ENTREGARSE una orden y se cambian por mercancía de la
+    // marca. El saldo vive en users.loos, que el cliente no puede tocar
+    // (no está en la lista blanca de /users), y el ledger es esta
+    // colección. Todo lo escribe el motor.
+
+    match /loosTxs/{txId} {
+      allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
+      allow write: if false;
+    }
+
+    // El canje se pide por la Function redeemPrize, que descuenta los
+    // puntos en la misma transacción en que crea la solicitud. Si el
+    // cliente pudiera crearla, se llevaría el premio sin pagar LOOS.
+    match /redemptions/{redemptionId} {
+      allow read: if isSignedIn() && (resource.data.userId == uid() || isAdmin());
+      allow write: if false;
     }
 
     // ── Cierre por defecto ──────────────────────────────────────

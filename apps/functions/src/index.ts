@@ -40,5 +40,8 @@ export { manageDemoAuctions, refreshDemoAuctions } from "./admin/demoData";
 export { manageDeposit, adjustWallet, markSellerPaid } from "./admin/wallet";
 export { claimWelcomeBonus } from "./wallet/welcomeBonus";
 
+// LOOS — puntos de fidelidad y canje por mercancía de la marca
+export { redeemPrize, manageRedemption } from "./loyalty/loos";
+
 // Tasa oficial del BCV, cada 4 horas y a pedido del panel
 export { syncBcvRate, syncBcvRateNow } from "./admin/syncBcvRate";

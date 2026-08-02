@@ -35,9 +35,46 @@ export interface UserProfile {
   ratingCount: number;
   totalSales: number;
   totalPurchases: number;
+  // LOOS — puntos de fidelidad. Los escribe solo el motor.
+  loos?: number;           // disponibles para canjear
+  loosLifetime?: number;   // ganados de por vida (no baja al canjear)
   // Meta
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+// --------------------------------------------------
+// LOOS (colecciones: /loosTxs y /redemptions)
+// --------------------------------------------------
+// El ledger es la fuente de verdad: users.loos debe poder reconstruirse
+// sumando /loosTxs del usuario. Nadie escribe estas colecciones desde el
+// cliente — solo las Functions.
+
+export interface LoosTx {
+  id: string;
+  userId: string;
+  type: string;            // TipoLoosTx
+  amount: number;          // + gana, − canjea
+  balanceAfter: number;
+  orderId?: string | null;
+  redemptionId?: string | null;
+  note?: string | null;
+  createdAt: Timestamp;
+}
+
+export interface Redemption {
+  id: string;
+  userId: string;
+  userName: string;
+  userWhatsapp: string;
+  prizeId: string;
+  prizeName: string;
+  loosCost: number;
+  status: "pending" | "delivered" | "cancelled";
+  note?: string | null;
+  createdAt: Timestamp;
+  decidedAt?: Timestamp;
+  decidedBy?: string;
 }
 
 // --------------------------------------------------

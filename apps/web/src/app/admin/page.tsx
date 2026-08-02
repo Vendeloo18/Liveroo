@@ -7,15 +7,19 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
-import { SIMBOLO_PATH, formatUsd } from "@subastas-ve/shared";
+import {
+  SIMBOLO_PATH, formatUsd, reglasConDefault, costoPremio,
+  type ReglasLoyalty, type PremioCatalogo,
+} from "@subastas-ve/shared";
 
 interface Usuario {
   id: string; displayName?: string; email?: string; role?: string;
   sellerStatus?: string; shopName?: string; sellerCat?: string;
   cedula?: string; whatsapp?: string; city?: string; avatar?: string; createdAt?: any;
   totalPurchases?: number; totalSales?: number; ratingAvg?: number; ratingCount?: number;
+  loos?: number; loosLifetime?: number;
 }
-type Seccion = "resumen" | "usuarios" | "vendedores" | "pagos" | "ordenes" | "ajustes";
+type Seccion = "resumen" | "usuarios" | "vendedores" | "pagos" | "ordenes" | "premios" | "ajustes";
 
 const ESTADO_ORDEN: Record<string, { texto: string; clase: string }> = {
   pending_payment: { texto: "Por pagar", clase: "adm-al" },
@@ -28,6 +32,11 @@ const ESTADO_DEP: Record<string, { texto: string; clase: string }> = {
   pending: { texto: "Pendiente", clase: "adm-wn" },
   approved: { texto: "Acreditada", clase: "adm-ok" },
   rejected: { texto: "Rechazada", clase: "adm-al" },
+};
+const ESTADO_CANJE: Record<string, { texto: string; clase: string }> = {
+  pending: { texto: "Por entregar", clase: "adm-wn" },
+  delivered: { texto: "Entregado", clase: "adm-ok" },
+  cancelled: { texto: "Cancelado", clase: "adm-al" },
 };
 const METODO_NOMBRE: Record<string, string> = { pago_movil: "Pago móvil", zelle: "Zelle", binance: "Binance", efectivo: "Efectivo", wallet: "Billetera" };
 const ROL_ETIQUETA: Record<string, string> = { admin: "Admin", seller: "Vendedor", buyer: "Comprador" };
@@ -52,6 +61,7 @@ const I = {
   vendedores: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16"/></svg>,
   pagos: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>,
   ordenes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5"/></svg>,
+  premios: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8M12 8v13"/><path d="M12 8S9.5 8 8.2 6.7A2.4 2.4 0 1 1 12 4a2.4 2.4 0 1 1 3.8 2.7C14.5 8 12 8 12 8z"/></svg>,
   ajustes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   subasta: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2v3M12 19v3M5 12H2M22 12h-3M4.9 4.9l2.1 2.1M16.9 16.9l2.2 2.2M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>,
   sellermas: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>,
@@ -106,6 +116,14 @@ export default function AdminPage() {
   const [buscaU, setBuscaU] = useState("");
   const [usuarioAbierto, setUsuarioAbierto] = useState<string | null>(null);
 
+  // LOOS
+  const [canjes, setCanjes] = useState<any[]>([]);
+  const [canjesHist, setCanjesHist] = useState<any[]>([]);
+  const [loyaltyCfg, setLoyaltyCfg] = useState<Partial<ReglasLoyalty> | null>(null);
+  const [loosPorUsdInput, setLoosPorUsdInput] = useState("");
+  const [bonosInput, setBonosInput] = useState<Record<string, string>>({});
+  const [premiosInput, setPremiosInput] = useState<PremioCatalogo[]>([]);
+
   const [tasaInput, setTasaInput] = useState(""); const [pctInput, setPctInput] = useState("");
   const [modoInput, setModoInput] = useState<"seller_collects" | "platform_collects">("seller_collects");
 
@@ -140,9 +158,27 @@ export default function AdminPage() {
     }, () => { setWalletsTotal(null); setWalletsMap({}); });
     // Historial de recargas (todas, no solo pendientes): quién recargó y cuándo
     const u11 = onSnapshot(query(collection(db, "deposits"), orderBy("createdAt", "desc"), limit(15)), s => setDepositosHist(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setDepositosHist([]));
+    // LOOS: la cola de premios por entregar y el historial de canjes
+    const u12 = onSnapshot(query(collection(db, "redemptions"), where("status", "==", "pending"), orderBy("createdAt", "asc")), s => setCanjes(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setCanjes([]));
+    const u13 = onSnapshot(query(collection(db, "redemptions"), orderBy("createdAt", "desc"), limit(20)), s => setCanjesHist(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setCanjesHist([]));
+    const u14 = onSnapshot(doc(db, "config", "loyalty"), s => setLoyaltyCfg(s.exists() ? (s.data() as Partial<ReglasLoyalty>) : null), () => setLoyaltyCfg(null));
     const uO = onSnapshot(collection(db, "orders"), s => setOrdenes(s.size), () => setOrdenes(0));
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); u11(); uO(); };
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); u8(); u9(); u10(); u11(); u12(); u13(); u14(); uO(); };
   }, [esAdmin]);
+
+  // Los campos del formulario arrancan con lo que hay guardado (o el
+  // default del código si config/loyalty todavía no existe).
+  useEffect(() => {
+    const r = reglasConDefault(loyaltyCfg);
+    setLoosPorUsdInput(String(r.loosPorUsd));
+    setBonosInput({
+      primeraCompra: String(r.bonos.primeraCompra),
+      primeraVenta: String(r.bonos.primeraVenta),
+      primerShow: String(r.bonos.primerShow),
+      calificar: String(r.bonos.calificar),
+    });
+    setPremiosInput(r.premios.map(p => ({ ...p })));
+  }, [loyaltyCfg]);
 
   useEffect(() => {
     if (!usuarioSel) { setSaldoSel(null); return; }
@@ -184,6 +220,43 @@ export default function AdminPage() {
   const guardarTasa = () => { const v = parseFloat(tasaInput); if (!isFinite(v) || v <= 0) { setAviso({ tipo: "bad", texto: "La tasa debe ser un número mayor que cero" }); return; } correr("tasa", () => httpsCallable(functions, "updateExchangeRate")({ usdToBs: v }), `Tasa actualizada a Bs ${v.toFixed(2)} por dólar`); };
   const guardarComision = () => { const p = parseFloat(pctInput); if (!isFinite(p) || p < 0 || p > 100) { setAviso({ tipo: "bad", texto: "El porcentaje debe estar entre 0 y 100" }); return; } correr("comision", () => httpsCallable(functions, "updateCommissionConfig")({ mode: modoInput, platformFeePct: p }), "Configuración de comisión guardada"); };
   const entrar = async () => { if (!loginEmail.trim() || !loginPass) return; setEntrando(true); try { await signIn(loginEmail.trim(), loginPass); } finally { setEntrando(false); } };
+
+  // ══ LOOS ══
+  const entregarCanje = (c: any) => {
+    if (!confirm(`¿Ya le entregaste ${c.prizeName} a ${c.userName}? Hazlo solo si el premio ya está en sus manos.`)) return;
+    correr(`canje_${c.id}`, () => httpsCallable(functions, "manageRedemption")({ redemptionId: c.id, action: "deliver" }), `${c.prizeName} entregado a ${c.userName}`);
+  };
+  const cancelarCanje = (c: any) => {
+    const motivo = prompt(`¿Por qué se cancela el canje de ${c.prizeName} de ${c.userName}? Se le devuelven sus ${c.loosCost} LOOS y va a ver este motivo:`);
+    if (motivo === null) return;
+    correr(`canje_${c.id}`, () => httpsCallable(functions, "manageRedemption")({ redemptionId: c.id, action: "cancel", note: motivo }), `Canje cancelado · ${c.loosCost} LOOS devueltos`);
+  };
+  const guardarLoyalty = () => {
+    const porUsd = parseFloat(loosPorUsdInput);
+    if (!isFinite(porUsd) || porUsd < 0 || porUsd > 1000) { setAviso({ tipo: "bad", texto: "Los LOOS por dólar deben estar entre 0 y 1000" }); return; }
+    const bonos = {
+      primeraCompra: Math.max(0, Math.floor(Number(bonosInput.primeraCompra) || 0)),
+      primeraVenta: Math.max(0, Math.floor(Number(bonosInput.primeraVenta) || 0)),
+      primerShow: Math.max(0, Math.floor(Number(bonosInput.primerShow) || 0)),
+      calificar: Math.max(0, Math.floor(Number(bonosInput.calificar) || 0)),
+    };
+    if (premiosInput.some(p => !isFinite(p.loos) || p.loos <= 0)) { setAviso({ tipo: "bad", texto: "Cada premio necesita un precio mayor que cero" }); return; }
+    correr("loyalty", async () => {
+      await setDoc(doc(db, "config", "loyalty"), {
+        loosPorUsd: porUsd,
+        bonos,
+        premios: premiosInput.map(p => ({
+          id: p.id, nombre: p.nombre, detalle: p.detalle,
+          loos: Math.floor(p.loos),
+          loosVendedor: p.loosVendedor != null && p.loosVendedor > 0 ? Math.floor(p.loosVendedor) : null,
+          activo: !!p.activo,
+        })),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }, "Reglas de LOOS guardadas");
+  };
+  const tocarPremio = (id: string, cambios: Partial<PremioCatalogo>) =>
+    setPremiosInput(ps => ps.map(p => (p.id === id ? { ...p, ...cambios } : p)));
 
   // ══ Puertas ══
   if (authLoading) return <div className="adm-login"><div className="adm-login__card" style={{ textAlign: "center", color: "var(--ink-3)" }}>Cargando…</div></div>;
@@ -231,7 +304,7 @@ export default function AdminPage() {
 
   const GRUPOS: { grupo: string; items: { id: Seccion; label: string; ct?: number }[] }[] = [
     { grupo: "General", items: [{ id: "resumen", label: "Resumen" }, { id: "usuarios", label: "Usuarios" }] },
-    { grupo: "Operación", items: [{ id: "vendedores", label: "Vendedores", ct: porRevisar }, { id: "pagos", label: "Pagos", ct: depositos.length }, { id: "ordenes", label: "Órdenes", ct: porPagar }] },
+    { grupo: "Operación", items: [{ id: "vendedores", label: "Vendedores", ct: porRevisar }, { id: "pagos", label: "Pagos", ct: depositos.length }, { id: "ordenes", label: "Órdenes", ct: porPagar }, { id: "premios", label: "Premios", ct: canjes.length }] },
     { grupo: "Configuración", items: [{ id: "ajustes", label: "Ajustes" }] },
   ];
   const titulos: Record<Seccion, { t: string; s: string }> = {
@@ -240,6 +313,7 @@ export default function AdminPage() {
     vendedores: { t: "Vendedores", s: "Aprueba, suspende y revisa quién vende" },
     pagos: { t: "Pagos", s: "Billeteras, recargas y cuentas de cobro" },
     ordenes: { t: "Órdenes", s: "Cada venta, su estado y con quién se hizo" },
+    premios: { t: "Premios", s: "LOOS, canjes por entregar y precios del catálogo" },
     ajustes: { t: "Ajustes", s: "Tasa, comisión, avisos y demostración" },
   };
 
@@ -273,6 +347,12 @@ export default function AdminPage() {
       `Liquidado ${formatUsd(g.total)} a ${g.nombre}`
     );
   };
+  // LOOS: lo que está sin canjear es el pasivo real del programa; lo de
+  // por vida dice cuánto se ha repartido desde que existe.
+  const loosEnCirculacion = usuarios.reduce((n, u) => n + (u.loos ?? 0), 0);
+  const loosDeporVida = usuarios.reduce((n, u) => n + (u.loosLifetime ?? 0), 0);
+  const topLoos = usuarios.filter(u => (u.loos ?? 0) > 0).sort((a, b) => (b.loos ?? 0) - (a.loos ?? 0)).slice(0, 8);
+
   const billeterasTop = Object.entries(walletsMap)
     .map(([id, w]) => ({ id, ...w, u: usuarios.find(x => x.id === id) }))
     .filter(x => x.saldo > 0 || x.retenido > 0)
@@ -609,6 +689,138 @@ export default function AdminPage() {
                     </div>
                   );
                 })}
+              </div>
+            </>
+          )}
+
+          {/* ═══ PREMIOS (LOOS) ═══ */}
+          {seccion === "premios" && (
+            <>
+              <div className="adm-metrics">
+                <Metric alerta={canjes.length > 0} label="Premios por entregar" icon={I.premios} value={canjes.length} ctx={canjes.length > 0 ? "coordina por WhatsApp" : "nada pendiente"}/>
+                <Metric label="LOOS en circulación" icon={I.pct} value={loosEnCirculacion} ctx="sin canjear todavía"/>
+                <Metric label="LOOS repartidos" icon={I.subasta} value={loosDeporVida} ctx="ganados de por vida"/>
+                <Metric label="Canjes entregados" icon={I.ordenes} value={canjesHist.filter(c => c.status === "delivered").length}/>
+              </div>
+
+              <div className="adm-panel"><div className="adm-panel__h"><span className="t">Por entregar · {canjes.length}</span></div>
+                {canjes.length === 0 ? (
+                  <div className="adm-empty">Nada pendiente. Cuando alguien canjee, aparece aquí con su WhatsApp.</div>
+                ) : canjes.map(c => {
+                  const u = usuarios.find(x => x.id === c.userId);
+                  const tel = String(c.userWhatsapp ?? "").replace(/[^0-9]/g, "");
+                  return (
+                    <div key={c.id} className="adm-row">
+                      <div className="adm-row__main">
+                        {u ? <Ava u={u}/> : <span className="lv-avatar">{(c.userName ?? "?")[0]}</span>}
+                        <div style={{ minWidth: 0 }}>
+                          <div className="adm-row__name">{c.prizeName} · {c.userName}</div>
+                          <div className="adm-row__meta">
+                            {c.loosCost} LOOS{c.createdAt?.toDate ? ` · pedido ${c.createdAt.toDate().toLocaleDateString("es-VE")}` : ""}
+                            {tel ? <> · <a href={`https://wa.me/${tel}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-strong)", fontWeight: 700 }}>{c.userWhatsapp}</a></> : " · sin WhatsApp"}
+                            {u?.sellerStatus === "approved" ? " · vendedor" : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="adm-row__act">
+                        <button className="lv-btn lv-btn--accent lv-btn--sm" disabled={ocupado === `canje_${c.id}`} onClick={() => entregarCanje(c)}>
+                          {ocupado === `canje_${c.id}` ? "…" : "Ya lo entregué"}
+                        </button>
+                        <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `canje_${c.id}`} onClick={() => cancelarCanje(c)}>Cancelar</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="adm-grid2">
+                <div className="adm-panel"><div className="adm-panel__h"><span className="t">Reglas</span></div><div className="adm-panel__b">
+                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.5 }}>
+                    Los LOOS se acreditan cuando la orden queda <strong>entregada</strong>, al comprador y al vendedor.
+                    Cambiar estos números no toca lo ya repartido.
+                  </p>
+                  <div className="lv-field"><label className="lv-field__label">LOOS por cada dólar</label>
+                    <input className="lv-input" type="number" min="0" step="0.5" value={loosPorUsdInput} onChange={e => setLoosPorUsdInput(e.target.value)}/>
+                    <div className="lv-field__hint">Una venta de $25 deja {Math.floor(25 * (parseFloat(loosPorUsdInput) || 0))} LOOS a cada lado.</div>
+                  </div>
+                  <div className="adm-grid2">
+                    {([["primeraCompra", "Bono primera compra"], ["primeraVenta", "Bono primera venta"], ["primerShow", "Bono primer show"], ["calificar", "Bono por calificar"]] as const).map(([k, label]) => (
+                      <div key={k} className="lv-field" style={{ margin: 0, marginBottom: 10 }}>
+                        <label className="lv-field__label">{label}</label>
+                        <input className="lv-input" type="number" min="0" step="10" value={bonosInput[k] ?? ""} onChange={e => setBonosInput(b => ({ ...b, [k]: e.target.value }))}/>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="lv-btn lv-btn--accent lv-btn--block" disabled={ocupado === "loyalty"} onClick={guardarLoyalty}>
+                    {ocupado === "loyalty" ? "Guardando…" : "Guardar reglas y catálogo"}
+                  </button>
+                </div></div>
+
+                <div className="adm-panel"><div className="adm-panel__h"><span className="t">Catálogo</span></div><div className="adm-panel__b">
+                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.5 }}>
+                    Un premio apagado se muestra como <strong>&ldquo;Pronto&rdquo;</strong>: la gente ve lo que viene y le da sentido
+                    acumular. Enciéndelo solo cuando la mercancía exista de verdad.
+                  </p>
+                  {premiosInput.map(p => (
+                    <div key={p.id} style={{ borderBottom: "1px solid var(--line)", padding: "10px 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="adm-row__name">{p.nombre}</div>
+                          <div className="adm-row__meta">{p.detalle}</div>
+                        </div>
+                        <button className={`adm-toggle${p.activo ? " on" : ""}`} onClick={() => tocarPremio(p.id, { activo: !p.activo })} aria-label={`Activar ${p.nombre}`}><span/></button>
+                      </div>
+                      <div className="adm-grid2">
+                        <div className="lv-field" style={{ margin: 0 }}>
+                          <label className="lv-field__label">LOOS</label>
+                          <input className="lv-input" type="number" min="1" step="10" value={p.loos} onChange={e => tocarPremio(p.id, { loos: Number(e.target.value) })}/>
+                        </div>
+                        <div className="lv-field" style={{ margin: 0 }}>
+                          <label className="lv-field__label">Precio vendedor</label>
+                          <input className="lv-input" type="number" min="0" step="10" value={p.loosVendedor ?? ""} placeholder="igual" onChange={e => tocarPremio(p.id, { loosVendedor: e.target.value === "" ? null : Number(e.target.value) })}/>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginTop: 12, lineHeight: 1.5 }}>
+                    El vendedor sale en cámara todas las noches: su gorra es la mejor pieza de marca que tenemos.
+                    Déjala barata a propósito. Los cambios se guardan con el botón de la izquierda.
+                  </p>
+                </div></div>
+              </div>
+
+              <div className="adm-panel"><div className="adm-panel__h"><span className="t">Historial de canjes</span></div>
+                {canjesHist.length === 0 ? <div className="adm-empty">Todavía nadie ha canjeado.</div> : canjesHist.map(c => {
+                  const e = ESTADO_CANJE[c.status] ?? { texto: c.status, clase: "lv-badge--soft" };
+                  return (
+                    <div key={c.id} className="adm-row">
+                      <div className="adm-row__main"><div style={{ minWidth: 0 }}>
+                        <div className="adm-row__name" style={{ fontSize: "0.85rem" }}>{c.prizeName} · {c.userName}</div>
+                        <div className="adm-row__meta">{c.loosCost} LOOS{c.createdAt?.toDate ? ` · ${c.createdAt.toDate().toLocaleDateString("es-VE")}` : ""}{c.note ? ` · ${c.note}` : ""}</div>
+                      </div></div>
+                      <div className="adm-row__act"><span className={`lv-badge ${e.clase}`}>{e.texto}</span></div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="adm-panel"><div className="adm-panel__h"><span className="t">Quién tiene más LOOS</span></div>
+                {topLoos.length === 0 ? <div className="adm-empty">Nadie tiene LOOS todavía. Se reparten al entregarse la primera orden.</div> : topLoos.map(u => (
+                  <div key={u.id} className="adm-row">
+                    <div className="adm-row__main"><Ava u={u} size={32}/><div style={{ minWidth: 0 }}>
+                      <div className="adm-row__name" style={{ fontSize: "0.85rem" }}>{u.displayName ?? u.email}</div>
+                      <div className="adm-row__meta">{u.loosLifetime ?? 0} ganados de por vida{u.sellerStatus === "approved" ? " · vendedor" : ""}</div>
+                    </div></div>
+                    <div className="adm-row__act">
+                      <span className="mono" style={{ fontSize: "0.88rem", fontWeight: 700 }}>{u.loos ?? 0}</span>
+                      <span className="adm-row__meta">
+                        {premiosInput.filter(p => p.activo && (u.loos ?? 0) >= costoPremio(p, u.sellerStatus === "approved")).length > 0
+                          ? "ya puede canjear"
+                          : "juntando"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </>
           )}

@@ -676,6 +676,70 @@ describe("Configuración y tasa de cambio", () => {
   });
 });
 
+// =============================================================
+// LOOS — puntos de fidelidad
+// =============================================================
+// El saldo vive en users.loos y el ledger en /loosTxs. Todo lo escribe
+// el motor: si el cliente pudiera tocar cualquiera de los dos, los
+// premios saldrían gratis.
+
+describe("LOOS", () => {
+  test("nadie se regala puntos editando su usuario", async () => {
+    await assertFails(updateDoc(doc(as(BUYER), "users", BUYER), { loos: 99999 }));
+    await assertFails(updateDoc(doc(as(BUYER), "users", BUYER), { loosLifetime: 99999 }));
+    // Ni escondiéndolo entre campos que sí puede cambiar
+    await assertFails(
+      updateDoc(doc(as(BUYER), "users", BUYER), { displayName: "Juan", loos: 5000 })
+    );
+  });
+
+  test("el ledger de LOOS: cada quien ve el suyo, nadie lo escribe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "loosTxs", "order_o1_buyer"), {
+        userId: BUYER, type: "order_buyer", amount: 25, balanceAfter: 25,
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(BUYER), "loosTxs", "order_o1_buyer")));
+    await assertFails(getDoc(doc(as(OTHER_BUYER), "loosTxs", "order_o1_buyer")));
+    await assertSucceeds(getDoc(doc(as(ADMIN), "loosTxs", "order_o1_buyer")));
+    await assertFails(
+      setDoc(doc(as(BUYER), "loosTxs", "regalo"), { userId: BUYER, amount: 9999 })
+    );
+  });
+
+  test("el canje no se crea desde el cliente: se llevaría el premio sin pagar", async () => {
+    await assertFails(
+      setDoc(doc(as(BUYER), "redemptions", "gratis"), {
+        userId: BUYER, prizeId: "camisa", prizeName: "Camisa", loosCost: 0, status: "pending",
+      })
+    );
+  });
+
+  test("el canje lo ve su dueño y el admin, y no se puede marcar entregado solo", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "redemptions", "c1"), {
+        userId: BUYER, prizeId: "gorra", prizeName: "Gorra Vendeloo",
+        loosCost: 400, status: "pending",
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(BUYER), "redemptions", "c1")));
+    await assertSucceeds(getDoc(doc(as(ADMIN), "redemptions", "c1")));
+    await assertFails(getDoc(doc(as(OTHER_BUYER), "redemptions", "c1")));
+    await assertFails(updateDoc(doc(as(BUYER), "redemptions", "c1"), { status: "delivered" }));
+    await assertFails(deleteDoc(doc(as(BUYER), "redemptions", "c1")));
+  });
+
+  test("el catálogo es público de leer y solo el admin lo edita", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "config", "loyalty"), { loosPorUsd: 1 });
+    });
+    // Se puede mirar sin sesión: ver la gorra es lo que da ganas de acumular
+    await assertSucceeds(getDoc(doc(anon(), "config", "loyalty")));
+    await assertFails(setDoc(doc(as(BUYER), "config", "loyalty"), { loosPorUsd: 1000 }));
+    await assertSucceeds(setDoc(doc(as(ADMIN), "config", "loyalty"), { loosPorUsd: 2 }));
+  });
+});
+
 describe("Colecciones sin regla", () => {
   test("una colección nueva nace cerrada", async () => {
     await assertFails(setDoc(doc(as(ADMIN), "loQueSea", "x"), { a: 1 }));

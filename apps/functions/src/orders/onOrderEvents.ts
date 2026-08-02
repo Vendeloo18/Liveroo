@@ -12,6 +12,8 @@ import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS } from "../constants";
 import { tokenParaAviso } from "../notifications/destinatario";
+import { otorgarLoosSeguro } from "../loyalty/loos";
+import { leerReglas, loosPorOrden } from "../loyalty/reglas";
 
 export const onRatingCreated = functions
   .region("us-central1")
@@ -40,6 +42,21 @@ export const onRatingCreated = functions
         updatedAt: Timestamp.now(),
       });
     });
+
+    // LOOS por calificar. El ID del rating ES el orderId (una orden, una
+    // calificación), así que este bono no se puede cobrar dos veces.
+    const reglas = await leerReglas();
+    await otorgarLoosSeguro(
+      [{
+        movimientoId: `rating_${snap.id}`,
+        userId: rating.fromUid as string,
+        tipo: "rating",
+        cantidad: reglas.bonos.calificar,
+        orderId: (rating.orderId as string) ?? snap.id,
+        nota: "Bono por calificar tu compra",
+      }],
+      { ratingId: snap.id },
+    );
   });
 
 // =============================================================
@@ -60,7 +77,26 @@ export const onOrderDelivered = functions
 
     const orderId = change.after.id;
     const buyerId = after.buyerId as string;
+    const sellerId = after.sellerId as string;
     const now = Timestamp.now();
+
+    // ── LOOS ──────────────────────────────────────────────────
+    // Aquí es donde el programa de puntos toca la realidad: la orden se
+    // entregó, hubo plata de verdad y ambas partes cumplieron. 1 LOO por
+    // dólar a cada lado, más el bono de "primera vez" que cada quien
+    // tenga pendiente. Los IDs determinísticos hacen que un reintento del
+    // trigger no regale nada.
+    const reglas = await leerReglas();
+    const puntos = loosPorOrden(after.bidAmountUsd as number, reglas.loosPorUsd);
+    await otorgarLoosSeguro(
+      [
+        { movimientoId: `order_${orderId}_buyer`, userId: buyerId, tipo: "order_buyer", cantidad: puntos, orderId, nota: "Compra entregada" },
+        { movimientoId: `order_${orderId}_seller`, userId: sellerId, tipo: "order_seller", cantidad: puntos, orderId, nota: "Venta entregada" },
+        { movimientoId: `firstpurchase_${buyerId}`, userId: buyerId, tipo: "first_purchase", cantidad: reglas.bonos.primeraCompra, orderId, nota: "Bono por tu primera compra" },
+        { movimientoId: `firstsale_${sellerId}`, userId: sellerId, tipo: "first_sale", cantidad: reglas.bonos.primeraVenta, orderId, nota: "Bono por tu primera venta" },
+      ],
+      { orderId },
+    );
 
     // Notificar al comprador para que califique
     try {
