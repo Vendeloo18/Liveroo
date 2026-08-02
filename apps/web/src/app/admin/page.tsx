@@ -180,6 +180,20 @@ export default function AdminPage() {
 
   const esAdmin = profile?.role === "admin";
 
+  // La ficha se abre ENCIMA: mientras esté abierta, Escape la cierra y la
+  // lista de atrás no se desplaza (si no, al cerrar apareces en otro sitio).
+  useEffect(() => {
+    if (!abierta) return;
+    const alTecla = (e: KeyboardEvent) => { if (e.key === "Escape") setAbierta(null); };
+    window.addEventListener("keydown", alTecla);
+    const previo = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", alTecla);
+      document.body.style.overflow = previo;
+    };
+  }, [abierta]);
+
   useEffect(() => {
     if (!esAdmin) return;
     const subs = [
@@ -779,7 +793,26 @@ export default function AdminPage() {
                       </button>
 
                       {abierto && (
-                        <div className="adm-persona">
+                        <div className="adm-ficha__fondo" role="dialog" aria-modal="true" onClick={() => setAbierta(null)}>
+                        <div className="adm-ficha" onClick={e => e.stopPropagation()}>
+                        <div className="adm-ficha__head">
+                          <Ava u={u} size={56}/>
+                          <div className="quien">
+                            <h2>{u.displayName ?? "Sin nombre"}</h2>
+                            <div className="sub">{u.email ?? "Sin correo"}{u.whatsapp ? ` · ${u.whatsapp}` : ""}</div>
+                            <div className="badges">
+                              {u.role === "admin" && <span className="lv-badge lv-badge--accent">Admin</span>}
+                              {esVendedor && <span className="lv-badge adm-ok">Vendedor</span>}
+                              {!esVendedor && u.role !== "admin" && <span className="lv-badge lv-badge--soft">Comprador</span>}
+                              {u.sellerStatus === "suspended" && <span className="lv-badge adm-al">Suspendido</span>}
+                              {u.sellerStatus === "pending" && <span className="lv-badge adm-wn">Quiere vender</span>}
+                            </div>
+                          </div>
+                          <button className="adm-ficha__cerrar" onClick={() => setAbierta(null)} aria-label="Cerrar ficha">
+                            <X size={18} weight="bold"/>
+                          </button>
+                        </div>
+                        <div className="adm-ficha__body">
                           <div className="adm-det__grid">
                             <div className="adm-det__stat"><div className="k">Saldo</div><div className="v">{formatUsd(w.saldo)}</div><div className="s">{bs(w.saldo) ?? "—"}</div></div>
                             <div className="adm-det__stat"><div className="k">Compras</div><div className="v">{comprasCompletas.length}</div><div className="s">{formatUsd(suma(comprasCompletas))} gastados</div></div>
@@ -815,8 +848,9 @@ export default function AdminPage() {
                             ))}
                           </div>
 
-                          <div className="adm-persona__acciones">
-                            <button className="lv-btn lv-btn--accent lv-btn--sm" onClick={() => { setElegido(u); setSeccion("cobranza"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                        </div>
+                        <div className="adm-ficha__pie">
+                            <button className="lv-btn lv-btn--accent lv-btn--sm" onClick={() => { setAbierta(null); setElegido(u); setSeccion("cobranza"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                               Cargarle saldo
                             </button>
                             {(u.sellerStatus === "pending" || u.sellerStatus === "suspended") && (
@@ -834,7 +868,8 @@ export default function AdminPage() {
                                 ? <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `rol_${u.id}`} onClick={() => cambiarRol(u, false)}>Quitar admin</button>
                                 : <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `rol_${u.id}`} onClick={() => cambiarRol(u, true)}>Hacer administrador</button>
                             )}
-                          </div>
+                        </div>
+                        </div>
                         </div>
                       )}
                     </div>
