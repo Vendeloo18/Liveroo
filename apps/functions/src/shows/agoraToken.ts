@@ -91,17 +91,12 @@ async function buildAgoraCredentials(data: unknown, callerUid: string) {
   }
   const show = showSnap.data()!;
 
-  const canal = show.agoraChannelName as string | undefined;
-  if (!canal) {
-    throw new functions.https.HttpsError(
-      "failed-precondition",
-      "El show no tiene canal asignado"
-    );
-  }
-
-  // El canal lo dice el show, no el cliente. Si viniera del cliente,
-  // cualquiera podría pedir un token de publicador para el canal de otro
-  // vendedor pasando el showId propio.
+  // El canal es el ID del show, punto. Antes salía de `agoraChannelName`,
+  // un campo que el cliente escribía al crear el show: bastaba copiar el
+  // canal de otro vendedor a un show propio para que esta función firmara
+  // un token de PUBLICADOR sobre la transmisión ajena y entrar con cámara
+  // y micrófono a su venta en vivo. El ID es del servidor e irrepetible.
+  const canal = showSnap.id;
   const esDueno = show.sellerId === callerUid;
   if (role === "publisher" && !esDueno) {
     throw new functions.https.HttpsError(

@@ -121,7 +121,17 @@ service cloud.firestore {
 
       // El vendedor publica su subasta. El precio de partida es suyo,
       // pero no puede nacer con pujas ni con ganador puesto a mano.
+      // isDemo fuera del alcance del cliente: con esa marca el motor cierra
+      // SIN cobrar ni crear orden, así que un vendedor podía retener el saldo
+      // de los compradores toda la subasta y no venderles nada.
+      // timerSeconds acotado: un valor absurdo reventaba la transacción de
+      // cierre y dejaba la retención del ganador congelada para siempre.
       allow create: if isApprovedSeller()
+        && !('isDemo' in request.resource.data)
+        && (!('timerSeconds' in request.resource.data)
+            || (request.resource.data.timerSeconds is int
+                && request.resource.data.timerSeconds >= 5
+                && request.resource.data.timerSeconds <= 3600))
         && request.resource.data.sellerId == uid()
         && request.resource.data.mode in ['live', 'standalone']
         && request.resource.data.bidsCount == 0
@@ -178,8 +188,12 @@ service cloud.firestore {
     // La pantalla de Actividad consulta las pujas del usuario con un
     // collectionGroup, y esas consultas NO heredan la regla de arriba:
     // necesitan una propia que cubra el grupo entero.
+    // Por subasta el historial es público (regla anidada de arriba). Este
+    // comodín solo lo usan las consultas de grupo de Actividad/Avisos, que
+    // son sobre uno mismo: sin este filtro, cualquiera podía perfilar a otro
+    // comprador (qué compra, cuánto paga) en toda la plataforma.
     match /{path=**}/bids/{bidId} {
-      allow read: if true;
+      allow read: if isSignedIn() && resource.data.bidderId == uid();
       allow write: if false;
     }
 
@@ -207,9 +221,16 @@ service cloud.firestore {
     match /shows/{showId} {
       allow read: if true;
 
+      // Sin agoraChannelName ni viewerCount inflado: el canal lo decide el
+      // servidor (es el id del show) y la audiencia arranca en cero.
       allow create: if isApprovedSeller()
         && request.resource.data.sellerId == uid()
-        && request.resource.data.status in ['draft', 'scheduled'];
+        && request.resource.data.status in ['draft', 'scheduled']
+        && !('agoraChannelName' in request.resource.data)
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 120
+        && (!('viewerCount' in request.resource.data) || request.resource.data.viewerCount == 0);
 
       // status, startedAt, endedAt y currentAuctionId los mueve el motor:
       // por eso el vendedor ya no puede escribir status:"live" a mano.
@@ -224,8 +245,12 @@ service cloud.firestore {
         // Contador de espectadores: de uno en uno, sube al entrar y baja
         // al salir (nunca bajo cero). Es una métrica de vanidad; si se
         // vuelve importante, la mueve una Function con presencia real.
+        // Solo mientras transmite y con techo: fuera del vivo no hay nada
+        // que contar, y así no se puede hundir/inflar el orden del home.
         isSignedIn()
+        && resource.data.status == 'live'
         && onlyChanges(['viewerCount'])
+        && request.resource.data.viewerCount <= 100000
         && (
           request.resource.data.viewerCount == resource.data.viewerCount + 1
           || (request.resource.data.viewerCount == resource.data.viewerCount - 1

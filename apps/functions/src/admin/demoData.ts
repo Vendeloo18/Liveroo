@@ -164,12 +164,13 @@ async function sembrarDemo(): Promise<{ vendedores: number; creadas: number; res
   // a "active" con winnerId en null (orden huérfana) o borraría el líder
   // (retención colgada).
   const existentes = await db.getAll(...refs);
+  // Nunca se reescribe una demo ACTIVA. El batch es un overwrite completo:
+  // si alguien pujaba entre la lectura y el commit, su `currentBidderId`
+  // desaparecía y su retención de saldo quedaba colgada para siempre, sin
+  // herramienta que la libere. Solo se renuevan las que ya cerraron.
   const intocables = new Set(
     existentes
-      .filter((d) => d.exists && (
-        d.data()?.orderId
-        || (d.data()?.status === "active" && d.data()?.currentBidderId)
-      ))
+      .filter((d) => d.exists && (d.data()?.orderId || d.data()?.status === "active"))
       .map((d) => d.id)
   );
 

@@ -18,30 +18,34 @@ service firebase.storage {
 
     function isImageUnder5MB() {
       return request.resource.size < 5 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
+        && request.resource.contentType.matches('image/(jpeg|jpg|png|webp|gif|heic|heif)');
     }
 
     // Fotos de subastas y productos
     match /auctions/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isOwner(userId) && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
+      allow delete: if isOwner(userId);
     }
 
     match /products/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isOwner(userId) && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
+      allow delete: if isOwner(userId);
     }
 
     // Portadas de shows
     match /shows/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isOwner(userId) && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
+      allow delete: if isOwner(userId);
     }
 
     // Avatares
     match /avatars/{userId}/{fileName} {
       allow read: if true;
-      allow write: if isOwner(userId) && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
+      allow delete: if isOwner(userId);
     }
 
     // Todo lo demás: cerrado

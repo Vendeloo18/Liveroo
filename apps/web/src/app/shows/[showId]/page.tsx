@@ -280,12 +280,26 @@ export default function ShowPage() {
             </svg>
           </div>
           <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.45)", textAlign: "center", padding: "0 30px" }}>
-            {agora.loading ? "Conectando…"
+            {/* Sin sesión el token de Agora no se puede pedir: en vez de
+                dejar "Conectando…" para siempre, se dice por qué y se
+                ofrece la salida. Es el recorrido de quien llega por el
+                link de WhatsApp. */}
+            {!profile && show?.status === "live" ? "Entra a tu cuenta para ver la transmisión y ofertar."
+              : agora.loading ? "Conectando…"
               : agora.error ? agora.error
               : show?.status === "live" ? "Conectando transmisión…"
               : show?.status === "ended" ? "Esta venta en vivo ya terminó"
               : "La venta en vivo todavía no empieza"}
           </div>
+          {!profile && show?.status === "live" && (
+            <button
+              className="lv-btn lv-btn--accent lv-btn--lg"
+              style={{ marginTop: 4 }}
+              onClick={() => router.push(`/login?next=${encodeURIComponent(`/shows/${showId}`)}`)}
+            >
+              Entrar y ver el vivo
+            </button>
+          )}
         </div>
       )}
 

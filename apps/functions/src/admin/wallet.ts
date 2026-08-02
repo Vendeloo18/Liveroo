@@ -306,8 +306,14 @@ export const markSellerPaid = functions
           throw new functions.https.HttpsError("not-found", `La orden ${s.id} no existe`);
         }
         const o = s.data()!;
-        if (o.paymentMethod !== "wallet") {
-          throw new functions.https.HttpsError("failed-precondition", `La orden ${s.id} no se pagó por billetera: ahí no hay nada que liquidar`);
+        // Se liquida SOLO lo que el motor cobró: la marca "wallet" puesta
+        // por el propio motor, con su payout ya calculado. Sin esto, una
+        // orden con paymentMethod escrito por el vendedor cobraba real.
+        if (o.paymentMethod !== "wallet" || o.paymentConfirmedBy !== "engine" || o.payoutStatus !== "pending") {
+          throw new functions.https.HttpsError(
+            "failed-precondition",
+            `La orden ${s.id} no la cobró Vendeloo (o ya no está pendiente de liquidación)`
+          );
         }
         if (o.status === "cancelled") {
           throw new functions.https.HttpsError("failed-precondition", `La orden ${s.id} está cancelada`);
@@ -320,7 +326,13 @@ export const markSellerPaid = functions
         }
         sellerId = o.sellerId as string;
         sellerName = (o.sellerName as string) ?? "";
-        total += redondear((o.payoutUsd as number) ?? (o.sellerReceivesUsd as number) ?? 0);
+        // Sin fallback a sellerReceivesUsd: en modo seller_collects ese
+        // campo es el precio COMPLETO y liquidaba el 100% regalando la comisión.
+        const payout = o.payoutUsd as number;
+        if (!Number.isFinite(payout) || payout <= 0) {
+          throw new functions.https.HttpsError("failed-precondition", `La orden ${s.id} no tiene monto de liquidación válido`);
+        }
+        total += redondear(payout);
       }
       total = redondear(total);
 

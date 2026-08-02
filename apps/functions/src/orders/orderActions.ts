@@ -23,7 +23,10 @@ import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../firebase";
 import { COLLECTIONS } from "../constants";
 
-const METODOS_PAGO = ["pago_movil", "zelle", "binance", "efectivo", "wallet"];
+// "wallet" NO está aquí a propósito: esa marca la pone SOLO el motor al
+// debitar el saldo del ganador. Si el vendedor pudiera declararla, metía
+// una orden que nadie pagó en la cola de liquidación y cobraba de verdad.
+const METODOS_PAGO = ["pago_movil", "zelle", "binance", "efectivo"];
 
 export const advanceOrder = functions
   .region("us-central1")

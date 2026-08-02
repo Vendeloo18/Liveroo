@@ -81,7 +81,9 @@ export const updateExchangeRate = functions
     await assertAdmin(context.auth.uid);
 
     const { usdToBs } = data as { usdToBs: number };
-    if (!usdToBs || usdToBs <= 0) {
+    // Number.isFinite descarta NaN e Infinity: sin esto, una tasa NaN
+    // contaminaba el monto en bolívares de cada orden nueva.
+    if (!Number.isFinite(usdToBs) || usdToBs <= 0) {
       throw new functions.https.HttpsError("invalid-argument", "Tasa inválida");
     }
 
@@ -117,7 +119,7 @@ export const updateCommissionConfig = functions
     if (!["platform_collects", "seller_collects"].includes(mode)) {
       throw new functions.https.HttpsError("invalid-argument", "Modo de comisión inválido");
     }
-    if (platformFeePct < 0 || platformFeePct > 100) {
+    if (!Number.isFinite(platformFeePct) || platformFeePct < 0 || platformFeePct > 100) {
       throw new functions.https.HttpsError("invalid-argument", "Porcentaje debe ser 0-100");
     }
 

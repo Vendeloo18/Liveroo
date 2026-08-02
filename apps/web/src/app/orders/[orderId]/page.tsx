@@ -103,7 +103,14 @@ export default function OrderPage() {
     return <div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">Cargando orden…</div></div></div>;
   }
 
-  const e = ESTADO[order.status] ?? { texto: order.status, detalle: "", clase: "lv-badge--soft" };
+  const base = ESTADO[order.status] ?? { texto: order.status, detalle: "", clase: "lv-badge--soft" };
+  // Pagada con saldo = Vendeloo YA cobró. Decirle al comprador "coordina el
+  // pago" lo empujaba a pagar dos veces: una con su saldo y otra por fuera.
+  const pagadaConSaldo = order.paymentMethod === "wallet";
+  const soyElComprador = profile?.uid === order.buyerId;
+  const e = pagadaConSaldo && soyElComprador && order.status === "payment_confirmed"
+    ? { ...base, texto: "Pagado con tu saldo", detalle: "Ya pagaste con tu saldo — no le envíes dinero al vendedor. Solo coordina la entrega." }
+    : base;
   const paso = PASOS.findIndex(p => p.clave === order.status);
   const soyComprador = profile?.uid === order.buyerId;
   const soyVendedor = profile?.uid === order.sellerId;
@@ -130,9 +137,12 @@ export default function OrderPage() {
     orderId: order.id,
     showTitle: BRAND.name,
   });
+  const mensajeFinal = pagadaConSaldo
+    ? `Hola, soy ${order.buyerName ?? ""}. Gané "${order.productTitle ?? "el producto"}" en ${BRAND.name} (orden #${(order.orderNumber ?? order.id.slice(-6)).toUpperCase()}). Ya está pagado con mi saldo — quedo atento para coordinar la entrega.`
+    : mensaje;
   const enlaceWhatsapp = order.sellerWhatsapp
-    ? buildWhatsappLink(order.sellerWhatsapp, mensaje)
-    : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+    ? buildWhatsappLink(order.sellerWhatsapp, mensajeFinal)
+    : `https://wa.me/?text=${encodeURIComponent(mensajeFinal)}`;
 
   return (
     <div className="lv-app">

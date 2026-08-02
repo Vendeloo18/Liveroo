@@ -186,9 +186,13 @@ export const onPendingBidCreated = functions
         // Retención: el nuevo líder aparta el monto de su puja. Se crea la
         // billetera si no existía (saldo 0, retención M): la contabilidad
         // no depende de que el usuario haya recargado alguna vez.
+        // Clampeada al saldo real: con el interruptor apagado se puede pujar
+        // sin fondos, y retener más de lo que hay dejaba `disponible` en cero
+        // para siempre — el usuario quedaba bloqueado aunque recargara, y
+        // adjustWallet no sabe escribir heldUsd para repararlo.
         tx.set(bidderWalletRef, {
           userId: bidderId,
-          heldUsd: r2(retenidoUsd + amountUsd),
+          heldUsd: Math.min(saldoUsd, r2(retenidoUsd + amountUsd)),
           updatedAt: now,
         }, { merge: true });
 
