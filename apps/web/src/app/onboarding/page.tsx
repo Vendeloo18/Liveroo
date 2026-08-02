@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import confetti from "canvas-confetti";
 import { doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
-  ArrowRight,
   CaretLeft,
   Eye,
   Gavel,
@@ -32,21 +31,19 @@ const escenas = [
   {
     eyebrow: "Paso 2 de 2 · Participa",
     title: <>SUBELOO.<br/>RECIBELOO.</>,
-    description: "Elige cuánto subir y gana $1 para comenzar.",
+    description: "Haz el gesto una vez y recibe $1 para comenzar.",
     imageSrc: "/brand/onboarding-productos-live-v3.png",
     imageAlt: "Consola portátil, cámara instantánea y reloj inteligente disponibles en Vendeloo",
     variant: "showcase" as const,
   },
 ];
 
-type BonusEstado = "listo" | "procesando" | "ganado" | "acreditado" | "cuenta" | "error";
+type BonusEstado = "listo" | "ganado" | "acreditado" | "cuenta" | "error";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { profile } = useAuthStore();
   const [paso, setPaso] = useState(0);
-  const [pujaDemo, setPujaDemo] = useState(4);
-  const [inc, setInc] = useState(1);
   const [subido, setSubido] = useState(false);
   const [bonusEstado, setBonusEstado] = useState<BonusEstado>("listo");
   const [bonusIntento, setBonusIntento] = useState(0);
@@ -73,24 +70,32 @@ export default function OnboardingPage() {
 
   const escena = escenas[paso];
 
+  const celebrarBono = () => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const colores = ["#ff5a00", "#ff8a33", "#ffffff", "#159447"];
+    confetti({ particleCount: 72, spread: 68, startVelocity: 42, origin: { y: 0.82 }, colors: colores, zIndex: 9999 });
+    setTimeout(() => {
+      confetti({ particleCount: 42, spread: 92, startVelocity: 28, origin: { y: 0.76 }, colors: colores, zIndex: 9999 });
+    }, 160);
+  };
+
   const reclamarBono = async () => {
     setSubido(true);
-    setBonusEstado("procesando");
+    setBonusEstado(profile ? "ganado" : "cuenta");
+    celebrarBono();
 
     if (!profile) {
       try {
         localStorage.setItem("vlo_onb", "1");
         localStorage.setItem("vlo_welcome_bonus_pending", "1");
       } catch { /* modo privado */ }
-      setBonusEstado("cuenta");
-      setTimeout(() => router.push("/login?crear=1&bonus=1"), 1200);
+      setTimeout(() => router.push("/login?crear=1&bonus=1"), 1800);
       return;
     }
 
     try {
       const response = await httpsCallable(functions, "claimWelcomeBonus")({});
       const data = response.data as { status?: "awarded" | "already_claimed" };
-      setPujaDemo(valor => valor + inc);
       setBonusEstado(data.status === "already_claimed" ? "acreditado" : "ganado");
       try { localStorage.setItem("vlo_onb", "1"); } catch { /* modo privado */ }
       setTimeout(() => router.push("/wallet"), 1800);
@@ -102,15 +107,11 @@ export default function OnboardingPage() {
     }
   };
 
-  const successLabel = bonusEstado === "procesando"
-    ? "ACTIVANDO TU $1…"
-    : bonusEstado === "ganado"
-      ? "¡GANASTE $1!"
+  const successLabel = bonusEstado === "ganado" || bonusEstado === "cuenta"
+      ? "¡TE GANASTE $1!"
       : bonusEstado === "acreditado"
         ? "TU $1 YA ESTÁ ACREDITADO"
-        : bonusEstado === "cuenta"
-          ? "¡LISTO! CREA TU CUENTA"
-          : "¡SUBELOO!";
+        : "SUBELOO";
 
   return (
     <main className={`vlo-flow-shell vlo-onb vlo-onb--step-${paso + 1}`}>
@@ -141,21 +142,18 @@ export default function OnboardingPage() {
                   <span className="vlo-onb__process-number">1</span>
                   <span className="vlo-onb__process-icon"><Eye size={28} weight="bold"/></span>
                   <b>MIRALOO</b>
-                  <p>Únete a una venta y descubre productos increíbles.</p>
                 </div>
                 <i aria-hidden="true"/>
                 <div>
                   <span className="vlo-onb__process-number">2</span>
                   <span className="vlo-onb__process-icon"><Gavel size={28} weight="bold"/></span>
                   <b>SUBELOO</b>
-                  <p>Sube tu oferta en segundos con un solo gesto.</p>
                 </div>
                 <i aria-hidden="true"/>
                 <div>
                   <span className="vlo-onb__process-number">3</span>
                   <span className="vlo-onb__process-icon"><Trophy size={28} weight="bold"/></span>
                   <b>RECIBELOO</b>
-                  <p>Si quedas de primero, coordina la entrega.</p>
                 </div>
               </div>
 
@@ -164,54 +162,17 @@ export default function OnboardingPage() {
 
           {paso === 1 && (
             <div className="vlo-onb__demo">
-              <div className="vlo-onb__demo-product">
-                <Image
-                  src="/brand/onboarding-productos-live-v3.png"
-                  alt="Combo tecnológico de la oferta de práctica"
-                  width={1254}
-                  height={1254}
-                />
-                <div>
-                  <span>Tu primer SUBELOO</span>
-                  <b>Combo tecnológico</b>
-                  <small>Práctica sin costo · bono real al terminar</small>
-                </div>
-                <em>BONO +$1</em>
-              </div>
-
-              <div className="vlo-onb__price-card">
-                <div>
-                  <span>Ahora va en</span>
-                  <strong>${pujaDemo}</strong>
-                </div>
-                <ArrowRight size={23} weight="bold" aria-hidden="true"/>
-                <div>
-                  <span>Con +${inc} ofreces</span>
-                  <strong className="is-accent">${pujaDemo + inc}</strong>
-                </div>
-              </div>
-
-              <p className="vlo-onb__increment-label">Elige cuánto quieres subir</p>
-              <div className="vlo-onb__increments" aria-label="Cuánto quieres subir">
-                {[1, 5, 10].map(valor => (
-                  <button
-                    type="button"
-                    key={valor}
-                    className={inc === valor ? "is-selected" : ""}
-                    aria-pressed={inc === valor}
-                    disabled={subido}
-                    onClick={() => setInc(valor)}
-                  >
-                    SUBIR ${valor}
-                  </button>
-                ))}
+              <div className="vlo-onb__reward-copy">
+                <span>BONO DE BIENVENIDA</span>
+                <b>Haz tu primer SUBELOO</b>
+                <p>Recibe $1 para participar. No se puede retirar.</p>
               </div>
 
               <div className="vlo-onb__subeloo">
                 <SlideToBid
                   key={bonusIntento}
                   prominent
-                  label={profile ? "SUBELOO Y GANA $1" : "SUBELOO Y ACTIVA TU $1"}
+                  label="SUBELOO"
                   successLabel={successLabel}
                   holdSuccess
                   disabled={subido}
@@ -226,8 +187,8 @@ export default function OnboardingPage() {
                     : bonusEstado === "acreditado"
                       ? "Este usuario ya recibió su bono."
                       : bonusEstado === "cuenta"
-                        ? "Crea tu cuenta para guardar el dólar."
-                        : "Arrastra el círculo hasta el final"}
+                        ? "Crea tu cuenta para usar tu $1."
+                        : "Lleva el círculo hasta el final"}
               </p>
             </div>
           )}

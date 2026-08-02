@@ -36,8 +36,8 @@ export function SlideToBid({
   const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState(false);
 
-  const height = prominent ? 64 : 52;
-  const knob = prominent ? 54 : 44;
+  const height = prominent ? 58 : 52;
+  const knob = prominent ? 50 : 44;
   const pad = (height - knob) / 2;
   const maxX = () => Math.max(0, (trackRef.current?.offsetWidth ?? 320) - knob - pad * 2);
 
@@ -99,7 +99,7 @@ export function SlideToBid({
       ref={trackRef}
       className={`vlo-subeloo${prominent ? " vlo-subeloo--prominent" : ""}${done ? " is-done" : ""}${dragging ? " is-dragging" : ""}`}
       style={{
-        "--subeloo-color": color,
+        "--subeloo-color": done ? "var(--ok)" : color,
         "--subeloo-height": `${height}px`,
         "--subeloo-knob": `${knob}px`,
         "--subeloo-pad": `${pad}px`,

@@ -480,10 +480,11 @@ button:disabled { cursor: not-allowed; }
 .vlo-flow-hero--showcase .vlo-flow-hero__art { object-position: center 62%; }
 .vlo-flow-hero--entry .vlo-flow-hero__art { object-position: center center; }
 
-/* El primer paso le da prioridad al producto. En pantallas altas el hero
-   ocupa dos tercios del viewport y evita que la hoja blanca domine la vista. */
-.vlo-onb--step-1 .vlo-flow-hero {
-  min-height: clamp(560px, 67dvh, 660px);
+/* Los dos pasos comparten la misma proporción visual: 80% producto y 20%
+   acción. La hoja conserva 16px extra para solaparse sobre el hero. */
+.vlo-onb .vlo-flow-hero {
+  height: 80dvh;
+  min-height: 80dvh;
 }
 
 .vlo-onb--step-1 .vlo-flow-hero__copy {
@@ -826,9 +827,10 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__sheet {
   position: relative;
   z-index: 3;
-  flex: 1;
+  flex: 0 0 calc(20dvh + 16px);
+  min-height: 210px;
   margin-top: -16px;
-  padding: 14px 22px calc(14px + env(safe-area-inset-bottom));
+  padding: 8px 22px calc(8px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   border-radius: 26px 26px 0 0;
@@ -840,7 +842,7 @@ button:disabled { cursor: not-allowed; }
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 7px;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 
 .vlo-onb__progress span {
@@ -861,7 +863,7 @@ button:disabled { cursor: not-allowed; }
 
 .vlo-onb__process {
   display: grid;
-  grid-template-columns: minmax(0,1fr) 20px minmax(0,1fr) 20px minmax(0,1fr);
+  grid-template-columns: minmax(0,1fr) 14px minmax(0,1fr) 14px minmax(0,1fr);
   align-items: start;
   gap: 3px;
 }
@@ -875,16 +877,16 @@ button:disabled { cursor: not-allowed; }
 
 .vlo-onb__process > i {
   width: 100%;
-  margin-top: 44px;
+  margin-top: 29px;
   border-top: 2px dashed var(--accent);
   opacity: 0.76;
 }
 
 .vlo-onb__process-icon {
   position: relative;
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 10px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 5px;
   display: grid;
   place-items: center;
   color: var(--accent);
@@ -895,10 +897,10 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__process-number {
   position: absolute;
   z-index: 2;
-  width: 27px;
-  height: 27px;
-  margin-top: -10px;
-  margin-left: -13px;
+  width: 21px;
+  height: 21px;
+  margin-top: -6px;
+  margin-left: -9px;
   display: grid;
   place-items: center;
   color: var(--accent-strong);
@@ -906,13 +908,14 @@ button:disabled { cursor: not-allowed; }
   border-radius: 50%;
   background: #fff4ec;
   font-family: var(--f-mono);
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
 .vlo-onb__process b {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 800;
   line-height: 1.1;
 }
 
@@ -1019,6 +1022,37 @@ button:disabled { cursor: not-allowed; }
   width: 100%;
   max-width: 390px;
   margin: 0 auto;
+}
+
+.vlo-onb__reward-copy {
+  text-align: center;
+}
+
+.vlo-onb__reward-copy span,
+.vlo-onb__reward-copy b,
+.vlo-onb__reward-copy p { display: block; }
+
+.vlo-onb__reward-copy span {
+  color: var(--accent-strong);
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vlo-onb__reward-copy b {
+  margin-top: 2px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.vlo-onb__reward-copy p {
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .vlo-onb__demo-product {
@@ -1136,51 +1170,51 @@ button:disabled { cursor: not-allowed; }
   box-shadow: 0 5px 14px rgba(255,106,0,0.22);
 }
 
-.vlo-onb__subeloo { width: 100%; margin: 14px auto 0; }
+.vlo-onb__subeloo { width: 100%; margin: 7px auto 0; }
 .vlo-onb__demo-help {
-  min-height: 18px;
-  margin-top: 6px;
+  min-height: 14px;
+  margin-top: 2px;
   color: var(--ink-3);
   text-align: center;
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.64rem;
+  font-weight: 600;
 }
 .vlo-onb__demo-help.is-success { color: var(--ok); }
 
 .vlo-onb__footer {
   display: grid;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 2px;
+  margin-top: 6px;
 }
 
 .vlo-onb__continue {
   width: 100%;
-  min-height: 54px;
+  min-height: 46px;
   padding: 0 20px;
   color: #fff;
   border-radius: var(--r-pill);
   background: var(--accent);
   box-shadow: 0 10px 24px rgba(255,106,0,0.2);
-  font-size: 0.91rem;
-  font-weight: 900;
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .vlo-onb__back {
   justify-self: center;
-  padding: 6px 14px;
+  padding: 2px 14px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   color: var(--ink-2);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .vlo-onb__mantra {
   justify-self: center;
   color: var(--accent-strong);
-  font-size: 0.56rem;
-  font-weight: 900;
+  font-size: 0.5rem;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1229,7 +1263,7 @@ button:disabled { cursor: not-allowed; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.055em;
   text-transform: uppercase;
   pointer-events: none;
@@ -1298,10 +1332,10 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__hero-copy { margin-top: 24px; }
   .vlo-onb__title { font-size: clamp(2.45rem, 12.5vw, 3.35rem); }
   .vlo-onb__description { margin-top: 8px; font-size: 0.78rem; }
-  .vlo-onb__sheet { padding-top: 15px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-  .vlo-onb__progress { margin-bottom: 12px; }
-  .vlo-onb__process-icon { width: 57px; height: 57px; margin-bottom: 7px; }
-  .vlo-onb__process > i { margin-top: 35px; }
+  .vlo-onb__sheet { padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .vlo-onb__progress { margin-bottom: 6px; }
+  .vlo-onb__process-icon { width: 44px; height: 44px; margin-bottom: 4px; }
+  .vlo-onb__process > i { margin-top: 27px; }
   .vlo-onb__process p { display: none; }
   .vlo-onb__welcome { gap: 11px; }
   .vlo-onb__mode { min-height: 86px; padding-top: 10px; padding-bottom: 10px; }
@@ -1317,15 +1351,16 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__price-card { min-height: 74px; padding-top: 10px; padding-bottom: 10px; }
   .vlo-onb__price-card strong { font-size: 1.7rem; }
   .vlo-onb__increments { margin: 9px 0; }
-  .vlo-onb__footer { gap: 4px; margin-top: 11px; }
-  .vlo-onb__continue { min-height: 48px; }
-  .vlo-onb__back { padding-top: 4px; padding-bottom: 4px; }
+  .vlo-onb__footer { gap: 2px; margin-top: 4px; }
+  .vlo-onb__continue { min-height: 44px; }
+  .vlo-onb__back { padding-top: 2px; padding-bottom: 2px; }
 }
 
-/* En teléfonos bajos conservamos todos los pasos y el CTA dentro del flujo. */
+/* En teléfonos bajos reservamos 194px útiles para la hoja compacta. */
 @media (max-height: 850px) {
-  .vlo-onb--step-1 .vlo-flow-hero {
-    min-height: clamp(480px, 60dvh, 520px);
+  .vlo-onb .vlo-flow-hero {
+    height: calc(100dvh - 194px);
+    min-height: calc(100dvh - 194px);
   }
 }
 
