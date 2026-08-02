@@ -210,6 +210,15 @@ export default function AdminPage() {
   };
 
   const aprobarVendedor = (u: Usuario) => correr(`ap_${u.id}`, () => httpsCallable(functions, "approveSeller")({ sellerUid: u.id }), `${u.displayName ?? u.id} ya puede vender`);
+  const cambiarRol = (u: Usuario, hacerAdmin: boolean) => {
+    const quien = u.displayName ?? u.email ?? u.id;
+    const aviso = hacerAdmin
+      ? `${quien} va a poder acreditar saldo, aprobar recargas, liquidar vendedores, cambiar tu comisión y ver los datos de todos.\n\n¿Lo haces administrador?`
+      : `${quien} deja de tener acceso a esta consola.\n\n¿Le quitas el acceso?`;
+    if (!confirm(aviso)) return;
+    correr(`rol_${u.id}`, () => httpsCallable(functions, "setUserRole")({ userId: u.id, makeAdmin: hacerAdmin }),
+      hacerAdmin ? `${quien} ya es administrador` : `${quien} ya no es administrador`);
+  };
   const suspender = (u: Usuario) => { if (!confirm(`¿Suspender a ${u.displayName ?? u.id}? No podrá publicar más.`)) return; correr(`sp_${u.id}`, () => httpsCallable(functions, "suspendSeller")({ sellerUid: u.id }), `${u.displayName ?? u.id} suspendido`); };
   const cancelarSubasta = (a: any) => {
     const r = prompt(`Cancelar "${a.title}".\n\nSi alguien va ganando, su saldo retenido se le libera.\n\n¿Motivo?`);
@@ -674,6 +683,12 @@ export default function AdminPage() {
                             {esVendedor && <a className="lv-btn lv-btn--soft lv-btn--sm" href={`/seller/${u.id}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>Ver su tienda</a>}
                             {esVendedor && u.role !== "admin" && (
                               <button className="lv-btn lv-btn--danger lv-btn--sm" disabled={ocupado === `sp_${u.id}`} onClick={() => suspender(u)}>Suspender</button>
+                            )}
+                            {/* El rol propio no se toca: evita quedarse fuera de la consola por error. */}
+                            {u.id !== profile.uid && (
+                              u.role === "admin"
+                                ? <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `rol_${u.id}`} onClick={() => cambiarRol(u, false)}>Quitar admin</button>
+                                : <button className="lv-btn lv-btn--outline lv-btn--sm" disabled={ocupado === `rol_${u.id}`} onClick={() => cambiarRol(u, true)}>Hacer administrador</button>
                             )}
                           </div>
                         </div>

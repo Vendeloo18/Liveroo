@@ -33,6 +33,7 @@ export {
   updateExchangeRate,
   updateCommissionConfig,
 } from "./admin/adminFunctions";
+export { setUserRole } from "./admin/setUserRole";
 
 // Datos de demostración (herramienta de pre-lanzamiento, solo admin)
 export { manageDemoAuctions, refreshDemoAuctions } from "./admin/demoData";
