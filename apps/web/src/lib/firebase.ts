@@ -41,13 +41,25 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
 export const storage = getStorage(app);
 
-// App Check (anti-bots) usa reCAPTCHA Enterprise en producción y previews.
-// En desarrollo local queda desactivado; para probarlo localmente se debe
-// usar un debug token de App Check, no reutilizar la clave de producción.
+// App Check (anti-bots) con reCAPTCHA Enterprise.
+//
+// APAGADO A PROPÓSITO (2026-08-02). Desde Venezuela las llamadas a
+// www.google.com/recaptcha fallaban de forma intermitente con
+// ERR_SOCKET_NOT_CONNECTED, y cada operación de Firestore y de Auth se
+// quedaba esperando un token que nunca llegaba: la app tardaba muchísimo
+// o directamente no cargaba. Como App Check está en modo OBSERVACIÓN en
+// la consola de Firebase (no bloquea nada), se estaba pagando toda esa
+// lentitud a cambio de cero protección.
+//
+// Para volver a encenderlo: poner NEXT_PUBLIC_APPCHECK=on en Vercel y
+// redesplegar. Antes de hacerlo hay que confirmar que reCAPTCHA carga de
+// forma estable desde la red de los usuarios reales, no solo desde una
+// oficina — si no, se repite el problema para todos.
+const appCheckEncendido = env(process.env.NEXT_PUBLIC_APPCHECK) === "on";
 const recaptchaEnterpriseKey = env(
   process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY,
 );
-if (typeof window !== "undefined" && recaptchaEnterpriseKey) {
+if (typeof window !== "undefined" && appCheckEncendido && recaptchaEnterpriseKey) {
   import("firebase/app-check")
     .then(({ initializeAppCheck, ReCaptchaEnterpriseProvider }) => {
       initializeAppCheck(app, {
