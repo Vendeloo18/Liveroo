@@ -68,6 +68,8 @@ export default function AuctionPage() {
   const [historial, setHistorial] = useState(false);
   const [superado, setSuperado] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [errorCancelar, setErrorCancelar] = useState<string | null>(null);
 
   const cierrePedido = useRef(false);
   const eraLider = useRef(false);
@@ -130,6 +132,30 @@ export default function AuctionPage() {
     } catch {
       setError("No se pudo enviar la oferta");
       setEstado("err"); setTimeout(() => setEstado("idle"), 3000);
+    }
+  };
+
+  // El servidor decide qué operación es: retirar (dueño, sin ofertas) o
+  // cancelar (admin, con motivo y liberando la retención del líder).
+  const retirarOCancelar = async (esAdminAccion: boolean) => {
+    let motivo = "";
+    if (esAdminAccion) {
+      const r = prompt("¿Por qué se cancela esta venta? El motivo queda registrado y se avisa en el show:");
+      if (r === null) return;
+      motivo = r.trim();
+      if (motivo.length < 3) { setErrorCancelar("Escribe un motivo."); return; }
+    } else if (!confirm("¿Retirar esta publicación? Solo puedes hacerlo porque nadie ha ofertado todavía.")) {
+      return;
+    }
+    setCancelando(true);
+    setErrorCancelar(null);
+    try {
+      await httpsCallable(functions, "cancelAuction")({ auctionId, reason: motivo });
+      router.push(esAdminAccion ? "/admin" : "/seller");
+    } catch (e: any) {
+      setErrorCancelar(e?.message ?? "No se pudo cancelar");
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -238,6 +264,24 @@ export default function AuctionPage() {
         )}
 
         {esMia && activa && <div className="lv-note">Esta venta es tuya, no puedes hacer una oferta.</div>}
+
+        {errorCancelar && <div className="lv-note lv-note--bad">{errorCancelar}</div>}
+
+        {esMia && activa && pujas === 0 && (
+          <button className="lv-btn lv-btn--outline lv-btn--block" disabled={cancelando} onClick={() => retirarOCancelar(false)}>
+            {cancelando ? "Retirando…" : "Retirar publicación"}
+          </button>
+        )}
+        {esMia && activa && pujas > 0 && (
+          <div className="lv-note">
+            Ya hay ofertas, así que no se puede retirar: una oferta es un compromiso, también para ti.
+          </div>
+        )}
+        {profile?.role === "admin" && activa && (
+          <button className="lv-btn lv-btn--danger lv-btn--block" disabled={cancelando} onClick={() => retirarOCancelar(true)}>
+            {cancelando ? "Cancelando…" : "Cancelar venta (admin)"}
+          </button>
+        )}
 
         {/* Historial */}
         {bids.length > 0 && (

@@ -8,6 +8,7 @@ admin.initializeApp();
 // Auction engine
 export { onPendingBidCreated } from "./auction/onPendingBidCreated";
 export { closeExpiredAuctions, closeAuctionNow } from "./auction/closeExpiredAuctions";
+export { cancelAuction } from "./auction/cancelAuction";
 export { scheduleAuctionCloseOnWrite, closeAuctionTask } from "./auction/auctionCloseTasks";
 
 // Show controls
