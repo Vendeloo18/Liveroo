@@ -33,9 +33,9 @@ const escenas = [
     eyebrow: "Paso 2 de 2 · Participa",
     title: <>SUBELOO.<br/>RECIBELOO.</>,
     description: "Elige cuánto subir y gana $1 para comenzar.",
-    imageSrc: "/brand/venta-en-vivo-headphones.png",
-    imageAlt: "Audífonos inalámbricos en una venta en vivo de Vendeloo",
-    variant: "headphones" as const,
+    imageSrc: "/brand/onboarding-productos-live-v3.png",
+    imageAlt: "Consola portátil, cámara instantánea y reloj inteligente disponibles en Vendeloo",
+    variant: "showcase" as const,
   },
 ];
 
@@ -166,14 +166,14 @@ export default function OnboardingPage() {
             <div className="vlo-onb__demo">
               <div className="vlo-onb__demo-product">
                 <Image
-                  src="/brand/onboarding-audifonos-v2.png"
-                  alt="Audífonos inalámbricos de la oferta de práctica"
-                  width={1536}
-                  height={1024}
+                  src="/brand/onboarding-productos-live-v3.png"
+                  alt="Combo tecnológico de la oferta de práctica"
+                  width={1254}
+                  height={1254}
                 />
                 <div>
                   <span>Tu primer SUBELOO</span>
-                  <b>Audífonos inalámbricos</b>
+                  <b>Combo tecnológico</b>
                   <small>Práctica sin costo · bono real al terminar</small>
                 </div>
                 <em>BONO +$1</em>

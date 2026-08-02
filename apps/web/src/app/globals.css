@@ -30,7 +30,9 @@
   /* ── Tipografías ──────────────────────────────────────── */
   --f-cuerpo: var(--font-cuerpo), -apple-system, sans-serif;
   --f-display: var(--font-display), Impact, sans-serif;
-  --f-mono: var(--font-mono), ui-monospace, monospace;
+  /* Los datos usan Archivo con cifras tabulares: no introducimos una
+     tercera voz tipográfica para contadores, precios o metadatos. */
+  --f-mono: var(--f-cuerpo);
 
   /* ── Tinta y superficies ──────────────────────────────── */
   --ink: #0b0b0d;
@@ -118,8 +120,7 @@ body {
   line-height: 0.95;
 }
 
-/* Mono: todo lo numérico y de metadatos — contadores, lote, viewers,
-   @usuario. En los assets nada de eso va en la tipografía de cuerpo. */
+/* Datos: la misma Archivo de la interfaz, con cifras tabulares. */
 .lv-mono {
   font-family: var(--f-mono);
   font-variant-numeric: tabular-nums;
@@ -471,8 +472,32 @@ button:disabled { cursor: not-allowed; }
 }
 
 .vlo-flow-hero--products .vlo-flow-hero__art { object-position: center 61%; }
-.vlo-flow-hero--headphones .vlo-flow-hero__art,
+.vlo-flow-hero--showcase .vlo-flow-hero__art { object-position: center 62%; }
 .vlo-flow-hero--entry .vlo-flow-hero__art { object-position: center center; }
+
+/* En el primer paso los productos bajan y se abren hacia la derecha para
+   que el mensaje nunca compita con el calzado ni con el control. */
+.vlo-onb--step-1 .vlo-flow-hero__art {
+  animation: none;
+  transform: translate(24px, 88px) scale(0.91);
+  transform-origin: center bottom;
+}
+
+.vlo-onb--step-1 .vlo-flow-hero__copy {
+  top: calc(88px + env(safe-area-inset-top));
+  max-width: 244px;
+}
+
+.vlo-onb--step-1 .vlo-flow-hero__title {
+  max-width: 238px;
+  font-size: clamp(2.55rem, 10.8vw, 3.2rem);
+  text-shadow: 0 4px 10px rgba(92, 24, 0, 0.62);
+}
+
+.vlo-onb--step-1 .vlo-flow-hero__description {
+  max-width: 220px;
+  text-shadow: 0 2px 8px rgba(92, 24, 0, 0.72);
+}
 
 .vlo-flow-hero__top {
   position: absolute;

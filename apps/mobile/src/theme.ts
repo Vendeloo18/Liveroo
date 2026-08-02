@@ -76,8 +76,10 @@ export const familia = {
   cuerpoSemi: "Archivo_600SemiBold",
   cuerpoBold: "Archivo_700Bold",
   cuerpoExtra: "Archivo_800ExtraBold",
-  mono: "JetBrainsMono_400Regular",
-  monoMedium: "JetBrainsMono_500Medium",
+  // Alias conservados para no romper componentes existentes: los datos
+  // también usan Archivo y la app mantiene solo dos familias visibles.
+  mono: "Archivo_400Regular",
+  monoMedium: "Archivo_500Medium",
 } as const;
 
 // Se conservan para el codigo que aun pasa fontWeight sueltos.
@@ -103,7 +105,7 @@ export const text = {
     fontFamily: familia.monoMedium, fontSize: 10, letterSpacing: 1.2,
     textTransform: "uppercase" as const, color: color.ink3,
   },
-  // Datos: contador, lote, viewers, @usuario.
+  // Datos: contador, lote, viewers y @usuario, siempre en Archivo.
   dato: { fontFamily: familia.mono, fontSize: 12, color: color.ink2 },
   muted: { fontFamily: familia.cuerpo, fontSize: 13, color: color.ink2 },
   dim: { fontFamily: familia.cuerpo, fontSize: 12, color: color.ink3 },

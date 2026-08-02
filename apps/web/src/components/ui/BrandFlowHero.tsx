@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import { Logo } from "./Logo";
 
-type HeroVariant = "entry" | "products" | "headphones";
+type HeroVariant = "entry" | "products" | "showcase";
 
 export function BrandFlowHero({
   imageSrc,

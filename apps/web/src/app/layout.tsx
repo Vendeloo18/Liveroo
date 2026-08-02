@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Anton, JetBrains_Mono } from "next/font/google";
+import { Archivo, Anton } from "next/font/google";
 import "./globals.css";
 import { BRAND, brandCssVariables } from "@subastas-ve/shared";
 import { AuthProvider } from "../components/ui/AuthProvider";
@@ -7,13 +7,10 @@ import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
 import { PushForeground } from "../components/ui/PushForeground";
 import { AutoActualizar } from "../components/ui/AutoActualizar";
 
-// Tres tipografías, cada una con un trabajo, siguiendo los assets de marca:
+// Dos tipografías, cada una con un trabajo claro en toda la aplicación:
 //
-//  · Archivo      — cuerpo. Grotesca legible con cifras tabulares.
-//  · Anton        — títulos y precios. Condensada muy pesada, en
-//                   mayúsculas, como el logotipo y los titulares.
-//  · JetBrains Mono — datos: contadores, número de lote, viewers, @usuario.
-//                   En los assets todo lo numérico va monoespaciado.
+//  · Archivo — interfaz, cuerpo, botones, cifras, datos y formularios.
+//  · Anton   — únicamente titulares de campaña y cifras protagonistas.
 //
 // Si más adelante aparece la tipografía real de la marca, se cambia aquí
 // y en apps/mobile/src/theme.ts.
@@ -29,13 +26,6 @@ const anton = Anton({
   weight: "400",
   display: "swap",
   variable: "--font-display",
-});
-
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  display: "swap",
-  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -83,7 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Las variables de fuente van en <html> y no en <body>: globals.css
     // las consume desde :root, y si viven en el body no existen ahí y toda
     // la tipografía cae al fallback sin avisar.
-    <html lang="es" className={`${archivo.variable} ${anton.variable} ${mono.variable}`}>
+    <html lang="es" className={`${archivo.variable} ${anton.variable}`}>
       <head>
         {/* Los colores de marca salen de packages/shared/src/brand.ts, el
             mismo archivo que consume el móvil. globals.css trae valores por

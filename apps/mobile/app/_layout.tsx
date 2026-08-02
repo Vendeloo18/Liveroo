@@ -8,20 +8,18 @@ import {
   Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold,
   Archivo_700Bold, Archivo_800ExtraBold,
 } from "@expo-google-fonts/archivo";
-import { JetBrainsMono_400Regular, JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 import { useAuthStore } from "../src/store/authStore";
 import { color } from "../src/theme";
 
 export default function RootLayout() {
   const init = useAuthStore((s) => s.init);
 
-  // Las mismas tres tipografías que la web: Anton para display, Archivo
-  // para cuerpo y JetBrains Mono para datos. Ver apps/web/src/app/layout.tsx.
+  // Las mismas dos tipografías que la web: Anton para titulares y Archivo
+  // para toda la interfaz, incluidos datos y precios secundarios.
   const [fuentesListas] = useFonts({
     Anton_400Regular,
     Archivo_400Regular, Archivo_500Medium, Archivo_600SemiBold,
     Archivo_700Bold, Archivo_800ExtraBold,
-    JetBrainsMono_400Regular, JetBrainsMono_500Medium,
   });
 
   // Un solo listener de sesión para toda la app
