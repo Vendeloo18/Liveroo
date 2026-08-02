@@ -72,7 +72,7 @@ export function LiveShowCard({ show, onClick }: { show: any; onClick: () => void
             </div>
           </>
         ) : (
-          <div style={{ fontFamily: "var(--f-display)", fontSize: "1.25rem", textTransform: "uppercase", lineHeight: 1.05 }}>{titulo}</div>
+          <div style={{ fontFamily: "var(--f-display)", fontSize: "1.25rem", fontWeight: 800, textTransform: "uppercase", lineHeight: 1.05 }}>{titulo}</div>
         )}
       </div>
     </button>

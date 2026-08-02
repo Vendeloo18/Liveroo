@@ -103,7 +103,7 @@ export default function SellerProfilePage() {
                 {(perfil.displayName ?? "?")[0].toUpperCase()}
               </span>}
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: 850, letterSpacing: "-0.03em" }}>
+            <div style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.03em" }}>
               {perfil.shopName || perfil.displayName}
             </div>
             {perfil.username && <div className="lv-dim" style={{ fontSize: "0.78rem" }}>@{perfil.username}</div>}

@@ -83,7 +83,7 @@ export default function SupportPage() {
         </section>
 
         <section className="lv-panel">
-          <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 4 }}>¿No encontraste tu respuesta?</div>
+          <div style={{ fontSize: "0.92rem", fontWeight: 700, marginBottom: 4 }}>¿No encontraste tu respuesta?</div>
           <p className="lv-dim" style={{ fontSize: "0.8rem", lineHeight: 1.5, marginBottom: 13 }}>
             Escríbenos y te respondemos por el mismo correo con el que entraste.
           </p>

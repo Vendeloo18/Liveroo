@@ -46,12 +46,12 @@ export function Hero({
           />
 
           <View style={{ position: "absolute", left: 22, top: insets.top + 22 }}>
-            <Logo tamano={30} color="#fff"/>
+            <Logo tamano={29} color="#fff"/>
           </View>
 
           <Text style={{
             position: "absolute", left: 22, right: 16, top: insets.top + 84,
-            fontFamily: familia.display, fontSize: Math.min(contenido * 0.142, 66),
+            fontFamily: familia.campaign, fontSize: Math.min(contenido * 0.142, 66),
             lineHeight: Math.min(contenido * 0.126, 58), color: "#fff",
             letterSpacing: 0.4, includeFontPadding: false,
           }}>

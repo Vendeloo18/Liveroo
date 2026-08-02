@@ -70,7 +70,8 @@ export const space = {
 // elige por nombre de archivo, no por fontWeight, asi que cada peso es
 // una familia distinta.
 export const familia = {
-  display: "Anton_400Regular",
+  campaign: "Anton_400Regular",
+  display: "Archivo_800ExtraBold",
   cuerpo: "Archivo_400Regular",
   cuerpoMedium: "Archivo_500Medium",
   cuerpoSemi: "Archivo_600SemiBold",
@@ -93,7 +94,7 @@ export const font = {
 };
 
 export const text = {
-  wordmark: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 28, letterSpacing: 0.3, color: color.ink },
+  wordmark: { fontFamily: familia.campaign, textTransform: "uppercase" as const, fontSize: 28, letterSpacing: 0.3, color: color.ink },
   title: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 22, letterSpacing: 0.3, color: color.ink },
   section: { fontFamily: familia.display, textTransform: "uppercase" as const, fontSize: 20, letterSpacing: 0.3, color: color.ink },
   body: { fontFamily: familia.cuerpo, fontSize: 15, color: color.ink },

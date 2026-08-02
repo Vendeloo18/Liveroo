@@ -276,7 +276,7 @@ export default function SellerPage() {
     return (
       <div className="lv-app seller-apply">
         <header className="seller-apply__hero">
-          <Logo tamano={24} color="#fff" />
+          <Logo tamano={29} color="#fff" />
           <Logo variante="simbolo" tamano={250} color="var(--accent-light)" className="seller-apply__watermark" />
           <div className="seller-apply__hero-copy">
             <div className="lv-eyebrow">Tu próxima venta empieza aquí</div>
@@ -397,7 +397,7 @@ export default function SellerPage() {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         </button>
       )}
-      <h1 className="lv-topbar__title" style={{ fontSize: "1.15rem", fontWeight: 850 }}>{titulo}</h1>
+      <h1 className="lv-topbar__title">{titulo}</h1>
     </header>
   );
 
@@ -593,7 +593,7 @@ export default function SellerPage() {
             ? <img src={avatar} alt="" style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", flexShrink: 0 }}/>
             : <span style={{ width: 46, height: 46, borderRadius: 14, background: "var(--accent-tint)", color: "var(--accent-strong)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "1.15rem", flexShrink: 0 }}>{shopName[0].toUpperCase()}</span>}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontFamily: "var(--f-display)", fontSize: "1.15rem", textTransform: "uppercase", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shopName}</div>
+            <div style={{ fontFamily: "var(--f-display)", fontSize: "1.15rem", fontWeight: 800, textTransform: "uppercase", lineHeight: 1.05, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shopName}</div>
             <div className="lv-eyebrow" style={{ marginTop: 3 }}>Panel de vendedor</div>
           </div>
           <span className="lv-badge lv-badge--soft" style={{ flexShrink: 0, color: "var(--ok)", background: "color-mix(in srgb, var(--ok) 12%, transparent)" }}>

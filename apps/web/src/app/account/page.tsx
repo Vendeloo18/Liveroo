@@ -47,7 +47,7 @@ export default function AccountPage() {
   return (
     <div className="lv-app">
       <header className="lv-topbar">
-        <h1 className="lv-topbar__title" style={{ fontSize: "1.15rem", fontWeight: 850 }}>Mi cuenta</h1>
+        <h1 className="lv-topbar__title">Mi cuenta</h1>
       </header>
 
       <div className="lv-pad" style={{ paddingTop: 18, display: "grid", gap: 14 }}>
@@ -114,7 +114,7 @@ export default function AccountPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z"/></svg>
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "0.9rem", fontWeight: 750 }}>Mis ventas</div>
+                <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>Mis ventas</div>
                 <div className="lv-dim" style={{ fontSize: "0.74rem" }}>Quién compró qué · pagos y envíos</div>
               </div>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
@@ -122,7 +122,7 @@ export default function AccountPage() {
           </>
         ) : (
           <section className="lv-panel">
-            <div style={{ fontSize: "0.92rem", fontWeight: 750, marginBottom: 4 }}>{`¿Quieres vender en ${BRAND.name}?`}</div>
+            <div style={{ fontSize: "0.92rem", fontWeight: 700, marginBottom: 4 }}>{`¿Quieres vender en ${BRAND.name}?`}</div>
             <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.5, marginBottom: 12 }}>
               {profile.sellerStatus === "pending"
                 ? "Tu solicitud está en revisión. Te avisamos cuando la aprueben."
@@ -148,7 +148,7 @@ export default function AccountPage() {
               </svg>
             </span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "0.9rem", fontWeight: 750 }}>Administración</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>Administración</div>
               <div className="lv-dim" style={{ fontSize: "0.74rem" }}>Vendedores, tasa y comisión</div>
             </div>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>

@@ -549,7 +549,7 @@ export default function ShowPage() {
           <Confetti/>
           <div style={{ animation: "ganadorPop .55s cubic-bezier(.2,1.5,.4,1) both" }}>
             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", margin: "0 auto" }}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21 1.18.54 2.03 2.03 2.03 3.79M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
-            <div style={{ fontFamily: "var(--f-display)", fontSize: "clamp(1.9rem,9vw,2.7rem)", color: "#fff", textTransform: "uppercase", lineHeight: 1.02, marginTop: 8, textShadow: "0 3px 16px rgba(0,0,0,0.55)" }}>
+            <div style={{ fontFamily: "var(--f-campaign)", fontSize: "clamp(1.9rem,9vw,2.7rem)", color: "#fff", textTransform: "uppercase", lineHeight: 1.02, marginTop: 8, textShadow: "0 3px 16px rgba(0,0,0,0.55)" }}>
               ¡{celebra.name}<br/>ganó!
             </div>
             {celebra.product && (

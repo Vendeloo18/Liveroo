@@ -11,7 +11,7 @@ import { color as tema, familia } from "../theme";
  */
 export function Logo({
   variante = "lockup",
-  tamano = 28,
+  tamano = 29,
   color,
 }: {
   variante?: "lockup" | "apilado" | "simbolo";
@@ -44,7 +44,7 @@ export function Logo({
     >
       {simbolo}
       <Text style={{
-        fontFamily: familia.display,
+        fontFamily: familia.campaign,
         fontSize: tamano * 0.95,
         letterSpacing: 0.4,
         color: tinta,

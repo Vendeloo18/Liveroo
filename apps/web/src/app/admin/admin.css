@@ -4,7 +4,7 @@
    Reusa los tokens y componentes lv-* de globals.css (botones, chips,
    inputs, badges, notas). Aquí solo vive lo que la app móvil no tiene:
    el layout de escritorio (sidebar, tabla, login) — todo con la paleta
-   cálida, el naranja y la Anton de la marca.
+   cálida, el naranja y el sistema tipográfico de la marca.
    ============================================================= */
 
 .adm {
@@ -27,7 +27,7 @@
   box-shadow: 0 6px 16px rgba(255, 106, 0, 0.32);
 }
 .adm-side__brand .mk svg { width: 22px; height: 22px; }
-.adm-side__brand .wm { font-family: var(--f-display); font-size: 1.35rem; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
+.adm-side__brand .wm { font-family: var(--f-campaign); font-size: 1.35rem; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
 .adm-side__brand .pl { font-family: var(--f-mono); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-strong); margin-top: 3px; }
 
 .adm-side__nav { flex: 1; padding: 4px 12px; overflow-y: auto; }
@@ -56,7 +56,7 @@
   display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
 }
 .adm-side__foot .who { min-width: 0; flex: 1; }
-.adm-side__foot .who .n { font-size: 0.8rem; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-side__foot .who .n { font-size: 0.8rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-side__foot .who .r { font-size: 0.68rem; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-side__foot .out { color: var(--ink-3); padding: 8px; border-radius: 999px; flex-shrink: 0; }
 .adm-side__foot .out:hover { background: var(--surface-2); color: var(--ink); }
@@ -68,12 +68,12 @@
   background: color-mix(in srgb, var(--surface-2) 88%, transparent); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
 }
-.adm-top h1 { font-family: var(--f-display); font-size: 1.5rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+.adm-top h1 { font-family: var(--f-display); font-size: 1.5rem; font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
 .adm-top .sub { font-size: 0.82rem; color: var(--ink-3); margin-top: 4px; }
 .adm-kpis { display: flex; gap: 10px; }
 .adm-chip { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; }
 .adm-chip .k { font-family: var(--f-mono); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.adm-chip .v { font-size: 0.9rem; font-weight: 750; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.adm-chip .v { font-size: 0.9rem; font-weight: 700; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
 .adm-dot { width: 7px; height: 7px; border-radius: 50%; }
 .adm-dot--g { background: var(--ok); } .adm-dot--o { background: var(--accent); } .adm-dot--x { background: var(--ink-4); }
 
@@ -82,7 +82,7 @@
 .adm-sech .t { font-family: var(--f-mono); font-size: 0.62rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
 .adm-sech .t b { color: var(--accent-strong); font-weight: 600; }
 
-/* ── Tarjetas de métrica: panel de la app + número en Anton ── */
+/* ── Tarjetas de métrica: panel de la app + número en Archivo ── */
 .adm-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
 .adm-mc { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px 18px; box-shadow: var(--shadow-card); }
 .adm-mc__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -92,21 +92,21 @@
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .adm-mc__ic svg { width: 18px; height: 18px; }
-.adm-mc__num { font-family: var(--f-display); font-size: 2.1rem; line-height: 1; color: var(--accent); letter-spacing: 0.005em; }
+.adm-mc__num { font-family: var(--f-display); font-size: 2.1rem; font-weight: 800; line-height: 1; color: var(--accent); letter-spacing: -0.03em; }
 .adm-mc__ctx { font-size: 0.74rem; color: var(--ink-3); margin-top: 8px; }
 .adm-mc__ctx b { color: var(--ink-2); font-weight: 650; }
 /* Con pendientes: se tiñe durazno, como la tarjeta "Por atender" del vendedor */
 .adm-mc--alerta { background: var(--accent-tint); border-color: transparent; }
 .adm-mc--alerta .adm-mc__num { color: var(--accent-strong); }
 .adm-mc--alerta .adm-mc__ic { background: var(--accent); color: #fff; }
-.adm-mc__go { margin-top: 10px; display: inline-block; font-size: 0.76rem; font-weight: 750; color: var(--accent-strong); }
+.adm-mc__go { margin-top: 10px; display: inline-block; font-size: 0.76rem; font-weight: 700; color: var(--accent-strong); }
 
 /* Columnas y paneles */
 .adm-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
 .adm-panel { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); margin-bottom: 16px; overflow: hidden; }
 .adm-panel__h { padding: 15px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .adm-panel__h .t { font-family: var(--f-mono); font-size: 0.62rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); }
-.adm-panel__h .a { font-size: 0.76rem; font-weight: 750; color: var(--accent-strong); }
+.adm-panel__h .a { font-size: 0.76rem; font-weight: 700; color: var(--accent-strong); }
 .adm-panel__b { padding: 18px 20px; }
 
 /* Filas */
@@ -114,7 +114,7 @@
 .adm-panel > .adm-row:last-child, .adm-panel > div:last-child > .adm-row:last-child { border-bottom: none; }
 .adm-row:hover { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
 .adm-row__main { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.adm-row__name { font-size: 0.88rem; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-row__name { font-size: 0.88rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-row__meta { font-size: 0.75rem; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-row__act { display: flex; gap: 7px; flex-shrink: 0; align-items: center; }
 
@@ -123,7 +123,7 @@
 .adm-det__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
 .adm-det__stat { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 11px 13px; }
 .adm-det__stat .k { font-family: var(--f-mono); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.adm-det__stat .v { font-family: var(--f-display); font-size: 1.25rem; color: var(--accent); margin-top: 4px; line-height: 1; }
+.adm-det__stat .v { font-family: var(--f-display); font-size: 1.25rem; font-weight: 800; color: var(--accent); margin-top: 4px; line-height: 1; }
 .adm-det__stat .s { font-size: 0.68rem; color: var(--ink-3); margin-top: 4px; }
 
 /* Tabla */
@@ -172,9 +172,9 @@
 .adm-login__brand { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
 .adm-login__brand .mk { width: 40px; height: 40px; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(255, 106, 0, 0.35); }
 .adm-login__brand .mk svg { width: 23px; height: 23px; }
-.adm-login__brand .wm { font-family: var(--f-display); font-size: 1.4rem; line-height: 1; text-transform: uppercase; }
+.adm-login__brand .wm { font-family: var(--f-campaign); font-size: 1.4rem; line-height: 1; text-transform: uppercase; }
 .adm-login__brand .pl { font-family: var(--f-mono); font-size: 0.56rem; letter-spacing: 0.2em; color: var(--accent-strong); margin-top: 3px; }
-.adm-login h1 { font-family: var(--f-display); font-size: 1.5rem; text-transform: uppercase; line-height: 1.05; margin-bottom: 8px; }
+.adm-login h1 { font-family: var(--f-display); font-size: 1.5rem; font-weight: 800; text-transform: uppercase; line-height: 1.05; margin-bottom: 8px; }
 .adm-login p { font-size: 0.84rem; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px; }
 
 /* Responsive */

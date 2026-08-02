@@ -271,7 +271,7 @@ export default function SellerShowPage() {
         ) : !enVivo ? (
           /* ── Antes de salir en vivo ── */
           <section className="lv-panel" style={{ textAlign: "center", padding: "24px 18px" }}>
-            <div style={{ fontFamily: "var(--f-display)", fontSize: "1.4rem", textTransform: "uppercase", lineHeight: 1.05 }}>Todo listo</div>
+            <div style={{ fontFamily: "var(--f-campaign)", fontSize: "1.4rem", textTransform: "uppercase", lineHeight: 1.05 }}>Todo listo</div>
             <p className="lv-dim" style={{ fontSize: "0.86rem", lineHeight: 1.5, margin: "9px 0 18px" }}>
               Sal en vivo y ve agregando lo que vendes, uno por uno.{waiting.length > 0 ? ` Tienes ${waiting.length} en cola.` : ""}
             </p>

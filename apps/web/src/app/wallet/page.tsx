@@ -185,7 +185,7 @@ export default function WalletPage() {
         {recargando && (
           metodosDisponibles.length === 0 ? (
             <section className="lv-panel">
-              <div style={{ fontSize: "0.9rem", fontWeight: 750, marginBottom: 4 }}>Recargas aún no disponibles</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: 4 }}>Recargas aún no disponibles</div>
               <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.55 }}>
                 Las cuentas para recibir pagos todavía no están configuradas.
                 Escríbenos por soporte y lo resolvemos.
@@ -200,7 +200,7 @@ export default function WalletPage() {
                 <div className="lv-eyebrow" style={{ marginBottom: 8 }}>1 · Envía tu pago a</div>
                 {cuentas?.pagoMovil?.telefono && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Pago móvil</div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Pago móvil</div>
                     <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
                       {cuentas.pagoMovil.banco && <>Banco: <strong>{cuentas.pagoMovil.banco}</strong><br/></>}
                       Teléfono: <strong>{cuentas.pagoMovil.telefono}</strong><br/>
@@ -210,7 +210,7 @@ export default function WalletPage() {
                 )}
                 {cuentas?.zelle?.correo && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Zelle</div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Zelle</div>
                     <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
                       Correo: <strong>{cuentas.zelle.correo}</strong>
                       {cuentas.zelle.titular && <><br/>Titular: <strong>{cuentas.zelle.titular}</strong></>}
@@ -219,7 +219,7 @@ export default function WalletPage() {
                 )}
                 {cuentas?.binance && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 750 }}>Binance Pay</div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Binance Pay</div>
                     <div className="lv-dim" style={{ fontSize: "0.78rem" }}>{cuentas.binance}</div>
                   </div>
                 )}

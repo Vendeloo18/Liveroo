@@ -69,7 +69,7 @@ export function PushForeground() {
             animation: "lvPushIn 0.22s ease-out",
           }}
         >
-          <div style={{ fontSize: "0.85rem", fontWeight: 750, lineHeight: 1.3 }}>{t.titulo}</div>
+          <div style={{ fontSize: "0.85rem", fontWeight: 700, lineHeight: 1.3 }}>{t.titulo}</div>
           {t.cuerpo && (
             <div style={{ fontSize: "0.77rem", lineHeight: 1.4, marginTop: 2, opacity: 0.92 }}>{t.cuerpo}</div>
           )}

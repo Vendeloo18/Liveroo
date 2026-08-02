@@ -29,7 +29,10 @@
 
   /* ── Tipografías ──────────────────────────────────────── */
   --f-cuerpo: var(--font-cuerpo), -apple-system, sans-serif;
-  --f-display: var(--font-display), Impact, sans-serif;
+  /* Anton queda reservada para mensajes de campaña y el logotipo. Todo
+     título de interfaz, precio, dato o control usa Archivo. */
+  --f-campaign: var(--font-display), Impact, sans-serif;
+  --f-display: var(--f-cuerpo);
   /* Los datos usan Archivo con cifras tabulares: no introducimos una
      tercera voz tipográfica para contadores, precios o metadatos. */
   --f-mono: var(--f-cuerpo);
@@ -106,14 +109,15 @@ body {
   background: var(--surface-2);
   color: var(--ink);
   font-family: var(--f-cuerpo);
+  font-synthesis: none;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Display: condensada pesada en mayúsculas, como el logotipo y los
-   titulares de los assets. Se usa en títulos y precios. */
+/* Display de campaña: condensada pesada en mayúsculas, como el logotipo y
+   los titulares promocionales. */
 .lv-display {
-  font-family: var(--f-display);
+  font-family: var(--f-campaign);
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: 0.005em;
@@ -164,16 +168,17 @@ button:disabled { cursor: not-allowed; }
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 62px;
   padding: 12px 16px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--accent-soft);
 }
 
 .lv-topbar__title {
   font-family: var(--f-display);
   font-size: 1.15rem;
-  font-weight: 400;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.01em;
   flex: 1;
@@ -184,7 +189,7 @@ button:disabled { cursor: not-allowed; }
 }
 
 .lv-wordmark {
-  font-family: var(--f-display);
+  font-family: var(--f-campaign);
   font-size: 1.6rem;
   font-weight: 400;
   text-transform: uppercase;
@@ -475,14 +480,6 @@ button:disabled { cursor: not-allowed; }
 .vlo-flow-hero--showcase .vlo-flow-hero__art { object-position: center 62%; }
 .vlo-flow-hero--entry .vlo-flow-hero__art { object-position: center center; }
 
-/* En el primer paso los productos bajan y se abren hacia la derecha para
-   que el mensaje nunca compita con el calzado ni con el control. */
-.vlo-onb--step-1 .vlo-flow-hero__art {
-  animation: none;
-  transform: translate(24px, 88px) scale(0.91);
-  transform-origin: center bottom;
-}
-
 .vlo-onb--step-1 .vlo-flow-hero__copy {
   top: calc(88px + env(safe-area-inset-top));
   max-width: 244px;
@@ -514,7 +511,7 @@ button:disabled { cursor: not-allowed; }
   padding: 8px 2px 8px 12px;
   color: rgba(255,255,255,0.94);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .vlo-flow-hero__copy {
@@ -538,7 +535,7 @@ button:disabled { cursor: not-allowed; }
 .vlo-flow-hero__title {
   max-width: 92%;
   color: #fff;
-  font-family: var(--f-display);
+  font-family: var(--f-campaign);
   font-size: clamp(2.75rem, 12.6vw, 3.8rem);
   font-weight: 400;
   letter-spacing: 0.004em;
@@ -552,7 +549,7 @@ button:disabled { cursor: not-allowed; }
   margin-top: 12px;
   color: rgba(255,255,255,0.96);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.4;
   text-shadow: 0 2px 10px rgba(91,24,0,0.38);
 }
@@ -659,7 +656,7 @@ button:disabled { cursor: not-allowed; }
   gap: 7px;
   color: var(--accent-strong);
   font-size: 0.8rem;
-  font-weight: 850;
+  font-weight: 800;
 }
 .vlo-auth__privacy {
   max-width: 340px;
@@ -802,7 +799,7 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__title {
   max-width: 395px;
   color: #fff;
-  font-family: var(--f-display);
+  font-family: var(--f-campaign);
   font-size: clamp(3rem, 14.4vw, 4.15rem);
   font-weight: 400;
   letter-spacing: 0.005em;
@@ -1095,7 +1092,8 @@ button:disabled { cursor: not-allowed; }
   margin-top: 2px;
   font-family: var(--f-display);
   font-size: 1.72rem;
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   line-height: 1;
 }
 .vlo-onb__price-card strong.is-accent { color: var(--accent); }
@@ -1139,7 +1137,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--ink-3);
   text-align: center;
   font-size: 0.72rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 .vlo-onb__demo-help.is-success { color: var(--ok); }
 
@@ -1225,7 +1223,7 @@ button:disabled { cursor: not-allowed; }
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.78rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: 0.055em;
   text-transform: uppercase;
   pointer-events: none;
@@ -1399,10 +1397,10 @@ button:disabled { cursor: not-allowed; }
 .lv-card__body { padding: 10px 12px 12px; }
 
 .lv-card__title {
-  /* Cuerpo, no display: una grilla entera gritando en Anton mayúscula era
-     ruido tipográfico. La Anton queda para titulares, secciones y precios. */
+  /* Archivo mantiene legible una grilla completa de productos. Anton solo
+     aparece en mensajes grandes de campaña y en el logotipo. */
   font-size: 0.88rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -1437,8 +1435,8 @@ button:disabled { cursor: not-allowed; }
 .lv-price {
   font-family: var(--f-display);
   font-size: 1.35rem;
-  font-weight: 400;
-  letter-spacing: 0.005em;
+  font-weight: 800;
+  letter-spacing: -0.035em;
   color: var(--accent);
   line-height: 1;
 }
@@ -1510,7 +1508,7 @@ button:disabled { cursor: not-allowed; }
 .lv-section__title {
   font-family: var(--f-display);
   font-size: 1.2rem;
-  font-weight: 400;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.01em;
   display: flex;

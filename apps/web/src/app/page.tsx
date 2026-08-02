@@ -103,7 +103,7 @@ export default function Home() {
       {/* Barra superior */}
       <header className="lv-topbar">
         <div style={{ display: "grid", gap: 1 }}>
-          <Logo tamano={26}/>
+          <Logo tamano={29}/>
           <span style={{ color: "var(--accent-strong)", fontSize: "0.46rem", fontWeight: 900, letterSpacing: "0.075em" }}>
             {BRAND.mantra}
           </span>

@@ -10,7 +10,7 @@ import { AutoActualizar } from "../components/ui/AutoActualizar";
 // Dos tipografías, cada una con un trabajo claro en toda la aplicación:
 //
 //  · Archivo — interfaz, cuerpo, botones, cifras, datos y formularios.
-//  · Anton   — únicamente titulares de campaña y cifras protagonistas.
+//  · Anton   — únicamente titulares de campaña y el logotipo.
 //
 // Si más adelante aparece la tipografía real de la marca, se cambia aquí
 // y en apps/mobile/src/theme.ts.

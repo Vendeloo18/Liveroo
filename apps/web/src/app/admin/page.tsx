@@ -618,7 +618,7 @@ export default function AdminPage() {
             <>
               <div className="adm-grid2">
                 <div className="adm-panel"><div className="adm-panel__h"><span className="t">Tasa de cambio</span><span className={`lv-badge ${tasa?.usdToBs ? "adm-ok" : "adm-al"}`}>{tasa?.usdToBs ? "Al día" : "Falta"}</span></div><div className="adm-panel__b">
-                  <div style={{ fontFamily: "var(--f-display)", fontSize: "2.4rem", lineHeight: 1, color: "var(--accent)" }}>{tasa?.usdToBs ? `Bs ${tasa.usdToBs}` : "—"}</div>
+                  <div style={{ fontFamily: "var(--f-display)", fontSize: "2.4rem", fontWeight: 800, lineHeight: 1, color: "var(--accent)" }}>{tasa?.usdToBs ? `Bs ${tasa.usdToBs}` : "—"}</div>
                   <div className="adm-row__meta" style={{ marginTop: 6, marginBottom: 16 }}>
                     por dólar{tasa?.source ? ` · fuente: ${tasa.source}` : ""}{tasa?.updatedAt?.toDate ? ` · ${tasa.updatedAt.toDate().toLocaleString("es-VE")}` : ""}
                   </div>
@@ -631,7 +631,7 @@ export default function AdminPage() {
                 </div></div>
 
                 <div className="adm-panel"><div className="adm-panel__h"><span className="t">Comisión de la plataforma</span></div><div className="adm-panel__b">
-                  <div style={{ fontFamily: "var(--f-display)", fontSize: "2.4rem", lineHeight: 1, color: "var(--accent)" }}>{comision?.platformFeePct != null ? `${comision.platformFeePct}%` : "—"}</div>
+                  <div style={{ fontFamily: "var(--f-display)", fontSize: "2.4rem", fontWeight: 800, lineHeight: 1, color: "var(--accent)" }}>{comision?.platformFeePct != null ? `${comision.platformFeePct}%` : "—"}</div>
                   <div className="adm-row__meta" style={{ marginTop: 6, marginBottom: 16 }}>{comision?.mode === "platform_collects" ? "la plataforma cobra todo y luego paga al vendedor" : "el vendedor cobra directo y debe la comisión"}</div>
                   <div className="lv-field"><span className="lv-field__label">Quién cobra</span>
                     <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>

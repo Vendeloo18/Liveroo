@@ -11,7 +11,7 @@ import { BRAND, SIMBOLO_PATH } from "@subastas-ve/shared";
  */
 export function Logo({
   variante = "lockup",
-  tamano = 28,
+  tamano = 29,
   color,
   className,
 }: {

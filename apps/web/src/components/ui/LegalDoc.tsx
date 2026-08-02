@@ -12,7 +12,7 @@ export function LegalDoc({ titulo, actualizado, children }: { titulo: string; ac
         <button className="lv-icon-btn" onClick={() => router.back()} aria-label="Atrás">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
         </button>
-        <h1 className="lv-topbar__title" style={{ fontSize: "1.15rem", fontWeight: 850 }}>{titulo}</h1>
+        <h1 className="lv-topbar__title">{titulo}</h1>
       </header>
       <div className="lv-pad" style={{ paddingTop: 14 }}>
         <p className="lv-dim" style={{ fontSize: "0.74rem", marginBottom: 20 }}>Última actualización: {actualizado}</p>

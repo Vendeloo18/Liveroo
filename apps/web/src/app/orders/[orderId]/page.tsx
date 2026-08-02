@@ -156,7 +156,7 @@ export default function OrderPage() {
             {order.productImageURL && <img src={order.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "0.92rem", fontWeight: 750, lineHeight: 1.3 }}>{order.productTitle ?? "Producto"}</div>
+            <div style={{ fontSize: "0.92rem", fontWeight: 700, lineHeight: 1.3 }}>{order.productTitle ?? "Producto"}</div>
             <div className="lv-dim" style={{ fontSize: "0.76rem", marginTop: 3 }}>Vendido por {order.sellerName}</div>
             <span className={`lv-badge ${e.clase}`} style={{ marginTop: 6 }}>{e.texto}</span>
           </div>
@@ -283,7 +283,7 @@ export default function OrderPage() {
               </div>
             ) : (
               <>
-                <div style={{ fontSize: "0.94rem", fontWeight: 750, marginBottom: 3 }}>
+                <div style={{ fontSize: "0.94rem", fontWeight: 700, marginBottom: 3 }}>
                   ¿Cómo te fue con {order.sellerName}?
                 </div>
                 <p className="lv-dim" style={{ fontSize: "0.76rem", marginBottom: 14 }}>

@@ -165,7 +165,7 @@ export default function ActivityPage() {
   return (
     <div className="lv-app">
       <header className="lv-topbar">
-        <h1 className="lv-topbar__title" style={{ fontSize: "1.15rem", fontWeight: 850 }}>Actividad</h1>
+        <h1 className="lv-topbar__title">Actividad</h1>
       </header>
 
       <div className="lv-chips">

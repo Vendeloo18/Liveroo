@@ -39,7 +39,7 @@ export function Hero({
         />
 
         <div className="vlo-entry__brand">
-          <Logo tamano={30} color="#fff"/>
+          <Logo tamano={29} color="#fff"/>
         </div>
 
         <h1 id="entrada-titulo" className="lv-display vlo-entry__title">
