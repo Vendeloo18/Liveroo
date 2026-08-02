@@ -54,14 +54,18 @@ export default function OrderPage() {
   const [yaCalifique, setYaCalifique] = useState(false);
   const [avanzando, setAvanzando] = useState(false);
   const [errorEstado, setErrorEstado] = useState<string | null>(null);
+  const [noExiste, setNoExiste] = useState(false);
 
   useEffect(() => {
     return onSnapshot(doc(db, "orders", orderId), s => {
-      if (!s.exists()) return;
+      // Sin esto se quedaba "Cargando orden…" para siempre: tanto si la
+      // orden no existe como si es de otra persona (permission-denied,
+      // que antes ni siquiera tenía callback de error).
+      if (!s.exists()) { setNoExiste(true); return; }
       const o = { id: s.id, ...s.data() } as any;
       setOrder(o);
       if (o.ratingGiven != null) setYaCalifique(true);
-    });
+    }, () => setNoExiste(true));
   }, [orderId]);
 
   // El ciclo lo mueve el servidor (advanceOrder): valida quién eres y
@@ -98,6 +102,24 @@ export default function OrderPage() {
       setEnviando(false);
     }
   };
+
+
+  if (noExiste) {
+    return (
+      <div className="lv-app">
+        <header className="lv-topbar">
+          <button className="lv-icon-btn" onClick={() => router.push("/activity")} aria-label="Atrás">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          </button>
+        </header>
+        <div className="lv-empty" style={{ minHeight: "70dvh" }}>
+          <div className="lv-empty__title">No encontramos esta orden</div>
+          <div className="lv-empty__text" style={{ maxWidth: 300 }}>Puede que el enlace esté mal o que la orden sea de otra persona.</div>
+          <button className="lv-btn lv-btn--accent lv-btn--lg" style={{ marginTop: 18 }} onClick={() => router.push("/activity")}>Ver mis órdenes</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!order) {
     return <div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">Cargando orden…</div></div></div>;

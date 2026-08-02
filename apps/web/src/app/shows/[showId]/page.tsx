@@ -197,7 +197,19 @@ export default function ShowPage() {
         else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Oferta rechazada"); setEstado("err"); }
         setTimeout(() => setEstado("idle"), 2500);
       });
-      setTimeout(() => { unsub(); setEstado(p => p === "pending" ? "idle" : p); }, 15000);
+      // Antes esto volvía a "normal" sin decir nada: la persona deslizaba,
+      // veía "Validando…" y luego nada, así que deslizaba otra vez. Si el
+      // veredicto no llega, se dice — y se pide revisar el precio antes de
+      // repetir, que es justo el riesgo de ofertar dos veces.
+      setTimeout(() => {
+        unsub();
+        setEstado(p => {
+          if (p !== "pending") return p;
+          setError("No pudimos confirmar tu oferta. Revisa el precio actual antes de volver a deslizar.");
+          setTimeout(() => setEstado("idle"), 5000);
+          return "err";
+        });
+      }, 15000);
     } catch {
       setError("No se pudo enviar");
       setEstado("err");

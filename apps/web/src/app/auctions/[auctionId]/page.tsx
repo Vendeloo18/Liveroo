@@ -68,6 +68,7 @@ export default function AuctionPage() {
   const [historial, setHistorial] = useState(false);
   const [superado, setSuperado] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [noExiste, setNoExiste] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [errorCancelar, setErrorCancelar] = useState<string | null>(null);
 
@@ -77,7 +78,9 @@ export default function AuctionPage() {
 
   useEffect(() => {
     return onSnapshot(doc(db, "auctions", auctionId), s => {
-      if (!s.exists()) return;
+      // Sin esto, un enlace mal copiado dejaba la pantalla en "Cargando…"
+      // para siempre, sin cabecera ni forma de volver.
+      if (!s.exists()) { setNoExiste(true); return; }
       const a = { id: s.id, ...s.data() } as Auction;
       setAuction(a);
       setBidInput(prev => prev || ((a.bidsCount ?? 0) > 0 ? a.currentBidUsd + a.minIncrementUsd : a.startingPriceUsd).toFixed(2));
@@ -128,7 +131,19 @@ export default function AuctionPage() {
         else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Oferta rechazada"); setEstado("err"); }
         setTimeout(() => setEstado("idle"), 3500);
       });
-      setTimeout(() => { unsub(); setEstado(p => p === "pending" ? "idle" : p); }, 15000);
+      // Antes esto volvía a "normal" sin decir nada: la persona deslizaba,
+      // veía "Validando…" y luego nada, así que deslizaba otra vez. Si el
+      // veredicto no llega, se dice — y se pide revisar el precio antes de
+      // repetir, que es justo el riesgo de ofertar dos veces.
+      setTimeout(() => {
+        unsub();
+        setEstado(p => {
+          if (p !== "pending") return p;
+          setError("No pudimos confirmar tu oferta. Revisa el precio actual antes de volver a deslizar.");
+          setTimeout(() => setEstado("idle"), 5000);
+          return "err";
+        });
+      }, 15000);
     } catch {
       setError("No se pudo enviar la oferta");
       setEstado("err"); setTimeout(() => setEstado("idle"), 3000);
@@ -170,6 +185,23 @@ export default function AuctionPage() {
       }
     } catch { /* cancelado */ }
   };
+
+  if (noExiste) {
+    return (
+      <div className="lv-app">
+        <header className="lv-topbar">
+          <button className="lv-icon-btn" onClick={() => router.push("/auctions")} aria-label="Atrás">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          </button>
+        </header>
+        <div className="lv-empty" style={{ minHeight: "70dvh" }}>
+          <div className="lv-empty__title">Esta venta ya no está</div>
+          <div className="lv-empty__text" style={{ maxWidth: 300 }}>Puede que el enlace esté incompleto o que la publicación se haya retirado.</div>
+          <button className="lv-btn lv-btn--accent lv-btn--lg" style={{ marginTop: 18 }} onClick={() => router.push("/auctions")}>Ver lo que hay ahora</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!auction) {
     return <div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">{error ?? "Cargando…"}</div></div></div>;

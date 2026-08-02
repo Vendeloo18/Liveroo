@@ -275,6 +275,15 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 300
+          // La hora la pone el servidor. Con fecha libre se podían mandar
+          // 40 mensajes fechados en el año 2999: se clavaban arriba de la
+          // ventana de chat de TODOS y ningún mensaje nuevo volvía a verse,
+          // ni siquiera los del sistema ("Fulano ganó"). El cliente ya
+          // manda serverTimestamp(), así que esto no cambia nada legítimo.
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.keys().hasOnly(
+               ['showId', 'authorId', 'authorName', 'type', 'text', 'createdAt']
+             )
           && get(/databases/$(database)/documents/shows/$(showId)).data.status == 'live';
 
         allow update: if false;

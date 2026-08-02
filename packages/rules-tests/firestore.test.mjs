@@ -18,6 +18,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   doc, setDoc, getDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where,
+  serverTimestamp,
 } from "firebase/firestore";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -472,9 +473,10 @@ describe("Shows", () => {
 });
 
 describe("Chat en vivo", () => {
+  // showId y createdAt del servidor: es exactamente lo que manda la app.
   const msg = (over = {}) => ({
-    authorId: BUYER, authorName: "Juan", type: "chat",
-    text: "¡Hola!", createdAt: new Date(), ...over,
+    showId: "showLive", authorId: BUYER, authorName: "Juan", type: "chat",
+    text: "¡Hola!", createdAt: serverTimestamp(), ...over,
   });
 
   test("se puede escribir en un show en vivo", async () => {
@@ -512,6 +514,29 @@ describe("Chat en vivo", () => {
     await assertFails(
       addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
         msg({ text: "x".repeat(301) }))
+    );
+  });
+
+  // Con fecha libre se podían clavar 40 mensajes arriba del chat de todos
+  // y tapar hasta los avisos del sistema. La hora la pone el servidor.
+  test("nadie clava mensajes fechados en el futuro", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
+        msg({ createdAt: new Date("2999-01-01") }))
+    );
+  });
+
+  test("tampoco con una fecha del pasado para esconderlos", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
+        msg({ createdAt: new Date(0) }))
+    );
+  });
+
+  test("no se cuelan campos que la app no manda", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
+        msg({ pinned: true }))
     );
   });
 });
