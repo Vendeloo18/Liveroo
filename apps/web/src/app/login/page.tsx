@@ -22,6 +22,7 @@ export default function AuthPage() {
   const [verClave, setVerClave] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [salidaControlada, setSalidaControlada] = useState(false);
+  const esCorreoAdmin = modo === "entrar" && email.trim().toLowerCase() === "info@vendeloo.io";
 
   const bonoPendiente = () => {
     if (typeof window === "undefined") return false;
@@ -67,7 +68,10 @@ export default function AuthPage() {
     setOcupado(true);
     setSalidaControlada(true);
     try {
-      if (modo === "crear") {
+      if (esCorreoAdmin) {
+        await signInWithGoogle();
+        router.push("/admin");
+      } else if (modo === "crear") {
         await signUp({ email, password: clave, displayName: nombre.trim() });
         if (!(await completarBonoSiAplica())) router.push("/onboarding");
       } else {
@@ -188,7 +192,7 @@ export default function AuthPage() {
             />
           </div>
 
-          <div className="lv-field">
+          {!esCorreoAdmin && <div className="lv-field">
             <label className="lv-field__label" htmlFor="clave">Contraseña</label>
             <div className="vlo-auth__password">
               <input
@@ -230,7 +234,13 @@ export default function AuthPage() {
                 {recuperando ? "Enviando…" : "Olvidé mi contraseña"}
               </button>
             )}
-          </div>
+          </div>}
+
+          {esCorreoAdmin && (
+            <div className="lv-note lv-note--ok" style={{ marginBottom: 12 }}>
+              Esta es la cuenta administradora. Entrarás de forma segura con Google; no necesitas contraseña.
+            </div>
+          )}
 
           {avisoReset && <div className="lv-note lv-note--ok" style={{ marginBottom: 12 }}>{avisoReset}</div>}
 
@@ -239,9 +249,9 @@ export default function AuthPage() {
           <button
             type="submit"
             className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
-            disabled={ocupado || !puedeEnviar}
+            disabled={ocupado || (!esCorreoAdmin && !puedeEnviar)}
           >
-            {ocupado ? "Un momento…" : modo === "crear" ? "Crear mi cuenta" : "Entrar a Vendeloo"}
+            {ocupado ? "Abriendo Google…" : esCorreoAdmin ? "Entrar al panel de administración" : modo === "crear" ? "Crear mi cuenta" : "Entrar a Vendeloo"}
           </button>
 
           {modo === "crear" && (

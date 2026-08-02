@@ -311,7 +311,11 @@ export default function AdminPage() {
             <div style={{ textAlign: "center" }}>
               <h1>Sin acceso</h1>
               <p style={{ marginBottom: 18 }}>La cuenta {profile.email} no es administradora.</p>
-              <button className="lv-btn lv-btn--accent lv-btn--block" onClick={() => signOut()}>Cambiar a info@vendeloo.io</button>
+              <button className="lv-btn lv-btn--accent lv-btn--block adm-login__google" disabled={entrando} onClick={entrarGoogle}>
+                <GoogleLogo size={20} weight="bold" aria-hidden="true"/>
+                {entrando ? "Abriendo Google…" : "Entrar como info@vendeloo.io"}
+              </button>
+              <button className="lv-btn lv-btn--ghost lv-btn--block" style={{ marginTop: 8 }} onClick={() => signOut()}>Cerrar esta sesión</button>
             </div>
           )}
         </div>
