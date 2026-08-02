@@ -322,3 +322,119 @@
   .adm-montos button { min-width: 64px; }
   .adm-elegido { flex-wrap: wrap; }
 }
+
+/* =============================================================
+   Personas — directorio operativo, no una lista interminable
+   ============================================================= */
+.adm-people__toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 14px 16px; border-bottom: 1px solid var(--line);
+}
+.adm-people__search {
+  flex: 1; max-width: 560px; display: flex; align-items: center; gap: 9px;
+  background: var(--surface-2); border: 1px solid transparent; border-radius: 14px;
+  padding: 0 13px; color: var(--ink-3); transition: border-color 0.15s, background 0.15s;
+}
+.adm-people__search:focus-within { background: var(--bg); border-color: var(--accent); color: var(--accent-strong); }
+.adm-people__search input { width: 100%; min-width: 0; height: 42px; font: inherit; color: var(--ink); outline: none; }
+.adm-people__search input::placeholder { color: var(--ink-3); }
+.adm-people__summary { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-people__summary span { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-3); font-size: 0.7rem; white-space: nowrap; }
+.adm-people__summary b { color: var(--ink); }
+.adm-people__head, .adm-person-row {
+  display: grid; grid-template-columns: minmax(250px, 1.55fr) minmax(210px, 1.15fr) minmax(150px, 0.85fr) 150px;
+  align-items: center; gap: 18px;
+}
+.adm-people__head {
+  padding: 9px 18px; background: var(--surface-2); border-bottom: 1px solid var(--line);
+  font-family: var(--f-mono); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+}
+.adm-people__head span:last-child { text-align: right; padding-right: 23px; }
+.adm-person-row {
+  width: 100%; padding: 11px 18px; text-align: left; border-bottom: 1px solid var(--line);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.adm-person-row:hover, .adm-person-row.is-open { background: var(--accent-tint); }
+.adm-person-row.is-open { box-shadow: inset 3px 0 var(--accent); }
+.adm-person-row__identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.adm-person-row__role { min-width: 0; color: var(--ink-3); font-size: 0.7rem; line-height: 1.35; }
+.adm-person-row__badges { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; flex-wrap: wrap; }
+.adm-person-row__activity { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 0.74rem; white-space: nowrap; }
+.adm-person-row__activity b { color: var(--ink); font-size: 0.82rem; }
+.adm-person-row__activity i { width: 3px; height: 3px; border-radius: 50%; background: var(--line-strong); }
+.adm-person-row__money { display: grid; grid-template-columns: 1fr 16px; align-items: center; text-align: right; gap: 8px; }
+.adm-person-row__money .mono { font-size: 0.9rem; font-weight: 700; }
+.adm-person-row__money span { grid-column: 1; color: var(--accent-strong); font-size: 0.64rem; font-weight: 700; }
+.adm-person-row__money svg { grid-column: 2; grid-row: 1 / span 2; color: var(--ink-4); transition: transform 0.2s; }
+.adm-person-row.is-open .adm-person-row__money svg { transform: rotate(180deg); }
+
+/* =============================================================
+   Ventas — productos visibles y acciones con jerarquía
+   ============================================================= */
+.adm-sales__live {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+  padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible;
+}
+.adm-sales__live > .adm-panel__h {
+  grid-column: 1 / -1; background: var(--bg); border: 1px solid var(--line); border-radius: 16px;
+  padding: 12px 16px;
+}
+.adm-sales__live > .adm-row {
+  min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 18px;
+  background: var(--bg); box-shadow: var(--shadow-card); flex-direction: column; align-items: stretch;
+}
+.adm-sales__live > .adm-row:hover { background: var(--bg); border-color: var(--accent-soft); }
+.adm-sales__live > .adm-row .adm-row__main { align-items: flex-start; }
+.adm-sales__live > .adm-row .adm-row__main > div:first-child {
+  width: 76px !important; height: 76px !important; border-radius: 14px !important;
+}
+.adm-sales__live > .adm-row .adm-row__name { white-space: normal; line-height: 1.25; }
+.adm-sales__live > .adm-row .adm-row__meta { white-space: normal; margin-top: 5px; line-height: 1.45; }
+.adm-sales__live > .adm-row .adm-row__act { margin-top: 12px; justify-content: flex-end; }
+.adm-sales__live > .adm-row .adm-row__act .lv-btn { flex: 0 0 auto; }
+.adm-sales__live > .adm-row .lv-btn--danger { background: transparent; color: var(--error); border: 1px solid color-mix(in srgb, var(--error) 28%, transparent); }
+.adm-sales__filters { display: flex; gap: 7px; flex-wrap: wrap; margin: 20px 0 12px; }
+.adm-sales__orders { overflow: hidden; }
+.adm-sales__orders > div > button:hover { background: var(--surface-2); }
+
+/* =============================================================
+   Ajustes — misma capacidad, bastante menos altura
+   ============================================================= */
+.adm-settings { display: grid; gap: 12px; }
+.adm-settings .adm-panel { margin-bottom: 0; border-radius: 18px; }
+.adm-settings .adm-panel__h { padding: 11px 16px; }
+.adm-settings .adm-panel__b { padding: 13px 16px; }
+.adm-settings .lv-field { margin-bottom: 10px; }
+.adm-settings .lv-input { min-height: 42px; padding-top: 9px; padding-bottom: 9px; }
+.adm-settings__payment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; }
+.adm-settings__payment-grid > div { display: contents; }
+.adm-settings__core, .adm-settings__secondary { gap: 12px; }
+.adm-settings__core .adm-panel__b > div:first-child { font-size: 2rem !important; }
+.adm-settings__core .adm-row__meta { margin-bottom: 10px !important; }
+.adm-settings__secondary .adm-state .r { padding: 11px 16px; }
+
+@media (max-width: 1100px) {
+  .adm-people__head, .adm-person-row { grid-template-columns: minmax(220px, 1.5fr) minmax(180px, 1fr) 140px; }
+  .adm-people__head span:nth-child(3), .adm-person-row__activity { display: none; }
+  .adm-sales__live { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .adm-people__toolbar { align-items: stretch; flex-direction: column; }
+  .adm-people__search { max-width: none; }
+  .adm-people__summary { justify-content: flex-start; }
+  .adm-people__head { display: none; }
+  .adm-person-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 13px 14px; }
+  .adm-person-row__identity { grid-column: 1; }
+  .adm-person-row__role { grid-column: 1; padding-left: 49px; }
+  .adm-person-row__money { grid-column: 2; grid-row: 1 / span 2; }
+  .adm-sales__live { grid-template-columns: 1fr; }
+  .adm-settings__payment-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 520px) {
+  .adm-people__summary span { font-size: 0.65rem; }
+  .adm-person-row__role { padding-left: 0; grid-column: 1 / -1; }
+  .adm-person-row__money { align-self: start; }
+  .adm-settings__payment-grid { grid-template-columns: 1fr; }
+}

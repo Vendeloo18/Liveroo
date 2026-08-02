@@ -9,10 +9,12 @@ import { db, functions } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
 import { SIMBOLO_PATH, formatUsd } from "@subastas-ve/shared";
 import {
+  CaretDown,
   Clock,
   CreditCard,
   GearSix,
   GoogleLogo,
+  MagnifyingGlass,
   Package,
   Plus,
   SignOut,
@@ -595,7 +597,7 @@ export default function AdminPage() {
 
           {/* ═══════════ PERSONAS ═══════════ */}
           {seccion === "personas" && (
-            <>
+            <div className="adm-people">
               {pendientesVendedor.length > 0 && (
                 <div className="adm-panel">
                   <div className="adm-panel__h"><span className="t">Quieren ser vendedores · {pendientesVendedor.length}</span></div>
@@ -619,8 +621,19 @@ export default function AdminPage() {
               )}
 
               <div className="adm-panel">
-                <div className="adm-panel__b" style={{ paddingBottom: 14 }}>
-                  <input className="lv-input" placeholder="Busca por nombre, correo, tienda, WhatsApp o cédula…" value={buscaP} onChange={e => setBuscaP(e.target.value)}/>
+                <div className="adm-people__toolbar">
+                  <label className="adm-people__search">
+                    <MagnifyingGlass size={19} weight="bold" aria-hidden="true"/>
+                    <input placeholder="Buscar persona, tienda, WhatsApp o cédula…" value={buscaP} onChange={e => setBuscaP(e.target.value)}/>
+                  </label>
+                  <div className="adm-people__summary" aria-label="Resumen de personas">
+                    <span><b>{usuarios.length}</b> personas</span>
+                    <span><b>{usuarios.filter(u => u.sellerStatus === "approved").length}</b> vendedores</span>
+                    <span><b>{usuarios.filter(u => u.role === "admin").length}</b> admin</span>
+                  </div>
+                </div>
+                <div className="adm-people__head" aria-hidden="true">
+                  <span>Persona</span><span>Rol y ubicación</span><span>Actividad</span><span>Saldo</span>
                 </div>
                 {personas.length === 0 && <div className="adm-empty">Sin resultados.</div>}
                 {personas.slice(0, 60).map(u => {
@@ -630,25 +643,30 @@ export default function AdminPage() {
                   const esVendedor = u.sellerStatus === "approved";
                   return (
                     <div key={u.id}>
-                      <button className="adm-row" style={{ width: "100%", textAlign: "left" }} onClick={() => setAbierta(abierto ? null : u.id)}>
-                        <div className="adm-row__main">
+                      <button className={`adm-person-row${abierto ? " is-open" : ""}`} onClick={() => setAbierta(abierto ? null : u.id)}>
+                        <div className="adm-person-row__identity">
                           <Ava u={u}/>
                           <div style={{ minWidth: 0 }}>
-                            <div className="adm-row__name">
-                              {u.displayName ?? "Sin nombre"}
-                              {u.role === "admin" && <span className="lv-badge lv-badge--accent" style={{ marginLeft: 8 }}>Admin</span>}
-                              {esVendedor && <span className="lv-badge adm-ok" style={{ marginLeft: 8 }}>Vendedor</span>}
-                              {u.sellerStatus === "suspended" && <span className="lv-badge adm-al" style={{ marginLeft: 8 }}>Suspendido</span>}
-                            </div>
-                            <div className="adm-row__meta">{u.email}{u.whatsapp ? ` · ${u.whatsapp}` : ""}{u.city ? ` · ${u.city}` : ""}</div>
+                            <div className="adm-row__name">{u.displayName ?? "Sin nombre"}</div>
+                            <div className="adm-row__meta">{u.email ?? "Sin correo"}</div>
                           </div>
                         </div>
-                        <div className="adm-row__act">
-                          <div style={{ textAlign: "right" }}>
-                            <div className="mono" style={{ fontSize: "0.95rem", fontWeight: 700 }}>{formatUsd(w.saldo)}</div>
-                            {w.retenido > 0 && <div style={{ fontSize: "0.68rem", color: "var(--accent-strong)", fontWeight: 600 }}>{formatUsd(w.retenido)} retenidos</div>}
+                        <div className="adm-person-row__role">
+                          <div className="adm-person-row__badges">
+                            {u.role === "admin" && <span className="lv-badge lv-badge--accent">Admin</span>}
+                            {esVendedor && <span className="lv-badge adm-ok">Vendedor</span>}
+                            {!esVendedor && u.role !== "admin" && <span className="lv-badge lv-badge--soft">Comprador</span>}
+                            {u.sellerStatus === "suspended" && <span className="lv-badge adm-al">Suspendido</span>}
                           </div>
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round" style={{ transform: abierto ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}><path d="M6 9l6 6 6-6"/></svg>
+                          <span>{u.city || "Sin ciudad"}{u.whatsapp ? ` · ${u.whatsapp}` : ""}</span>
+                        </div>
+                        <div className="adm-person-row__activity">
+                          <b>{compras.length}</b> compras <i/> <b>{ventas.length}</b> ventas
+                        </div>
+                        <div className="adm-person-row__money">
+                          <div className="mono">{formatUsd(w.saldo)}</div>
+                          {w.retenido > 0 && <span>{formatUsd(w.retenido)} retenidos</span>}
+                          <CaretDown size={16} weight="bold" aria-hidden="true"/>
                         </div>
                       </button>
 
@@ -708,14 +726,14 @@ export default function AdminPage() {
                   );
                 })}
               </div>
-            </>
+            </div>
           )}
 
           {/* ═══════════ VENTAS ═══════════ */}
           {seccion === "ventas" && (
-            <>
-              <div className="adm-panel">
-                <div className="adm-panel__h"><span className="t">Publicaciones activas · {activas.length}</span></div>
+            <div className="adm-sales">
+              <div className="adm-panel adm-sales__live">
+                <div className="adm-panel__h"><span className="t">Publicaciones activas</span><span className="lv-badge lv-badge--accent">{activas.length} en vivo</span></div>
                 {activas.length === 0 ? <div className="adm-empty">Nada activo ahora mismo.</div> : activas.slice(0, 30).map(a => (
                   <div key={a.id} className="adm-row">
                     <div className="adm-row__main">
@@ -737,13 +755,13 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 16 }}>
+              <div className="adm-sales__filters">
                 {([["todas", "Todas"], ["pending_payment", "Por pagar"], ["payment_confirmed", "Pagadas"], ["shipped", "Enviadas"], ["delivered", "Entregadas"], ["cancelled", "Canceladas"]] as const).map(([v, l]) => (
                   <button key={v} className={`lv-chip${filtro === v ? " lv-chip--active" : ""}`} onClick={() => setFiltro(v)}>{l}</button>
                 ))}
               </div>
 
-              <div className="adm-panel">
+              <div className="adm-panel adm-sales__orders">
                 {ordenes.filter(o => filtro === "todas" || o.status === filtro).length === 0 && <div className="adm-empty">Nada por aquí.</div>}
                 {ordenes.filter(o => filtro === "todas" || o.status === filtro).slice(0, 60).map(o => {
                   const e = ESTADO_ORDEN[o.status] ?? { texto: o.status, clase: "lv-badge--soft" };
@@ -780,12 +798,12 @@ export default function AdminPage() {
                   );
                 })}
               </div>
-            </>
+            </div>
           )}
 
           {/* ═══════════ AJUSTES ═══════════ */}
           {seccion === "ajustes" && (
-            <>
+            <div className="adm-settings">
               <div className="adm-panel">
                 <div className="adm-panel__h">
                   <span className="t">Cuentas donde te pagan</span>
@@ -795,7 +813,7 @@ export default function AdminPage() {
                   <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.5 }}>
                     Esto es exactamente lo que ve la persona cuando va a recargar. Si un método queda vacío, no se le ofrece.
                   </p>
-                  <div className="adm-grid2">
+                  <div className="adm-settings__payment-grid">
                     <div>
                       <div className="lv-field"><label className="lv-field__label">Pago móvil · Banco</label><input className="lv-input" value={pmBanco} onChange={e => setPmBanco(e.target.value)} placeholder="Banesco"/></div>
                       <div className="lv-field"><label className="lv-field__label">Teléfono</label><input className="lv-input" value={pmTel} onChange={e => setPmTel(e.target.value)} placeholder="0414-1234567"/></div>
@@ -811,7 +829,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="adm-grid2">
+              <div className="adm-grid2 adm-settings__core">
                 <div className="adm-panel">
                   <div className="adm-panel__h"><span className="t">Tasa del día</span><span className={`lv-badge ${tasa?.usdToBs ? "adm-ok" : "adm-al"}`}>{tasa?.usdToBs ? "Al día" : "Falta"}</span></div>
                   <div className="adm-panel__b">
@@ -846,7 +864,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="adm-grid2">
+              <div className="adm-grid2 adm-settings__secondary">
                 <div className="adm-panel">
                   <div className="adm-panel__h"><span className="t">Reglas de la plataforma</span></div>
                   <div className="adm-state">
@@ -873,7 +891,7 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </main>
