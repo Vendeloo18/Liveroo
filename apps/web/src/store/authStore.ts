@@ -11,6 +11,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   type User,
 } from "firebase/auth";
 import {
@@ -36,6 +37,7 @@ interface AuthState {
     whatsapp?: string;
   }) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
   _init: () => () => void; // returns unsubscribe
@@ -124,6 +126,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ firebaseUser: null, profile: null });
   },
 
+  // Sin esto, quien olvidaba su clave perdía el acceso a su saldo: no
+  // había ninguna vía de recuperación en toda la app.
+  resetPassword: async (email) => {
+    set({ error: null });
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (e: any) {
+      // No se revela si el correo existe: la respuesta es la misma.
+      if (e?.code === "auth/invalid-email") {
+        set({ error: mapFirebaseError(e.code) });
+        throw e;
+      }
+    }
+  },
+
   clearError: () => set({ error: null }),
 
   _init: () => {
@@ -187,6 +204,14 @@ function mapFirebaseError(code: string): string {
     "auth/weak-password": "La contraseña debe tener al menos 6 caracteres",
     "auth/invalid-email": "Email inválido",
     "auth/too-many-requests": "Demasiados intentos. Intenta más tarde.",
+    // Firebase devuelve invalid-credential por contraseña incorrecta cuando
+    // está activa la protección de enumeración de correos.
+    "auth/invalid-credential": "Correo o contraseña incorrectos",
+    "auth/network-request-failed": "Sin conexión. Revisa tu internet e intenta otra vez.",
+    "auth/popup-blocked": "Tu navegador bloqueó la ventana de Google. Entra con tu correo.",
+    "auth/popup-closed-by-user": "Cerraste la ventana de Google antes de terminar.",
+    "auth/cancelled-popup-request": "Cerraste la ventana de Google antes de terminar.",
+    "auth/operation-not-supported-in-this-environment": "Google no funciona dentro de WhatsApp. Abre el link en tu navegador o entra con tu correo.",
     "permission-denied": "No pudimos preparar tu perfil. Actualiza la app e inténtalo otra vez.",
   };
   return map[code] ?? "Error desconocido. Intenta de nuevo.";

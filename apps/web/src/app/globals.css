@@ -1561,7 +1561,10 @@ button:disabled { cursor: not-allowed; }
   border: 1.5px solid transparent;
   border-radius: var(--r-btn);
   padding: 13px 14px;
-  font-size: 0.92rem;
+  /* 16px exactos: Safari iOS hace zoom automático en cualquier campo con
+     menos, y la página queda desplazada. Era visible al escribir el monto
+     de una oferta o al llenar la solicitud de vendedor. */
+  font-size: 16px;
   font-weight: 500;
   color: var(--ink);
   outline: none;

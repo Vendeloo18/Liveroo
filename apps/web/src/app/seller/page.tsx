@@ -185,8 +185,19 @@ export default function SellerPage() {
     setTimeout(() => setAviso(null), 5000);
   };
 
+  // El motor copia sellerWhatsapp a cada orden. Sin número, el ganador
+  // se queda sin forma de coordinar y la venta muere ahí. El aviso solo
+  // no bastaba: había que impedir publicar.
+  const faltaWhatsapp = () => {
+    if ((profile as any)?.whatsapp) return false;
+    avisar("bad", "Agrega tu WhatsApp antes de publicar: por ahí te escribe quien gane.");
+    setTimeout(() => router.push("/account/edit"), 1200);
+    return true;
+  };
+
   const crearSubasta = async () => {
     if (!tSub.trim() || !precio || !profile) return;
+    if (faltaWhatsapp()) return;
     setOcupado(true);
     try {
       const p = parseFloat(precio);
@@ -211,6 +222,7 @@ export default function SellerPage() {
 
   const crearShow = async () => {
     if (!tShow.trim() || !profile) return;
+    if (faltaWhatsapp()) return;
     setOcupado(true);
     try {
       const ref = await addDoc(collection(db, "shows"), {

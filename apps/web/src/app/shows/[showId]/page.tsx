@@ -486,7 +486,7 @@ export default function ShowPage() {
             style={{
               flex: 1, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(8px)",
               border: "1px solid rgba(255,255,255,0.16)", borderRadius: 999,
-              padding: "0 16px", height: 44, color: "#fff", fontSize: "0.85rem", outline: "none",
+              padding: "0 16px", height: 44, color: "#fff", fontSize: 16, outline: "none",
             }}
           />
 

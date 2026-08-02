@@ -12,11 +12,13 @@ type Modo = "entrar" | "crear";
 
 export default function AuthPage() {
   const router = useRouter();
-  const { signIn, signUp, signInWithGoogle, error, clearError, profile } = useAuthStore();
+  const { signIn, signUp, signInWithGoogle, resetPassword, error, clearError, profile } = useAuthStore();
   const [modo, setModo] = useState<Modo>("crear");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
+  const [recuperando, setRecuperando] = useState(false);
+  const [avisoReset, setAvisoReset] = useState<string | null>(null);
   const [verClave, setVerClave] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [salidaControlada, setSalidaControlada] = useState(false);
@@ -209,7 +211,28 @@ export default function AuthPage() {
             {modo === "crear" && clave.length > 0 && clave.length < 6 && (
               <div className="lv-field__hint">Te faltan {6 - clave.length} caracteres</div>
             )}
+            {modo === "entrar" && (
+              <button
+                type="button"
+                onClick={async () => {
+                  clearError();
+                  setAvisoReset(null);
+                  if (!email.trim()) { setAvisoReset("Escribe tu correo arriba y toca aquí de nuevo."); return; }
+                  setRecuperando(true);
+                  try {
+                    await resetPassword(email);
+                    setAvisoReset(`Te enviamos un enlace a ${email.trim()} para cambiar tu contraseña. Revisa también el correo no deseado.`);
+                  } catch { /* el store ya expone el error */ }
+                  finally { setRecuperando(false); }
+                }}
+                style={{ marginTop: 8, fontSize: "0.78rem", fontWeight: 700, color: "var(--accent-strong)", textDecoration: "underline", textUnderlineOffset: 3 }}
+              >
+                {recuperando ? "Enviando…" : "Olvidé mi contraseña"}
+              </button>
+            )}
           </div>
+
+          {avisoReset && <div className="lv-note lv-note--ok" style={{ marginBottom: 12 }}>{avisoReset}</div>}
 
           {error && <div className="lv-note lv-note--bad vlo-auth__error">{error}</div>}
 

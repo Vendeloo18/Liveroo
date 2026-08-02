@@ -37,7 +37,8 @@ export function BidAmount({
         aria-label="Monto de tu oferta"
         style={{
           flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none",
-          fontSize: "0.98rem", fontWeight: 800, color: dark ? "#fff" : "var(--ink)", padding: 0,
+          // 16px: menos que eso hace que iOS haga zoom al enfocar.
+          fontSize: 16, fontWeight: 800, color: dark ? "#fff" : "var(--ink)", padding: 0,
         }}
       />
     </div>
