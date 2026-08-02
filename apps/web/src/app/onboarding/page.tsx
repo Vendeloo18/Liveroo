@@ -75,15 +75,21 @@ export default function OnboardingPage() {
     <main className={`vlo-onb vlo-onb--step-${paso + 1}`}>
       <section className="vlo-onb__hero">
         <Tag className="vlo-onb__mark" weight="fill" aria-hidden="true"/>
-        {paso < 2 && (
+        {paso <= 2 && (
           <Image
             key={paso}
-            src={paso === 0 ? "/brand/onboarding-productos.png" : "/brand/onboarding-formas.png"}
+            src={paso === 0
+              ? "/brand/onboarding-productos-v2.png"
+              : paso === 1
+                ? "/brand/onboarding-formas-v2.png"
+                : "/brand/onboarding-audifonos-v2.png"}
             alt={paso === 0
               ? "Control, teléfono y zapatos disponibles en Vendeloo"
-              : "Reloj inteligente y zapatos disponibles en Vendeloo"}
-            width={1024}
-            height={1536}
+              : paso === 1
+                ? "Reloj inteligente y zapatos disponibles en Vendeloo"
+                : "Audífonos inalámbricos para practicar SUBELOO"}
+            width={paso === 2 ? 1536 : 1254}
+            height={paso === 2 ? 1024 : 1254}
             priority
             className="vlo-onb__hero-product"
           />
@@ -112,26 +118,38 @@ export default function OnboardingPage() {
 
         <div className="vlo-onb__content">
           {paso === 0 && (
-            <div className="vlo-onb__process">
-              <div>
-                <span className="vlo-onb__process-number">1</span>
-                <span className="vlo-onb__process-icon"><Eye size={28} weight="bold"/></span>
-                <b>MIRALOO</b>
-                <p>Únete a una venta y descubre productos increíbles.</p>
+            <div className="vlo-onb__welcome">
+              <div className="vlo-onb__process">
+                <div>
+                  <span className="vlo-onb__process-number">1</span>
+                  <span className="vlo-onb__process-icon"><Eye size={28} weight="bold"/></span>
+                  <b>MIRALOO</b>
+                  <p>Únete a una venta y descubre productos increíbles.</p>
+                </div>
+                <i aria-hidden="true"/>
+                <div>
+                  <span className="vlo-onb__process-number">2</span>
+                  <span className="vlo-onb__process-icon"><Gavel size={28} weight="bold"/></span>
+                  <b>SUBELOO</b>
+                  <p>Sube tu oferta en segundos con un solo gesto.</p>
+                </div>
+                <i aria-hidden="true"/>
+                <div>
+                  <span className="vlo-onb__process-number">3</span>
+                  <span className="vlo-onb__process-icon"><Trophy size={28} weight="bold"/></span>
+                  <b>RECIBELOO</b>
+                  <p>Si quedas de primero, coordina la entrega.</p>
+                </div>
               </div>
-              <i aria-hidden="true"/>
-              <div>
-                <span className="vlo-onb__process-number">2</span>
-                <span className="vlo-onb__process-icon"><Gavel size={28} weight="bold"/></span>
-                <b>SUBELOO</b>
-                <p>Sube tu oferta en segundos con un solo gesto.</p>
-              </div>
-              <i aria-hidden="true"/>
-              <div>
-                <span className="vlo-onb__process-number">3</span>
-                <span className="vlo-onb__process-icon"><Trophy size={28} weight="bold"/></span>
-                <b>RECIBELOO</b>
-                <p>Si quedas de primero, coordina la entrega.</p>
+
+              <div className="vlo-onb__live-sample">
+                <Image src="/brand/onboarding-productos-v2.png" alt="Productos en vivo ahora" width={1254} height={1254}/>
+                <div>
+                  <span><i/> EN VIVO AHORA</span>
+                  <b>Tu próxima compra puede estar aquí</b>
+                  <small>Productos desde $4 · vendedores de Venezuela</small>
+                </div>
+                <em>MIRALOO</em>
               </div>
             </div>
           )}
@@ -178,10 +196,10 @@ export default function OnboardingPage() {
             <div className="vlo-onb__demo">
               <div className="vlo-onb__demo-product">
                 <Image
-                  src="/brand/venta-en-vivo-headphones.png"
+                  src="/brand/onboarding-audifonos-v2.png"
                   alt="Audífonos inalámbricos de la oferta de práctica"
-                  width={1135}
-                  height={1386}
+                  width={1536}
+                  height={1024}
                 />
                 <div>
                   <span>Producto de práctica</span>
