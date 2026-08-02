@@ -12,6 +12,7 @@ import {
   Clock,
   CreditCard,
   GearSix,
+  GoogleLogo,
   Package,
   Plus,
   SignOut,
@@ -100,7 +101,7 @@ function Metric({ label, icon, value, ctx, alerta }: {
 }
 
 export default function AdminPage() {
-  const { profile, loading: authLoading, signIn, signOut, error } = useAuthStore();
+  const { profile, loading: authLoading, signIn, signInWithGoogle, signOut, error } = useAuthStore();
   const [seccion, setSeccion] = useState<Seccion>("cobranza");
 
   // ── datos ──
@@ -137,7 +138,7 @@ export default function AdminPage() {
 
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
-  const [loginEmail, setLoginEmail] = useState(""); const [loginPass, setLoginPass] = useState(""); const [entrando, setEntrando] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("info@vendeloo.io"); const [loginPass, setLoginPass] = useState(""); const [entrando, setEntrando] = useState(false);
 
   const esAdmin = profile?.role === "admin";
 
@@ -248,6 +249,7 @@ export default function AdminPage() {
     correr(`demo_${action}`, () => httpsCallable(functions, "manageDemoAuctions")({ action }), action === "seed" ? "Muestras sembradas" : "Muestras borradas");
   };
   const entrar = async () => { if (!loginEmail.trim() || !loginPass) return; setEntrando(true); try { await signIn(loginEmail.trim(), loginPass); } finally { setEntrando(false); } };
+  const entrarGoogle = async () => { setEntrando(true); try { await signInWithGoogle(); } finally { setEntrando(false); } };
 
   // ── derivados ──
   const saldoDe = (uid: string) => wallets[uid] ?? { saldo: 0, retenido: 0 };
@@ -294,9 +296,14 @@ export default function AdminPage() {
           {!profile ? (
             <>
               <h1>Entra a<br/>la consola</h1>
-              <p>Cobranza, personas, ventas y configuración.</p>
+              <p>Usa la cuenta oficial <b>info@vendeloo.io</b> para administrar la plataforma.</p>
               {error && <div className="lv-note lv-note--bad" style={{ marginBottom: 14 }}>{error}</div>}
-              <div className="lv-field"><label className="lv-field__label" htmlFor="ale">Correo</label><input id="ale" className="lv-input" type="email" autoComplete="username" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} placeholder="admin@vendeloo.io"/></div>
+              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg adm-login__google" disabled={entrando} onClick={entrarGoogle}>
+                <GoogleLogo size={20} weight="bold" aria-hidden="true"/>
+                {entrando ? "Entrando…" : "Continuar con Google"}
+              </button>
+              <div className="adm-login__or"><span>o entra con contraseña</span></div>
+              <div className="lv-field"><label className="lv-field__label" htmlFor="ale">Correo</label><input id="ale" className="lv-input" type="email" autoComplete="username" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} placeholder="info@vendeloo.io"/></div>
               <div className="lv-field"><label className="lv-field__label" htmlFor="alp">Contraseña</label><input id="alp" className="lv-input" type="password" autoComplete="current-password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} placeholder="••••••••"/></div>
               <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={entrando} onClick={entrar}>{entrando ? "Entrando…" : "Entrar"}</button>
             </>
@@ -304,7 +311,7 @@ export default function AdminPage() {
             <div style={{ textAlign: "center" }}>
               <h1>Sin acceso</h1>
               <p style={{ marginBottom: 18 }}>La cuenta {profile.email} no es administradora.</p>
-              <button className="lv-btn lv-btn--outline lv-btn--block" onClick={() => signOut()}>Cerrar sesión</button>
+              <button className="lv-btn lv-btn--accent lv-btn--block" onClick={() => signOut()}>Cambiar a info@vendeloo.io</button>
             </div>
           )}
         </div>

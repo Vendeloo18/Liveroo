@@ -178,6 +178,10 @@
 .adm-login__brand .pl { font-size: 0.56rem; font-weight: 800; letter-spacing: 0.16em; color: var(--accent-strong); margin-top: 3px; }
 .adm-login h1 { font-family: var(--f-campaign); font-size: clamp(2.45rem, 8vw, 3.15rem); font-weight: 400; text-transform: uppercase; letter-spacing: 0.005em; line-height: 0.88; margin-bottom: 12px; }
 .adm-login p { font-size: 0.84rem; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px; }
+.adm-login__google { display: flex; align-items: center; justify-content: center; gap: 9px; }
+.adm-login__or { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--ink-3); font-size: 0.68rem; font-weight: 700; }
+.adm-login__or::before, .adm-login__or::after { content: ""; height: 1px; background: var(--line); flex: 1; }
+.adm-login__or span { white-space: nowrap; }
 
 /* Responsive */
 @media (max-width: 900px) {
