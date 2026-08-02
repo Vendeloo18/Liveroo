@@ -19,12 +19,27 @@ export function AutoActualizar() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
+    // Recargar a mitad de una puja es peor que quedarse con la versión
+    // vieja: al espectador de un vivo se le va el video y la cuenta
+    // regresiva justo cuando está ofertando. En esas pantallas se espera
+    // a que salga, y ahí sí se recarga.
+    const enVivo = () => /^\/(shows|seller\/show)\//.test(window.location.pathname);
+
     let recargando = false;
-    const alCambiarControlador = () => {
+    let pendiente = false;
+    const recargar = () => {
       if (recargando) return;
+      if (enVivo()) { pendiente = true; return; }
       recargando = true;
       window.location.reload();
     };
+    const alCambiarControlador = () => recargar();
+
+    // Al salir del vivo (o al volver a la pestaña ya fuera de él) se
+    // aplica la actualización que quedó esperando.
+    const alNavegar = () => { if (pendiente && !enVivo()) recargar(); };
+    window.addEventListener("popstate", alNavegar);
+    const intervalo = setInterval(alNavegar, 4000);
     navigator.serviceWorker.addEventListener("controllerchange", alCambiarControlador);
 
     const buscarActualizacion = () => {
@@ -33,13 +48,15 @@ export function AutoActualizar() {
         .catch(() => undefined);
     };
 
-    buscarActualizacion();
-    const alVolver = () => { if (document.visibilityState === "visible") buscarActualizacion(); };
+    if (!enVivo()) buscarActualizacion();
+    const alVolver = () => { if (document.visibilityState === "visible" && !enVivo()) buscarActualizacion(); };
     document.addEventListener("visibilitychange", alVolver);
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", alCambiarControlador);
       document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("popstate", alNavegar);
+      clearInterval(intervalo);
     };
   }, []);
 

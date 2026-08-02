@@ -286,17 +286,26 @@ export const endShow = functions
       .where("status", "==", "waiting")
       .get();
 
-    const batch = db.batch();
-    batch.update(showSnap.ref, {
+    // El show se termina PRIMERO y en su propio lote: si la cola es larga,
+    // lo importante es que deje de aparecer "EN VIVO" en el inicio.
+    await showSnap.ref.update({
       status: "ended",
       endedAt: now,
       currentAuctionId: null,
       updatedAt: now,
     });
-    pending.docs.forEach((d) =>
-      batch.update(d.ref, { status: "cancelled", endedAt: now, updatedAt: now })
-    );
-    await batch.commit();
+
+    // La cola se cancela por tandas. Firestore corta un lote en 500
+    // escrituras: con una cola larga, el lote único fallaba entero y el
+    // show no se podía terminar nunca.
+    const TANDA = 400;
+    for (let i = 0; i < pending.docs.length; i += TANDA) {
+      const lote = db.batch();
+      pending.docs.slice(i, i + TANDA).forEach((d) =>
+        lote.update(d.ref, { status: "cancelled", endedAt: now, updatedAt: now })
+      );
+      await lote.commit();
+    }
 
     functions.logger.info("Show terminado", { showId, canceladas: pending.size });
     return { success: true, cancelled: pending.size };

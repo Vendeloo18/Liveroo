@@ -205,10 +205,19 @@ service cloud.firestore {
       allow get: if isSignedIn() && resource.data.bidderId == uid();
       allow list: if isSignedIn() && resource.data.bidderId == uid();
 
+      // Lista blanca y topes: cada documento aquí despierta una Function y
+      // abre una transacción sobre la subasta activa, así que un documento
+      // inflado o con campos de más sale caro. El límite por segundo no se
+      // puede expresar en reglas: para eso está App Check.
       allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(
+             ['auctionId', 'bidderId', 'amountUsd', 'status', 'submittedAt']
+           )
         && request.resource.data.bidderId == uid()
         && request.resource.data.status == 'pending'
         && request.resource.data.auctionId is string
+        && request.resource.data.auctionId.size() > 0
+        && request.resource.data.auctionId.size() <= 60
         && request.resource.data.amountUsd is number
         && request.resource.data.amountUsd > 0
         && request.resource.data.amountUsd < 1000000;
@@ -326,7 +335,16 @@ service cloud.firestore {
         (resource.data.buyerId == uid()
           && onlyChanges(['buyerWhatsapp', 'updatedAt']))
         ||
-        isAdmin()
+        // El admin mueve el estado y anota, pero NO toca la plata ni la
+        // liquidación: marcar 'payoutStatus: paid' a mano dejaba al
+        // vendedor cobrado sin registro en /sellerPayouts, y esa es la
+        // única auditoría de qué se le pagó a quién. Eso pasa por
+        // markSellerPaid, que sí deja el rastro.
+        (isAdmin() && onlyChanges([
+          'status', 'cancelledReason', 'disputeNote', 'adminNote',
+          'paymentConfirmedAt', 'paymentConfirmedBy', 'shippedAt',
+          'deliveredAt', 'updatedAt',
+        ]))
       );
 
       allow delete: if false;

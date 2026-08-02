@@ -575,6 +575,27 @@ describe("Reacciones en vivo", () => {
   });
 });
 
+describe("Ofertas pendientes", () => {
+  const puja = (over = {}) => ({
+    auctionId: "auctionActiva", bidderId: BUYER, amountUsd: 20,
+    status: "pending", submittedAt: serverTimestamp(), ...over,
+  });
+
+  test("se puede pedir una oferta con los campos de siempre", async () => {
+    await assertSucceeds(addDoc(collection(as(BUYER), "pendingBids"), puja()));
+  });
+
+  // Cada documento aquí despierta una Function y abre una transacción
+  // sobre la subasta: uno inflado o con campos de más sale caro.
+  test("no se cuelan campos que la app no manda", async () => {
+    await assertFails(addDoc(collection(as(BUYER), "pendingBids"), puja({ prioridad: 99 })));
+  });
+
+  test("no se acepta un auctionId gigante", async () => {
+    await assertFails(addDoc(collection(as(BUYER), "pendingBids"), puja({ auctionId: "x".repeat(61) })));
+  });
+});
+
 describe("Órdenes", () => {
   test("nadie crea órdenes desde el cliente", async () => {
     await assertFails(
@@ -590,6 +611,27 @@ describe("Órdenes", () => {
 
   test("un tercero no ve la orden ajena", async () => {
     await assertFails(getDoc(doc(as(OTHER_BUYER), "orders", "orden1")));
+  });
+
+  // markSellerPaid es la ÚNICA vía que deja rastro en /sellerPayouts. Si el
+  // admin pudiera marcar 'pagado' a mano, se perdía la auditoría de qué se
+  // le pagó a cada vendedor — justo el registro que evita pagar dos veces.
+  test("ni el admin marca una liquidación a mano", async () => {
+    await assertFails(
+      updateDoc(doc(as(ADMIN), "orders", "orden1"), { payoutStatus: "paid" })
+    );
+  });
+
+  test("ni cambia los montos de una orden cerrada", async () => {
+    await assertFails(
+      updateDoc(doc(as(ADMIN), "orders", "orden1"), { bidAmountUsd: 99999 })
+    );
+  });
+
+  test("el admin sí puede mover el estado y anotar", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(ADMIN), "orders", "orden1"), { status: "cancelled", adminNote: "duplicada" })
+    );
   });
 
   test("una consulta sin filtrar por dueño falla entera", async () => {
