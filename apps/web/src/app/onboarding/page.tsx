@@ -10,27 +10,32 @@ import {
   CaretLeft,
   Eye,
   Gavel,
-  Tag,
   Trophy,
 } from "@phosphor-icons/react";
 import { BRAND } from "@subastas-ve/shared";
 import { db, functions } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
-import { Logo } from "../../components/ui/Logo";
+import { BrandFlowHero } from "../../components/ui/BrandFlowHero";
 import { SlideToBid } from "../../components/ui/SlideToBid";
 
 const TOTAL = 2;
 
 const escenas = [
   {
-    eyebrow: "Bienvenido a Vendeloo",
-    title: <>MIRALOO.<br/>SUBELOO.<br/>RECIBELOO.</>,
-    description: "Comprar en vivo ahora se siente rápido, claro y emocionante.",
+    eyebrow: "Paso 1 de 2 · Descubre",
+    title: <>MIRALOO.<br/>DESCUBRE.</>,
+    description: "Productos reales, vendedores en vivo y oportunidades en segundos.",
+    imageSrc: "/brand/onboarding-productos-v2.png",
+    imageAlt: "Control, teléfono y zapatos disponibles en Vendeloo",
+    variant: "products" as const,
   },
   {
-    eyebrow: "Pruébalo y gana $1",
-    title: <>AHORA TE<br/>TOCA A TI.</>,
-    description: "Desliza SUBELOO y recibe tu primer dólar para comprar.",
+    eyebrow: "Paso 2 de 2 · Participa",
+    title: <>SUBELOO.<br/>RECIBELOO.</>,
+    description: "Elige cuánto subir y gana $1 para comenzar.",
+    imageSrc: "/brand/venta-en-vivo-headphones.png",
+    imageAlt: "Audífonos inalámbricos en una venta en vivo de Vendeloo",
+    variant: "headphones" as const,
   },
 ];
 
@@ -108,40 +113,20 @@ export default function OnboardingPage() {
           : "¡SUBELOO!";
 
   return (
-    <main className={`vlo-onb vlo-onb--step-${paso + 1}`}>
-      <section className="vlo-onb__hero">
-        <Tag className="vlo-onb__mark" weight="fill" aria-hidden="true"/>
-        {paso < TOTAL && (
-          <Image
-            key={paso}
-            src={paso === 0
-              ? "/brand/onboarding-productos-v2.png"
-              : "/brand/onboarding-audifonos-v2.png"}
-            alt={paso === 0
-              ? "Control, teléfono y zapatos disponibles en Vendeloo"
-              : "Audífonos inalámbricos para practicar SUBELOO"}
-            width={paso === 1 ? 1536 : 1254}
-            height={paso === 1 ? 1024 : 1254}
-            priority
-            className="vlo-onb__hero-product"
-          />
-        )}
+    <main className={`vlo-flow-shell vlo-onb vlo-onb--step-${paso + 1}`}>
+      <BrandFlowHero
+        key={paso}
+        imageSrc={escena.imageSrc}
+        imageAlt={escena.imageAlt}
+        eyebrow={escena.eyebrow}
+        title={escena.title}
+        description={escena.description}
+        actionLabel="Saltar"
+        onAction={() => terminar("/")}
+        variant={escena.variant}
+      />
 
-        <header className="vlo-onb__top">
-          <Logo tamano={29} color="#fff"/>
-          <button type="button" className="vlo-onb__skip" onClick={() => terminar("/")}>
-            Saltar
-          </button>
-        </header>
-
-        <div className="vlo-onb__hero-copy" key={paso}>
-          <div className="vlo-onb__eyebrow">{escena.eyebrow}</div>
-          <h1 className="vlo-onb__title">{escena.title}</h1>
-          <p className="vlo-onb__description">{escena.description}</p>
-        </div>
-      </section>
-
-      <section className="vlo-onb__sheet">
+      <section className="vlo-flow-sheet vlo-onb__sheet">
         <div className="vlo-onb__progress" aria-label={`Paso ${paso + 1} de ${TOTAL}`}>
           {Array.from({ length: TOTAL }, (_, indice) => (
             <span key={indice} className={indice <= paso ? "is-active" : ""}/>
@@ -251,7 +236,7 @@ export default function OnboardingPage() {
         <footer className="vlo-onb__footer">
           {paso < TOTAL - 1 && (
             <button type="button" className="vlo-onb__continue" onClick={siguiente}>
-              QUIERO MI $1
+              CONTINUAR
             </button>
           )}
 
