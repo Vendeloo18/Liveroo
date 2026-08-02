@@ -480,11 +480,11 @@ button:disabled { cursor: not-allowed; }
 .vlo-flow-hero--showcase .vlo-flow-hero__art { object-position: center 62%; }
 .vlo-flow-hero--entry .vlo-flow-hero__art { object-position: center center; }
 
-/* Los dos pasos comparten la misma proporción visual: 80% producto y 20%
+/* Los dos pasos comparten la misma proporción visual: 75% producto y 25%
    acción. La hoja conserva 16px extra para solaparse sobre el hero. */
 .vlo-onb .vlo-flow-hero {
-  height: calc(80dvh + 16px);
-  min-height: calc(80dvh + 16px);
+  height: calc(75dvh + 16px);
+  min-height: calc(75dvh + 16px);
 }
 
 .vlo-onb--step-1 .vlo-flow-hero__copy {
@@ -827,8 +827,8 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__sheet {
   position: relative;
   z-index: 3;
-  flex: 0 0 20dvh;
-  min-height: 190px;
+  flex: 0 0 25dvh;
+  min-height: 180px;
   margin-top: -16px;
   padding: 8px 22px calc(8px + env(safe-area-inset-bottom));
   display: flex;
@@ -1028,31 +1028,12 @@ button:disabled { cursor: not-allowed; }
   text-align: center;
 }
 
-.vlo-onb__reward-copy span,
-.vlo-onb__reward-copy b,
-.vlo-onb__reward-copy p { display: block; }
-
-.vlo-onb__reward-copy span {
-  color: var(--accent-strong);
-  font-size: 0.54rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .vlo-onb__reward-copy b {
-  margin-top: 2px;
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1.15;
-}
-
-.vlo-onb__reward-copy p {
-  margin-top: 2px;
-  color: var(--ink-2);
-  font-size: 0.66rem;
-  font-weight: 600;
-  line-height: 1.25;
+  display: block;
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .vlo-onb__demo-product {
@@ -1356,11 +1337,11 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__back { padding-top: 2px; padding-bottom: 2px; }
 }
 
-/* En teléfonos bajos reservamos 174px visibles para la hoja compacta. */
-@media (max-height: 950px) {
+/* En teléfonos bajos reservamos 180px para que la acción siga siendo cómoda. */
+@media (max-height: 720px) {
   .vlo-onb .vlo-flow-hero {
-    height: calc(100dvh - 174px);
-    min-height: calc(100dvh - 174px);
+    height: calc(100dvh - 164px);
+    min-height: calc(100dvh - 164px);
   }
 }
 

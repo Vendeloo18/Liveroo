@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import confetti from "canvas-confetti";
 import { doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
@@ -16,6 +15,7 @@ import { db, functions } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
 import { BrandFlowHero } from "../../components/ui/BrandFlowHero";
 import { SlideToBid } from "../../components/ui/SlideToBid";
+import { celebrateFullScreen } from "../../components/ui/Confetti";
 
 const TOTAL = 2;
 
@@ -70,19 +70,10 @@ export default function OnboardingPage() {
 
   const escena = escenas[paso];
 
-  const celebrarBono = () => {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const colores = ["#ff5a00", "#ff8a33", "#ffffff", "#159447"];
-    confetti({ particleCount: 72, spread: 68, startVelocity: 42, origin: { y: 0.82 }, colors: colores, zIndex: 9999 });
-    setTimeout(() => {
-      confetti({ particleCount: 42, spread: 92, startVelocity: 28, origin: { y: 0.76 }, colors: colores, zIndex: 9999 });
-    }, 160);
-  };
-
   const reclamarBono = async () => {
     setSubido(true);
     setBonusEstado(profile ? "ganado" : "cuenta");
-    celebrarBono();
+    celebrateFullScreen();
 
     if (!profile) {
       try {
@@ -163,9 +154,7 @@ export default function OnboardingPage() {
           {paso === 1 && (
             <div className="vlo-onb__demo">
               <div className="vlo-onb__reward-copy">
-                <span>BONO DE BIENVENIDA</span>
-                <b>Haz tu primer SUBELOO</b>
-                <p>Recibe $1 para participar. No se puede retirar.</p>
+                <b>Desliza y recibe $1</b>
               </div>
 
               <div className="vlo-onb__subeloo">
@@ -187,8 +176,8 @@ export default function OnboardingPage() {
                     : bonusEstado === "acreditado"
                       ? "Este usuario ya recibió su bono."
                       : bonusEstado === "cuenta"
-                        ? "Crea tu cuenta para usar tu $1."
-                        : "Lleva el círculo hasta el final"}
+                        ? "Crea tu cuenta para usarlo."
+                        : "Solo para ofertas · no retirable"}
               </p>
             </div>
           )}

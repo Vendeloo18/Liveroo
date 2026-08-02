@@ -1,44 +1,43 @@
 "use client";
-import { useMemo } from "react";
 
-// Confetti autocontenido (sin librerías): un puñado de papelitos que caen y
-// giran, y se van solos. Se monta cuando alguien gana una subasta.
-const COLORES = ["#ff6a00", "#ffd166", "#06d6a0", "#4cc9f0", "#ef476f", "#ffffff"];
+import confetti from "canvas-confetti";
+import { useEffect } from "react";
 
-export function Confetti({ count = 70 }: { count?: number }) {
-  const piezas = useMemo(
-    () =>
-      Array.from({ length: count }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 0.5,
-        dur: 1.9 + Math.random() * 1.6,
-        color: COLORES[Math.floor(Math.random() * COLORES.length)],
-        w: 6 + Math.random() * 7,
-        drift: (Math.random() - 0.5) * 160,
-      })),
-    [count],
-  );
+const COLORS = ["#ff5a00", "#ff8a33", "#ffd166", "#ffffff", "#159447"];
 
-  return (
-    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 22 }}>
-      <style>{`@keyframes cffall{0%{transform:translate(0,-10vh) rotate(0);opacity:1}100%{transform:translate(var(--dx),110vh) rotate(900deg);opacity:.85}}`}</style>
-      {piezas.map(p => (
-        <span
-          key={p.id}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: `${p.left}%`,
-            width: p.w,
-            height: p.w * 0.45,
-            background: p.color,
-            borderRadius: 1,
-            ["--dx" as any]: `${p.drift}px`,
-            animation: `cffall ${p.dur}s cubic-bezier(.2,.55,.4,1) ${p.delay}s forwards`,
-          }}
-        />
-      ))}
-    </div>
-  );
+export function celebrateFullScreen(count = 320) {
+  if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    return () => undefined;
+  }
+
+  const common = {
+    colors: COLORS,
+    ticks: 340,
+    gravity: 0.78,
+    decay: 0.93,
+    scalar: 1.06,
+    zIndex: 9999,
+    disableForReducedMotion: true,
+  } as const;
+  const sideCount = Math.max(70, Math.round(count * 0.3));
+  const centerCount = Math.max(100, Math.round(count * 0.4));
+
+  confetti({ ...common, particleCount: sideCount, angle: 62, spread: 88, startVelocity: 58, origin: { x: 0, y: 0.72 } });
+  confetti({ ...common, particleCount: sideCount, angle: 118, spread: 88, startVelocity: 58, origin: { x: 1, y: 0.72 } });
+
+  const timers = [
+    window.setTimeout(() => {
+      confetti({ ...common, particleCount: centerCount, angle: 90, spread: 135, startVelocity: 48, origin: { x: 0.5, y: 0.24 } });
+    }, 140),
+    window.setTimeout(() => {
+      confetti({ ...common, particleCount: Math.round(centerCount * 0.65), angle: 90, spread: 150, startVelocity: 34, origin: { x: 0.5, y: 0.5 } });
+    }, 360),
+  ];
+
+  return () => timers.forEach(timer => window.clearTimeout(timer));
+}
+
+export function Confetti({ count = 320 }: { count?: number }) {
+  useEffect(() => celebrateFullScreen(count), [count]);
+  return null;
 }
