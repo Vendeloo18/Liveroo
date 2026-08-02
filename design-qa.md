@@ -1,49 +1,54 @@
-# Vendeloo entry redesign — Design QA
+# Vendeloo onboarding compacto + bono — Design QA
 
-- Source visual truth: `/var/folders/x2/sj4sg1214x1csl50fnn985h00000gn/T/codex-clipboard-b2673d30-fb29-4646-a701-f7ed1632dd21.png`
-- Implementation screenshot: `/Users/adammanir/Documents/VENDELOO/docs/design-qa/ventas-en-vivo-login.png`
-- Combined comparison evidence: `/Users/adammanir/Documents/VENDELOO/docs/design-qa/ventas-en-vivo-comparison.png`
-- Route and state: `http://localhost:3000/login`, unauthenticated entry hero
-- Intended viewport: 390 × 844 CSS px
-- Browser content capture: 375 × 812 CSS px at DPR 1 (the in-app browser reserved 15 × 32 px for its own chrome)
-- Source pixels: 853 × 1844; normalized to 375 × 812 in the combined comparison
-- Implementation pixels: 375 × 812; no density resampling
+- Source visual truth: `/var/folders/x2/sj4sg1214x1csl50fnn985h00000gn/T/TemporaryItems/NSIRD_screencaptureui_da2eHM/Screenshot 2026-08-01 at 11.44.12 PM.png`
+- Source pixels: 479 × 962.
+- Implementation route: `http://localhost:3000/onboarding`, segundo y último paso.
+- Intended viewport: 479 × 962 CSS px, DPR 1.
+- Implementation screenshot: unavailable; the in-app browser connection returned no available browser.
+- State: unauthenticated final onboarding step, before dragging SUBELOO.
+- Density normalization: source is treated as DPR 1; implementation density could not be measured without a browser capture.
 
 ## Full-view comparison evidence
 
-The combined comparison confirms the same main composition: vivid orange product-led upper region, white guided lower sheet, condensed all-caps headline, live-price panel, three-step explanation, orange primary CTA, outlined returning-user CTA, onboarding action, and guest entry. The implementation keeps the subject, crop, hierarchy, rounded forms, and orange/white balance of the selected reference.
+The source screenshot was opened successfully. It shows the orange hero ending near 38% of the viewport and a white sheet occupying the remaining area. The requested implementation raises the orange hero to approximately 52dvh, reduces the progress/content/footer gaps, and removes the middle slide. A browser-rendered implementation capture is missing, so the resulting proportion cannot be visually compared yet.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Anton remains the display face and Archivo the UI face. The headline has the same compact line height and three-line wrap. CTA and helper copy remain readable at the captured mobile width.
-- Spacing and layout rhythm: The hero-to-sheet split, 22 px outer margins, three equal steps, and stacked pill actions match the reference's rhythm. The post-fix capture keeps every CTA inside the initial mobile viewport.
-- Colors and visual tokens: Brand orange, white surfaces, warm orange tints, dark product contrast, and accessible action borders map to the existing Vendeloo tokens.
-- Image quality and asset fidelity: A dedicated 1135 × 1386 product asset was generated for the exact hero slot. It preserves the black over-ear headphones, orange plinth, commercial lighting, and negative-space composition without placeholder art.
-- Copy and content: The product promise is now “Comprar en vivo es así de fácil.” The mechanism is expressed as `SUBELOO`/offers while the category is consistently “ventas en vivo.” The CTA hierarchy matches the selected direction.
+- Fonts and typography: source uses the existing Vendeloo display and UI faces. Code preserves those tokens, but browser rendering and wrapping could not be inspected.
+- Spacing and layout rhythm: the white sheet is intentionally reduced through a taller orange hero and more compact product, price, increment, helper, and footer blocks. Visible overflow cannot be ruled out without the implementation screenshot.
+- Colors and visual tokens: unchanged Vendeloo orange/white/ink tokens; visual sampling of the implementation is blocked.
+- Image quality and asset fidelity: the existing generated headphone and product assets remain in use with `object-fit: contain`; the source assets themselves open correctly. Final browser crop and scale are unverified.
+- Copy and content: the flow now has two steps and the final step explicitly promises a one-time, non-withdrawable USD 1 welcome credit for SUBELOO.
 
 ## Focused region comparison
 
-No separate crop was required: at the normalized 375 × 812 comparison size, the headline, live-price module, step labels, button labels, and guest link are all legible in the combined evidence.
+Blocked. The most important focused region is the compact white sheet containing the product card, price, increments, slider, helper text, and footer. A browser screenshot is required to confirm that the reduced vertical dimensions preserve readability and do not clip the footer.
 
 ## Interaction verification
 
-- `Crear cuenta gratis` opens the account form.
-- `Atrás` returns to the entry hero.
-- `Ver cómo funciona` navigates to `/onboarding`.
-- The onboarding opens with “Ventas en vivo. Precios de verdad.”
-- A fresh login render produced no console errors. Firebase emitted one non-blocking IndexedDB deprecation warning.
+- Automated backend test passed: the first authenticated claim credits exactly USD 1.
+- A repeated claim returns `already_claimed` and leaves the balance unchanged at USD 1.
+- Direct client writes to the wallet remain denied by Firestore rules.
+- Guest-to-registration handoff and the visible drag interaction require browser testing.
+- Browser console errors could not be checked.
+
+## Findings
+
+- [P2] Browser-rendered compact layout is not captured.
+  - Location: `/onboarding`, final step at 479 × 962.
+  - Evidence: source screenshot is available; implementation screenshot is unavailable.
+  - Impact: footer clipping, text wrapping, and the final orange/white proportion cannot be signed off visually.
+  - Fix: capture the deployed or local final step at 479 × 962 and compare it with the source screenshot.
 
 ## Comparison history
 
-### Iteration 1
+- Iteration 1: code measurements reduced the white sheet and consolidated the flow from three slides to two. No post-fix visual evidence is available because no browser backend is connected.
 
-- P2: `Explorar sin cuenta` fell below the initial 375 × 812 content viewport.
-- Fix: compressed the medium-height layout by reducing the hero height, step icon size, CTA spacing, and button height while preserving touch targets.
-- Post-fix evidence: `/Users/adammanir/Documents/VENDELOO/docs/design-qa/ventas-en-vivo-login.png` shows the guest action inside the initial viewport.
+## Implementation checklist
 
-## Remaining polish
+- Capture the first and final onboarding steps at the target viewport.
+- Test forward navigation, back navigation, guest registration handoff, and the SUBELOO drag.
+- Check console errors and confirm the wallet displays “Bono de bienvenida”.
+- Re-run the visual comparison and resolve any P0/P1/P2 findings.
 
-- P3: The reference uses dotted connectors between the three steps; the implementation omits them to keep the labels cleaner at narrow widths.
-- P3: The generated headphones are slightly more dominant than in the reference, intentionally increasing product impact without obscuring the live-price module.
-
-final result: passed
+final result: blocked

@@ -1,10 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { httpsCallable } from "firebase/functions";
 import { useAuthStore } from "../../store/authStore";
 import { BRAND, SIMBOLO_PATH } from "@subastas-ve/shared";
 import { Hero } from "../../components/ui/Hero";
 import { Logo } from "../../components/ui/Logo";
+import { functions } from "../../lib/firebase";
 
 type Modo = "entrar" | "crear";
 type Vista = "hero" | "formulario";
@@ -23,8 +25,34 @@ export default function AuthPage() {
   const [verClave, setVerClave] = useState(false);
   const [ocupado, setOcupado] = useState(false);
 
+  const bonoPendiente = () => {
+    if (typeof window === "undefined") return false;
+    const query = new URLSearchParams(window.location.search);
+    try {
+      return query.get("bonus") === "1" || localStorage.getItem("vlo_welcome_bonus_pending") === "1";
+    } catch {
+      return query.get("bonus") === "1";
+    }
+  };
+
+  const activarBono = async () => {
+    await httpsCallable(functions, "claimWelcomeBonus")({});
+    try {
+      localStorage.removeItem("vlo_welcome_bonus_pending");
+      localStorage.setItem("vlo_onb", "1");
+    } catch { /* modo privado */ }
+  };
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("crear") === "1" || query.get("bonus") === "1") {
+      setModo("crear");
+      setVista("formulario");
+    }
+  }, []);
+
   // Si ya hay sesión, no tiene sentido quedarse aquí
-  useEffect(() => { if (profile) router.replace("/"); }, [profile, router]);
+  useEffect(() => { if (profile && !bonoPendiente()) router.replace("/"); }, [profile, router]);
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,10 +61,28 @@ export default function AuthPage() {
     try {
       if (modo === "crear") {
         await signUp({ email, password: clave, displayName: nombre.trim() });
-        router.push("/onboarding");
+        if (bonoPendiente()) {
+          try {
+            await activarBono();
+            router.push("/wallet");
+          } catch {
+            router.push("/onboarding?bonus_retry=1");
+          }
+        } else {
+          router.push("/onboarding");
+        }
       } else {
         await signIn(email, clave);
-        router.push("/");
+        if (bonoPendiente()) {
+          try {
+            await activarBono();
+            router.push("/wallet");
+          } catch {
+            router.push("/onboarding?bonus_retry=1");
+          }
+        } else {
+          router.push("/");
+        }
       }
     } catch { /* el store ya expone el error */ }
     finally { setOcupado(false); }
@@ -45,7 +91,19 @@ export default function AuthPage() {
   const conGoogle = async () => {
     clearError();
     setOcupado(true);
-    try { await signInWithGoogle(); router.push("/"); }
+    try {
+      await signInWithGoogle();
+      if (bonoPendiente()) {
+        try {
+          await activarBono();
+          router.push("/wallet");
+        } catch {
+          router.push("/onboarding?bonus_retry=1");
+        }
+      } else {
+        router.push("/");
+      }
+    }
     catch { /* idem */ }
     finally { setOcupado(false); }
   };

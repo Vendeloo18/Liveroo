@@ -38,6 +38,7 @@ export { manageDemoAuctions, refreshDemoAuctions } from "./admin/demoData";
 
 // Billetera (depósitos aprobados por admin, ajustes manuales con ledger)
 export { manageDeposit, adjustWallet, markSellerPaid } from "./admin/wallet";
+export { claimWelcomeBonus } from "./wallet/welcomeBonus";
 
 // Tasa oficial del BCV, cada 4 horas y a pedido del panel
 export { syncBcvRate, syncBcvRateNow } from "./admin/syncBcvRate";

@@ -33,6 +33,7 @@ const METODO_NOMBRE: Record<string, string> = {
 
 const TIPO_MOVIMIENTO: Record<string, string> = {
   deposit: "Recarga aprobada",
+  welcome_bonus: "Bono de bienvenida",
   admin_credit: "Crédito del equipo",
   admin_debit: "Ajuste del equipo",
   auction_payment: "Pago de venta",

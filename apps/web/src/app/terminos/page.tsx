@@ -38,6 +38,8 @@ export default function TerminosPage() {
         sirve para respaldar ofertas y pagar dentro de {BRAND.name}. Al quedar primero con saldo, el monto se
         descuenta automáticamente y tu orden queda pagada.{" "}
         <strong>Las recargas no son reembolsables</strong>: no se devuelve saldo ni pagos.
+        El bono de bienvenida es un crédito promocional de USD 1 por usuario,
+        no retirable y utilizable únicamente dentro de {BRAND.name} para respaldar ofertas.
         Recarga solo lo que pienses usar.
       </Sec>
 
