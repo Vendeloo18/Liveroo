@@ -1,7 +1,7 @@
 # Vendeloo — onboarding 75/25 + celebración — Design QA
 
 - Source visual truth: conversación adjunta del 2026-08-02, con la segunda hoja saturada y el control SUBELOO ocupando casi toda la zona blanca.
-- Production route: `https://vendeloo.io/onboarding`
+- Production route: `https://vendeloo.io/onboarding` at commit `b04e4d3`.
 - Target state: dos pasos con 75% de producto / 25% de acción; segundo paso reducido a una instrucción, un control y una nota; celebración de pantalla completa.
 
 ## Implementación revisada
@@ -16,7 +16,14 @@
 
 ## Verificación visual
 
-La captura fuente fue inspeccionada antes de editar. La validación visual final quedó pendiente porque el Browser integrado dejó de estar disponible durante esta iteración. No se sustituyó por otro navegador para no romper la superficie de revisión elegida por el usuario.
+- Captura fuente y estados finales se compararon juntos en el Browser integrado.
+- Primer paso: `/tmp/vendeloo-design-qa-25/onboarding-step1.png`.
+- Segundo paso: `/tmp/vendeloo-design-qa-25/onboarding-step2.png`.
+- Éxito: `/tmp/vendeloo-design-qa-25/onboarding-step2-success.png`.
+- A 400 × 734, la hoja del primer paso ocupa exactamente 25.00% del viewport y no hay overflow.
+- A 504 × 816, la hoja del segundo paso ocupa exactamente 25.00% del viewport y no hay overflow.
+- El segundo paso elimina las tres líneas apiladas de la referencia y conserva una sola instrucción, un solo gesto y una sola restricción.
+- En éxito existe un canvas de 504 × 816, anclado a `top: 0`, `left: 0` y `z-index: 9999`; el control queda verde y muestra `¡TE GANASTE $1!`.
 
 ## Checklist
 
@@ -26,6 +33,6 @@ La captura fuente fue inspeccionada antes de editar. La validación visual final
 - [x] Respetar que el bono solo sirve para ofertas y no se retira.
 - [x] Usar confeti de pantalla completa en onboarding.
 - [x] Reutilizar la misma celebración en venta en vivo y subasta normal.
-- [ ] Capturar y comparar los estados finales en producción cuando el Browser integrado vuelva a estar disponible.
+- [x] Capturar y comparar los estados finales en producción.
 
-final result: blocked — visual capture unavailable; source and build verification passed
+final result: passed
