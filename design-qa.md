@@ -1,75 +1,78 @@
-# Vendeloo — fondo del onboarding + sistema visual global — Design QA
+# Vendeloo — onboarding 80/20 + SUBELOO — Design QA
 
 - Source visual truth:
-  - `/var/folders/x2/sj4sg1214x1csl50fnn985h00000gn/T/TemporaryItems/NSIRD_screencaptureui_shHCVA/Screenshot 2026-08-02 at 12.56.58 AM.png`
-  - Current conversation attachment, 2026-08-02, 489 × 965 px: first onboarding after the seamless-background fix.
-- Source inspection: the screenshot was opened and inspected in macOS Preview during this run.
-- Intended implementation flow: restore the continuous first-onboarding background, keep `/login` structurally unchanged, and standardize the app's shared typography, headers, logo scale, colors, cards, and controls.
-- Intended viewport: mobile web, approximately 479 × 962 CSS px based on the supplied captures.
-- Implementation screenshot: unavailable; browser discovery returned no connected in-app or external browser.
-- State: onboarding step 1 before continuing and step 2 before using SUBELOO.
-- Density normalization: blocked because an implementation screenshot at the same viewport is unavailable.
-
-## Full-view comparison evidence
-
-The earlier step 1 capture showed a flat orange strip behind the logo and copy, followed by a hard horizontal seam where the product photo began. The current attachment confirms that seam is fixed, but also shows the white sheet beginning at roughly 57% of the viewport and occupying too much of the first impression.
-
-The code renders step 1's original shoe, phone, and controller artwork full bleed with no translated or scaled transform, eliminating the exposed parent background that created the seam. The first hero now occupies 67dvh on tall phones (capped at 660px), moving the white sheet down by about 85px at the supplied 965px viewport. A short-height breakpoint keeps all content and the CTA usable on smaller phones.
-
-## Required fidelity surfaces
-
-- Fonts and typography: the product now exposes only two visible families. Anton is reserved for campaign headlines and the wordmark; Archivo is used for page titles, prices, body text, controls, metadata, counters, admin, and tabular figures on web and mobile. The former JetBrains Mono dependency was removed. Browser wrapping remains unverified.
-- Spacing and layout rhythm: login was not edited. Both onboarding states preserve the shared 58dvh hero, 26px white-sheet radius, 16px overlap, 22px horizontal inset, progress treatment, and CTA hierarchy. Step 1 copy is intentionally narrower to protect legibility.
-- Colors and visual tokens: the new image and all UI retain Vendeloo orange, white, black, the existing surface tokens, radii, and shadows.
-- Image quality and asset fidelity: step 1 retains the supplied original product collage at its natural full-bleed crop and step 2 retains the existing 1254 × 1254 product composition. Browser crop remains unverified.
-- Copy and content: the journey remains exactly two steps and keeps MIRALOO, SUBELOO, RECIBELOO, the practice increment selector, and the one-time USD 1 welcome bonus.
-
-## Focused region comparison
-
-The prior flat orange band and the current excessive white-sheet proportion were inspected from the supplied captures. A valid post-fix combined comparison cannot be produced without a browser-rendered implementation capture at the same viewport.
-
-## Interaction verification
-
-- Web TypeScript check passed.
-- Mobile TypeScript check passed.
-- Web production build passed.
-- Login structure and content were not modified; it inherits only the shared typographic system.
-- Onboarding remains exactly two steps; forward, back, increment selection, SUBELOO drag, and one-time bonus wiring remain intact.
-- Browser interaction and console checks are blocked because no browser backend is connected.
+  - Current conversation attachments, 2026-08-02: oversized white first-step sheet and the price/increment controls to remove.
+  - Browser capture before this iteration: `/tmp/vendeloo-design-qa/onboarding-before.png`.
+- Rendered implementation:
+  - `/tmp/vendeloo-design-qa/onboarding-step1-final.png`
+  - `/tmp/vendeloo-design-qa/onboarding-step2-final.png`
+  - `/tmp/vendeloo-design-qa/onboarding-step2-success-final.png`
+- Production route: `https://vendeloo.io/onboarding`
+- Viewport: browser 556 × 964 CSS px; centered app 480 × 964 CSS px; deviceScaleFactor 1.
+- Source attachment: approximately 489 × 965 px. Browser before/after captures use identical 556 × 964 viewports and 480px app frames, so the layout comparison is 1:1 inside the app region.
+- States: step 1, step 2 ready, and step 2 successful reward.
 
 ## Findings
 
-- [P2] Restored hero crop is not browser-verified.
-  - Location: first `/onboarding` state around 479 × 962.
-  - Evidence: source screenshots and raster assets are visible; a rendered implementation screenshot is unavailable.
-  - Impact: the full-bleed product group may still need a small object-position adjustment on a real device.
-  - Fix: capture the first step at the supplied viewport, place source and implementation in one comparison image, and tune only object-position if necessary.
+No actionable P0, P1, or P2 visual differences remain for the requested change.
 
-- [P2] Revised orange/white proportion is not browser-verified.
-  - Location: first `/onboarding` state around 489 × 965.
-  - Evidence: the supplied implementation capture shows a 57/43 split; CSS now targets approximately 67/33, but no connected browser is available for a post-fix capture.
-  - Impact: the exact white-sheet height and CTA position cannot yet be judged visually.
-  - Fix: connect the in-app Browser, capture at 489 × 965, and compare the pre-fix and revised views together.
+- [P3] The controlled Browser reports Firebase App Check/Firestore connectivity warnings.
+  - Location: shared Firebase initialization, outside the onboarding presentation layer.
+  - Evidence: App Check returned a reCAPTCHA 403 in the controlled Browser and Firestore temporarily entered offline mode.
+  - Impact: the guest onboarding, pending bonus, green success state, confetti, and login handoff work; an authenticated server-side bonus claim could not be verified in this browser session.
+  - Follow-up: verify one authenticated claim in a normal user browser when testing backend/App Check configuration.
 
-- [P2] Final headline wrapping is not browser-verified.
-  - Location: “MIRALOO. DESCUBRE.” and “SUBELOO. RECIBELOO.”
-  - Evidence: CSS and type checks pass, but no browser screenshot is available.
-  - Impact: a narrow device could wrap a display word differently than intended.
-  - Fix: verify at 360px and 479px widths and adjust the step-specific display size only if wrapping changes.
+## Full-view comparison evidence
+
+The before and after first-step captures were emitted together at the same viewport. Before, the white sheet measured 334.125px of a 964px viewport (34.6%). After, it measures 192.797px and begins at y=771.187px: exactly 20% of the viewport, with no vertical overflow. The hero now occupies the remaining 80% while keeping the original product art full bleed and the headline readable.
+
+Step 2 uses the same 80/20 structure. The former price card and `$1/$5/$10` increment selector are gone. The sheet now contains one short welcome-bonus explanation, one SUBELOO slider, its helper text, Back, and the shared mantra.
+
+## Focused interaction comparison
+
+The ready and completed step-2 captures were emitted together. The ready state shows a single orange SUBELOO control. Completing it produces all three required signals in the same state:
+
+- green track (`rgb(46, 158, 69)` in the final production capture);
+- visible canvas confetti using Vendeloo orange, white, and green;
+- label `¡TE GANASTE $1!`.
+
+The guest flow then explains `Crea tu cuenta para usar tu $1` and routes to `/login?crear=1&bonus=1`, preserving the pending, non-withdrawable welcome bonus behavior.
+
+## Required fidelity surfaces
+
+- Fonts and typography: computed styles on onboarding and Home expose exactly two families: Anton for the wordmark and campaign headlines, Archivo for all UI, body, labels, controls, prices, metadata, navigation, admin, and mobile. Onboarding UI weights were consolidated to 600/700/800; no third visible typeface is loaded.
+- Spacing and layout rhythm: both onboarding steps measure 80% orange / 20% white at 556 × 964, with the same 26px sheet radius, 16px overlap, 22px horizontal inset, progress line, and bottom alignment. `scrollHeight` equals the 964px viewport.
+- Colors and visual tokens: the flow uses existing Vendeloo orange, white, ink, tint, and success-green tokens. No new competing palette was introduced.
+- Image quality and asset fidelity: both existing product compositions remain high-resolution, full bleed, and uncropped enough to preserve the principal products at the measured viewport.
+- Copy and content: MIRALOO, SUBELOO, RECIBELOO remain consistent. Step 2 explicitly states that the USD 1 is for participating and cannot be withdrawn.
+
+## Interaction verification
+
+- CONTINUAR opens step 2.
+- Atrás remains visible and enabled before completion.
+- SUBELOO works from the slider keyboard action; pointer/touch logic remains in the shared component.
+- Success state becomes green, creates confetti, and reads `¡TE GANASTE $1!`.
+- Guest success creates the pending bonus marker and routes to account creation.
+- TypeScript check passed.
+- Production build passed.
+- Production deployment is Ready and the route returns successfully.
+- Console reviewed; only the Firebase environment warnings described above were observed.
 
 ## Comparison history
 
-- Iteration 1: prior source captures exposed product repetition and title/product collision; the two-step flow and varied product art were implemented.
-- Iteration 2: the current source capture exposed a new flat-orange band caused by the first hero image transform.
-- Iteration 3: removed that transform, restored the original seamless background, standardized the main logo to 29px, and restricted the visible typography system to Anton plus Archivo across web, mobile, and admin.
-- Iteration 4: the current capture exposed an oversized white sheet; increased the first hero from 58dvh (max 570px) to 67dvh (max 660px), with a separate short-phone breakpoint.
-- Post-fix visual evidence: blocked because the browser runtime has no available browser.
+- Iteration 1: source capture showed a 34.6% white sheet and too much empty vertical space.
+- Iteration 2: compacted the process strip, removed its descriptions, simplified the reward step, and reduced the sheet to 210px. Browser verification showed 21.7%, still above the explicit target.
+- Iteration 3: compensated for the 16px overlap and set the final sheet to 192.797px of 964px. Browser verification confirms the requested 20.0% with no overflow.
+- Interaction iteration: fixed the inline custom-property override that prevented the completed slider from becoming green, then verified the final green, confetti, and reward-message state in production.
 
 ## Implementation checklist
 
-- Capture onboarding steps 1 and 2 at 479 × 962 and 360px width.
-- Compare each source and implementation together at matched scale.
-- Verify headline wrapping, seamless product crop, white-sheet boundary, CTA fold position, shared page headers, and console errors.
-- Keep `/login` visually unchanged.
+- [x] Remove price and increment controls.
+- [x] Use one SUBELOO slider.
+- [x] Show green success, confetti, and `¡TE GANASTE $1!`.
+- [x] Keep bonus restricted to participation and non-withdrawable.
+- [x] Set both onboarding screens to an 80/20 composition.
+- [x] Verify only Anton and Archivo are rendered.
+- [x] Capture and compare production before/after at the same viewport.
 
-final result: blocked
+final result: passed
