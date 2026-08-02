@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import { Eye, Gavel, PlayCircle, Trophy } from "@phosphor-icons/react";
+import { BRAND } from "@subastas-ve/shared";
 import { Logo } from "./Logo";
 
 const PASOS = [
-  { titulo: "Mira", texto: "Descubre productos en directo.", Icono: Eye },
-  { titulo: "SUBELOO", texto: "Mejora el precio en segundos.", Icono: Gavel },
-  { titulo: "Llévatelo", texto: "Si quedas primero, es tuyo.", Icono: Trophy },
+  { titulo: "MIRALOO", texto: "Descubre productos en directo.", Icono: Eye },
+  { titulo: "SUBELOO", texto: "Sube tu oferta en segundos.", Icono: Gavel },
+  { titulo: "RECIBELOO", texto: "Gana y coordina la entrega.", Icono: Trophy },
 ];
 
 /**
@@ -56,6 +57,7 @@ export function Hero({
       </section>
 
       <section className="vlo-entry__sheet">
+        <div className="vlo-entry__mantra" aria-label={BRAND.mantra}>{BRAND.mantra}</div>
         <div className="vlo-entry__steps" aria-label="Cómo funciona Vendeloo">
           {PASOS.map(({ titulo, texto, Icono }, index) => (
             <div className="vlo-entry__step" key={titulo}>

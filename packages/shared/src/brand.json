@@ -1,7 +1,8 @@
 {
   "name": "Vendeloo",
   "tagline": "Ventas en vivo de Venezuela",
-  "description": "Mira productos en vivo, toca SUBELOO y llévatelos. Todo en Venezuela.",
+  "mantra": "MIRALOO · SUBELOO · RECIBELOO",
+  "description": "MIRALOO · SUBELOO · RECIBELOO. Ventas en vivo para toda Venezuela.",
   "supportEmail": "info@vendeloo.io",
   "palette": {
     "accent": "#ff6a00",

@@ -1,244 +1,261 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { doc, updateDoc } from "firebase/firestore";
+import {
+  Broadcast,
+  CaretLeft,
+  CheckCircle,
+  ClockCountdown,
+  Eye,
+  Gavel,
+  Tag,
+  Trophy,
+} from "@phosphor-icons/react";
+import { BRAND } from "@subastas-ve/shared";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
-import { SIMBOLO_PATH } from "@subastas-ve/shared";
 import { Logo } from "../../components/ui/Logo";
 import { SlideToBid } from "../../components/ui/SlideToBid";
 
-// =============================================================
-// Onboarding — 3 pasos sobre el naranja de marca
-// =============================================================
-// 1 Qué es esto · 2 Dos formas de comprar · 3 Oferta de práctica con el
-// MISMO slide de la app: deslizarlo es lo que te hace entrar (se clava
-// en verde y pasa solo). Iconos SVG de línea — nada de emojis.
-// Se muestra UNA vez: localStorage por dispositivo y, con cuenta,
-// onboardingDone en el perfil.
-// =============================================================
-
 const TOTAL = 3;
 
-const ic = (p: React.ReactNode) => (
-  <span style={{ width: 38, height: 38, borderRadius: 12, background: "var(--accent-tint)", color: "var(--accent-strong)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p}</svg>
-  </span>
-);
+const escenas = [
+  {
+    eyebrow: "Bienvenido a Vendeloo",
+    title: <>MIRALOO.<br/>SUBELOO.<br/>RECIBELOO.</>,
+    description: "Comprar en vivo ahora se siente rápido, claro y emocionante.",
+  },
+  {
+    eyebrow: "Compra a tu ritmo",
+    title: <>DOS FORMAS.<br/>UNA MISMA<br/>EMOCIÓN.</>,
+    description: "Elige cómo quieres descubrir tu próxima compra.",
+  },
+  {
+    eyebrow: "Pruébalo sin saldo",
+    title: <>AHORA TE<br/>TOCA A TI.</>,
+    description: "Desliza SUBELOO. Esta práctica no usa dinero real.",
+  },
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { profile } = useAuthStore();
-
   const [paso, setPaso] = useState(0);
   const [modo, setModo] = useState<"vivo" | "dias">("vivo");
   const [pujaDemo, setPujaDemo] = useState(4);
   const [inc, setInc] = useState(1);
-  const [pujado, setPujado] = useState(false);
-  const swipeX = useRef<number | null>(null);
+  const [subido, setSubido] = useState(false);
 
   const terminar = (ruta: string) => {
     try { localStorage.setItem("vlo_onb", "1"); } catch { /* modo privado */ }
-    if (profile) updateDoc(doc(db, "users", profile.uid), { onboardingDone: true }).catch(() => undefined);
+    if (profile) {
+      updateDoc(doc(db, "users", profile.uid), { onboardingDone: true }).catch(() => undefined);
+    }
     router.push(ruta);
   };
-  const siguiente = () => { if (paso < TOTAL - 1) setPaso(p => p + 1); };
-  const atras = () => setPaso(p => Math.max(0, p - 1));
 
-  // Flechas del teclado
+  const siguiente = () => setPaso(actual => Math.min(TOTAL - 1, actual + 1));
+  const atras = () => setPaso(actual => Math.max(0, actual - 1));
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") siguiente();
-      if (e.key === "ArrowLeft") atras();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowRight" && paso < TOTAL - 1) siguiente();
+      if (event.key === "ArrowLeft" && paso > 0) atras();
     };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [paso]);
 
-  const titulos: [string, string][] = [
-    ["Ventas\nen vivo.\nPrecios de\nverdad.", "Vendedores de todo el país presentan sus productos en vivo. Tú miras, usas SUBELOO y te lo llevas."],
-    ["Dos formas\nde encontrar\ntu próxima\ncompra.", "Toca cada opción para ver cómo funciona."],
-    ["Prueba\nSUBELOO en\nsegundos.", "Es una simulación: no usa tu saldo. Desliza para sentir cómo funciona una venta."],
-  ];
+  const escena = escenas[paso];
 
   return (
-    <div
-      onPointerDown={e => { swipeX.current = e.clientX; }}
-      onPointerUp={e => {
-        if (swipeX.current === null) return;
-        const dx = e.clientX - swipeX.current;
-        swipeX.current = null;
-        if (Math.abs(dx) > 70) (dx < 0 ? siguiente() : atras());
-      }}
-      style={{
-        minHeight: "100dvh", maxWidth: "var(--app-max)", margin: "0 auto",
-        background: "var(--accent)", position: "relative", overflow: "hidden",
-        display: "flex", flexDirection: "column",
-        padding: "calc(22px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom))",
-        touchAction: "pan-y", userSelect: "none",
-      }}
-    >
-      {/* Etiqueta gigante de fondo */}
-      <svg viewBox="0 0 24 24" aria-hidden style={{ position: "absolute", right: "-24%", top: "12%", width: "105%", fill: "var(--accent-light)", opacity: 0.5, pointerEvents: "none" }}>
-        <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
-      </svg>
+    <main className={`vlo-onb vlo-onb--step-${paso + 1}`}>
+      <section className="vlo-onb__hero">
+        <Tag className="vlo-onb__mark" weight="fill" aria-hidden="true"/>
+        {paso < 2 && (
+          <Image
+            key={paso}
+            src={paso === 0 ? "/brand/onboarding-productos.png" : "/brand/onboarding-formas.png"}
+            alt={paso === 0
+              ? "Control, teléfono y zapatos disponibles en Vendeloo"
+              : "Reloj inteligente y zapatos disponibles en Vendeloo"}
+            width={1024}
+            height={1536}
+            priority
+            className="vlo-onb__hero-product"
+          />
+        )}
 
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
-        {/* Barra superior */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Logo tamano={26} color="#fff"/>
-          <button onClick={() => terminar("/")} style={{ color: "#fff", fontSize: "0.88rem", fontWeight: 700, padding: "6px 2px" }}>
+        <header className="vlo-onb__top">
+          <Logo tamano={29} color="#fff"/>
+          <button type="button" className="vlo-onb__skip" onClick={() => terminar("/")}>
             Saltar
           </button>
+        </header>
+
+        <div className="vlo-onb__hero-copy" key={paso}>
+          <div className="vlo-onb__eyebrow">{escena.eyebrow}</div>
+          <h1 className="vlo-onb__title">{escena.title}</h1>
+          <p className="vlo-onb__description">{escena.description}</p>
         </div>
+      </section>
 
-        <div style={{ flex: 1, minHeight: 14 }}/>
-
-        {/* Título del paso */}
-        <div className="lv-eyebrow" style={{ color: "rgba(255,255,255,0.85)", letterSpacing: "0.16em" }}>
-          Paso {paso + 1} de {TOTAL}
-        </div>
-        <h1 className="lv-display" style={{ color: "#fff", fontSize: "clamp(2.1rem, 11vw, 3rem)", lineHeight: 0.92, marginTop: 10, whiteSpace: "pre-line" }}>
-          {titulos[paso][0]}
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.92)", fontSize: "0.98rem", fontWeight: 600, lineHeight: 1.45, marginTop: 14, maxWidth: 340 }}>
-          {titulos[paso][1]}
-        </p>
-
-        {/* Tarjeta del paso */}
-        <div style={{ background: "var(--bg)", borderRadius: "var(--r-card)", padding: 18, marginTop: 20, boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}>
-
-          {/* ── Paso 1: qué es ── */}
-          {paso === 0 && (
-            <div style={{ display: "grid", gap: 4 }}>
-              {([
-                [ic(<><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></>),
-                  "Ventas con video", "El vendedor presenta cada artículo en directo y tú ofertas al momento."],
-                [ic(<><path d="M12 2v3M12 19v3M5 12H2M22 12h-3M4.9 4.9l2.1 2.1M16.9 16.9l2.2 2.2M19.1 4.9L17 7M7 17l-2.1 2.1"/></>),
-                  "Precio por ofertas", "El precio lo decide la gente participando, no una etiqueta."],
-                [ic(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>),
-                  "Pagas en bolívares", "Precios en dólares, pago local y vendedores de Venezuela."],
-              ] as [React.ReactNode, string, string][]).map(([icono, t, s]) => (
-                <div key={t} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "9px 2px" }}>
-                  {icono}
-                  <div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800 }}>{t}</div>
-                    <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.45, marginTop: 2 }}>{s}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Paso 2: dos formas ── */}
-          {paso === 1 && (
-            <div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {([["vivo", "En vivo"], ["dias", "Por días"]] as ["vivo" | "dias", string][]).map(([v, t]) => (
-                  <button
-                    key={v}
-                    onClick={() => setModo(v)}
-                    className="lv-btn"
-                    style={{
-                      flex: 1, height: 44,
-                      background: modo === v ? "var(--accent)" : "var(--surface-2)",
-                      color: modo === v ? "var(--accent-ink)" : "var(--ink-2)",
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="lv-eyebrow" style={{ color: "var(--accent-strong)" }}>
-                {modo === "vivo" ? "Rápido y en directo" : "Con calma"}
-              </div>
-              <div className="lv-display" style={{ fontSize: "1.35rem", marginTop: 6, lineHeight: 1.05 }}>
-                {modo === "vivo" ? "Mira la venta y usa SUBELOO en segundos." : "Ventas abiertas por horas o días."}
-              </div>
-              <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55, marginTop: 8 }}>
-                {modo === "vivo"
-                  ? "Ves cada producto mientras el vendedor lo presenta y participas al momento, como si estuvieras en primera fila."
-                  : "Encuentras el producto, dejas tu oferta y te avisamos si alguien la supera. Vuelves cuando quieras."}
-              </p>
-            </div>
-          )}
-
-          {/* ── Paso 3: oferta de práctica — deslizar ES continuar ── */}
-          {paso === 2 && (
-            <div onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <span className="lv-badge lv-badge--accent">Demo</span>
-                <span className="lv-eyebrow">Precio actual</span>
-              </div>
-              <div className="lv-price" style={{ fontSize: "2.6rem", lineHeight: 1 }}>${pujaDemo}</div>
-
-              <div style={{ display: "flex", gap: 8, margin: "14px 0 12px" }}>
-                {[1, 5, 10].map(v => (
-                  <button
-                    key={v}
-                    onClick={() => !pujado && setInc(v)}
-                    className="lv-btn lv-btn--sm"
-                    style={{
-                      flex: 1,
-                      background: inc === v ? "var(--accent)" : "var(--surface-2)",
-                      color: inc === v ? "var(--accent-ink)" : "var(--ink-2)",
-                      opacity: pujado && inc !== v ? 0.5 : 1,
-                    }}
-                  >
-                    +${v}
-                  </button>
-                ))}
-              </div>
-
-              <SlideToBid
-                label={`SUBELOO · $${pujaDemo + inc}`}
-                successLabel="¡Vas ganando!"
-                holdSuccess
-                onConfirm={() => {
-                  setPujado(true);
-                  setPujaDemo(p => p + inc);
-                  setTimeout(() => terminar("/"), 1200);
-                }}
-              />
-
-              <div style={{ textAlign: "center", fontSize: "0.8rem", fontWeight: 700, color: pujado ? "var(--ok)" : "var(--ink-3)", marginTop: 12, minHeight: 18, transition: "color 0.3s" }}>
-                {pujado ? "Oferta registrada. Entrando a Vendeloo…" : "Desliza hacia la derecha para usar SUBELOO y entrar."}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ flex: 1, minHeight: 16 }}/>
-
-        {/* Progreso */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          {Array.from({ length: TOTAL }, (_, i) => (
-            <span key={i} style={{ flex: 1, height: 3.5, borderRadius: 999, background: i <= paso ? "#fff" : "rgba(255,255,255,0.35)", transition: "background 0.25s" }}/>
+      <section className="vlo-onb__sheet">
+        <div className="vlo-onb__progress" aria-label={`Paso ${paso + 1} de ${TOTAL}`}>
+          {Array.from({ length: TOTAL }, (_, indice) => (
+            <span key={indice} className={indice <= paso ? "is-active" : ""}/>
           ))}
         </div>
 
-        {/* Controles: en el paso 3 el que continúa es el slide de arriba */}
-        <div style={{ display: "flex", gap: 10, minHeight: 54 }}>
-          {paso > 0 && (
-            <button onClick={atras} className="lv-btn lv-btn--lg" style={{ background: "transparent", color: "#fff", boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.7)", flexShrink: 0, padding: "0 22px" }}>
-              Atrás
-            </button>
+        <div className="vlo-onb__content">
+          {paso === 0 && (
+            <div className="vlo-onb__process">
+              <div>
+                <span className="vlo-onb__process-number">1</span>
+                <span className="vlo-onb__process-icon"><Eye size={28} weight="bold"/></span>
+                <b>MIRALOO</b>
+                <p>Únete a una venta y descubre productos increíbles.</p>
+              </div>
+              <i aria-hidden="true"/>
+              <div>
+                <span className="vlo-onb__process-number">2</span>
+                <span className="vlo-onb__process-icon"><Gavel size={28} weight="bold"/></span>
+                <b>SUBELOO</b>
+                <p>Sube tu oferta en segundos con un solo gesto.</p>
+              </div>
+              <i aria-hidden="true"/>
+              <div>
+                <span className="vlo-onb__process-number">3</span>
+                <span className="vlo-onb__process-icon"><Trophy size={28} weight="bold"/></span>
+                <b>RECIBELOO</b>
+                <p>Si quedas de primero, coordina la entrega.</p>
+              </div>
+            </div>
           )}
-          {paso < TOTAL - 1 ? (
-            <button onClick={siguiente} className="lv-btn lv-btn--lg" style={{ flex: 1, background: "#fff", color: "var(--accent)" }}>
-              Continuar
-            </button>
-          ) : (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.9)", fontSize: "0.85rem", fontWeight: 700 }}>
-              Desliza SUBELOO para entrar
+
+          {paso === 1 && (
+            <div className="vlo-onb__modes" role="radiogroup" aria-label="Forma de comprar">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={modo === "vivo"}
+                className={`vlo-onb__mode${modo === "vivo" ? " is-selected" : ""}`}
+                onClick={() => setModo("vivo")}
+              >
+                <span className="vlo-onb__mode-icon"><Broadcast size={25} weight="bold"/></span>
+                <span className="vlo-onb__mode-copy">
+                  <span className="vlo-onb__mode-kicker"><i/> LIVE · AHORA MISMO</span>
+                  <b>Venta en vivo</b>
+                  <small>MIRALOO en vivo, descubre el producto y usa SUBELOO al instante.</small>
+                  <span className="vlo-onb__mode-meta">Ahora $18 · 42 mirando</span>
+                </span>
+                <CheckCircle className="vlo-onb__mode-check" size={25} weight="fill"/>
+              </button>
+
+              <button
+                type="button"
+                role="radio"
+                aria-checked={modo === "dias"}
+                className={`vlo-onb__mode${modo === "dias" ? " is-selected" : ""}`}
+                onClick={() => setModo("dias")}
+              >
+                <span className="vlo-onb__mode-icon"><ClockCountdown size={25} weight="bold"/></span>
+                <span className="vlo-onb__mode-copy">
+                  <span className="vlo-onb__mode-kicker">ABIERTA · HORAS O DÍAS</span>
+                  <b>Venta abierta</b>
+                  <small>Deja tu oferta con calma. Te avisamos si alguien la supera.</small>
+                  <span className="vlo-onb__mode-meta">Cierra mañana · 16 ofertas</span>
+                </span>
+                <CheckCircle className="vlo-onb__mode-check" size={25} weight="fill"/>
+              </button>
+            </div>
+          )}
+
+          {paso === 2 && (
+            <div className="vlo-onb__demo">
+              <div className="vlo-onb__demo-product">
+                <Image
+                  src="/brand/venta-en-vivo-headphones.png"
+                  alt="Audífonos inalámbricos de la oferta de práctica"
+                  width={1135}
+                  height={1386}
+                />
+                <div>
+                  <span>Producto de práctica</span>
+                  <b>Audífonos inalámbricos</b>
+                  <small>Oferta inicial · $4</small>
+                </div>
+                <em>DEMO</em>
+              </div>
+
+              <div className="vlo-onb__price-card">
+                <div>
+                  <span>Precio actual</span>
+                  <strong>${pujaDemo}</strong>
+                </div>
+                <i aria-hidden="true"/>
+                <div>
+                  <span>Tu oferta</span>
+                  <strong className="is-accent">${pujaDemo + inc}</strong>
+                </div>
+              </div>
+
+              <div className="vlo-onb__increments" aria-label="Cuánto quieres subir">
+                {[1, 5, 10].map(valor => (
+                  <button
+                    type="button"
+                    key={valor}
+                    className={inc === valor ? "is-selected" : ""}
+                    aria-pressed={inc === valor}
+                    disabled={subido}
+                    onClick={() => setInc(valor)}
+                  >
+                    +${valor}
+                  </button>
+                ))}
+              </div>
+
+              <div className="vlo-onb__subeloo">
+                <SlideToBid
+                  prominent
+                  label={`SUBELOO · $${pujaDemo + inc}`}
+                  successLabel="¡TE PUSISTE DE PRIMERO!"
+                  holdSuccess
+                  disabled={subido}
+                  onConfirm={() => {
+                    setSubido(true);
+                    setPujaDemo(valor => valor + inc);
+                    setTimeout(() => terminar("/"), 1450);
+                  }}
+                />
+              </div>
+              <p className={`vlo-onb__demo-help${subido ? " is-success" : ""}`}>
+                {subido ? "Listo. Entrando a Vendeloo…" : "Arrastra el círculo hasta el final"}
+              </p>
             </div>
           )}
         </div>
-        <div style={{ textAlign: "center", fontSize: "0.66rem", color: "rgba(255,255,255,0.75)", marginTop: 9 }}>
-          También puedes deslizar o usar las flechas del teclado.
-        </div>
-      </div>
-    </div>
+
+        <footer className="vlo-onb__footer">
+          {paso < TOTAL - 1 && (
+            <button type="button" className="vlo-onb__continue" onClick={siguiente}>
+              {paso === 1
+                ? `Continuar con ${modo === "vivo" ? "venta en vivo" : "venta abierta"}`
+                : "Descubrir cómo comprar"}
+            </button>
+          )}
+
+          {paso > 0 && (
+            <button type="button" className="vlo-onb__back" onClick={atras} disabled={subido}>
+              <CaretLeft size={16} weight="bold"/> Atrás
+            </button>
+          )}
+          <span className="vlo-onb__mantra">{BRAND.mantra}</span>
+        </footer>
+      </section>
+    </main>
   );
 }

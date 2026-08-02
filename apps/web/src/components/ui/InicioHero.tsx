@@ -55,7 +55,7 @@ export function InicioHero({
           <div style={{ position: "relative", zIndex: 1 }}>
             <div className="lv-eyebrow" style={{ color: "#fff", opacity: 0.9 }}>Ventas en vivo · Venezuela</div>
             <h1 className="lv-display" style={{ color: "#fff", fontSize: "clamp(1.9rem, 9vw, 2.5rem)", lineHeight: 0.94, marginTop: 8 }}>
-              Entra al vivo.<br/>SUBELOO. Llévatelo.
+              MIRALOO.<br/>SUBELOO. RECIBELOO.
             </h1>
             <button onClick={onExplorar} className="lv-btn lv-btn--lg" style={{ marginTop: 16, background: "#fff", color: "var(--accent-strong, #dc5a00)" }}>
               Explorar ventas →

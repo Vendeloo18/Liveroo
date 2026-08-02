@@ -23,6 +23,8 @@ import datos from "./brand.json";
 export interface Marca {
   name: string;
   tagline: string;
+  /** Mantra de producto que acompaña toda la experiencia de compra. */
+  mantra: string;
   /** Dominio canónico. Vive acá y no en cada app para que un cambio de
    * dominio sea un solo archivo. */
   url: string;

@@ -72,7 +72,7 @@ export default function Login() {
         <View style={{ width: contenido, paddingHorizontal: space.lg, paddingTop: insets.top + 40 }}>
           <Logo tamano={30}/>
           <Text style={{ ...T.muted, lineHeight: 21, marginTop: 8, marginBottom: 26 }}>
-            {BRAND.tagline}. Mira, usa SUBELOO y llévatelo.
+            {BRAND.tagline}. {BRAND.mantra}.
           </Text>
 
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>

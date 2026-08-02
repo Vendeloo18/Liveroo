@@ -5,11 +5,12 @@ import { Image } from "expo-image";
 import { color, familia, font, APP_MAX_WIDTH } from "../theme";
 import { Boton } from "./ui";
 import { Logo } from "./Logo";
+import { BRAND } from "@subastas-ve/shared";
 
 const PASOS = [
-  ["1", "Mira", "Descubre productos en directo."],
-  ["2", "SUBELOO", "Mejora el precio en segundos."],
-  ["3", "Llévatelo", "Si quedas primero, es tuyo."],
+  ["1", "MIRALOO", "Descubre productos en directo."],
+  ["2", "SUBELOO", "Sube tu oferta en segundos."],
+  ["3", "RECIBELOO", "Gana y coordina la entrega."],
 ] as const;
 
 /** Entrada móvil alineada con la nueva promesa: ventas en vivo. */
@@ -74,6 +75,9 @@ export function Hero({
         </View>
 
         <View style={{ flex: 1, marginTop: -1, paddingHorizontal: 22, paddingTop: 24, paddingBottom: insets.bottom + 18, borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: "#fff" }}>
+          <Text style={{ marginBottom: 17, color: color.accent, fontFamily: familia.cuerpoExtra, fontSize: 10, letterSpacing: 1.1, textAlign: "center" }}>
+            {BRAND.mantra}
+          </Text>
           <View style={{ flexDirection: "row", gap: 9 }}>
             {PASOS.map(([numero, titulo, texto]) => (
               <View key={numero} style={{ flex: 1, alignItems: "center" }}>

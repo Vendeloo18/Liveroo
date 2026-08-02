@@ -137,7 +137,7 @@ export default function AuctionPage() {
     const url = `${window.location.origin}/auctions/${auctionId}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
-        await (navigator as any).share({ title: "Vendeloo", text: `Mira esta venta: ${auction?.title ?? ""}`, url });
+        await (navigator as any).share({ title: "Vendeloo", text: `MIRALOO en Vendeloo: ${auction?.title ?? ""}. SUBELOO y RECIBELOO.`, url });
       } else {
         await navigator.clipboard.writeText(url);
         setCopiado(true); setTimeout(() => setCopiado(false), 2200);

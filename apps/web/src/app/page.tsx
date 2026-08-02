@@ -8,6 +8,7 @@ import { AuctionCard, AuctionCardData } from "../components/auction/AuctionCard"
 import { Logo } from "../components/ui/Logo";
 import { InicioHero } from "../components/ui/InicioHero";
 import { LiveShowCard } from "../components/ui/LiveShowCard";
+import { BRAND } from "@subastas-ve/shared";
 
 interface Show {
   id: string; sellerName?: string; title?: string; status?: string;
@@ -101,7 +102,12 @@ export default function Home() {
 
       {/* Barra superior */}
       <header className="lv-topbar">
-        <Logo tamano={26}/>
+        <div style={{ display: "grid", gap: 1 }}>
+          <Logo tamano={26}/>
+          <span style={{ color: "var(--accent-strong)", fontSize: "0.46rem", fontWeight: 900, letterSpacing: "0.075em" }}>
+            {BRAND.mantra}
+          </span>
+        </div>
         <div style={{ flex: 1 }}/>
         <button className="lv-icon-btn" onClick={() => router.push("/auctions")} aria-label="Buscar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">

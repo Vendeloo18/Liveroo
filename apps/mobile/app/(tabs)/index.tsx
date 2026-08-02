@@ -8,6 +8,7 @@ import { color, space, text as T, APP_MAX_WIDTH } from "../../src/theme";
 import { AuctionCard, DatosSubasta } from "../../src/components/AuctionCard";
 import { Cargando, Vacio, Boton } from "../../src/components/ui";
 import { Logo } from "../../src/components/Logo";
+import { BRAND } from "@subastas-ve/shared";
 
 const CATEGORIAS = ["Para Ti", "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar", "Deportes"];
 
@@ -46,7 +47,12 @@ export default function Inicio() {
         flexDirection: "row", alignItems: "center", gap: 10,
         borderBottomWidth: 1, borderBottomColor: color.line,
       }}>
-        <Logo tamano={26}/>
+        <View>
+          <Logo tamano={26}/>
+          <Text style={{ marginTop: 1, color: color.accentStrong, fontSize: 7.2, fontWeight: "900", letterSpacing: 0.5 }}>
+            {BRAND.mantra}
+          </Text>
+        </View>
         <View style={{ flex: 1 }}/>
         <Pressable
           onPress={() => router.push("/explorar")}
