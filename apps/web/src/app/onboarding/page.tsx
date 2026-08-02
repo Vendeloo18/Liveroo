@@ -18,6 +18,7 @@ import { SlideToBid } from "../../components/ui/SlideToBid";
 import { celebrateFullScreen } from "../../components/ui/Confetti";
 
 const TOTAL = 2;
+const CELEBRATION_MS = 3200;
 
 const escenas = [
   {
@@ -80,7 +81,7 @@ export default function OnboardingPage() {
         localStorage.setItem("vlo_onb", "1");
         localStorage.setItem("vlo_welcome_bonus_pending", "1");
       } catch { /* modo privado */ }
-      setTimeout(() => router.push("/login?crear=1&bonus=1"), 1800);
+      setTimeout(() => router.push("/login?crear=1&bonus=1"), CELEBRATION_MS);
       return;
     }
 
@@ -89,7 +90,7 @@ export default function OnboardingPage() {
       const data = response.data as { status?: "awarded" | "already_claimed" };
       setBonusEstado(data.status === "already_claimed" ? "acreditado" : "ganado");
       try { localStorage.setItem("vlo_onb", "1"); } catch { /* modo privado */ }
-      setTimeout(() => router.push("/wallet"), 1800);
+      setTimeout(() => router.push("/wallet"), CELEBRATION_MS);
     } catch (error) {
       console.error("No se pudo acreditar el bono de bienvenida", error);
       setSubido(false);
