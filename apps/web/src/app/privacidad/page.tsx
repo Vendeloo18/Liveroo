@@ -12,13 +12,13 @@ export default function PrivacidadPage() {
 
       <Sec n={1} titulo="Qué datos guardamos">
         Los que nos das al registrarte y usar la app: nombre, correo, teléfono/WhatsApp,
-        ciudad y foto de perfil (opcional). Y los que se generan al usarla: tus pujas,
+        ciudad y foto de perfil (opcional). Y los que se generan al usarla: tus ofertas,
         órdenes, saldo, calificaciones y —si activas las notificaciones— un identificador
         para poder enviártelas.
       </Sec>
 
       <Sec n={2} titulo="Para qué los usamos">
-        Para operar tu cuenta, procesar las subastas y las órdenes, avisarte lo importante
+        Para operar tu cuenta, procesar las ventas y las órdenes, avisarte lo importante
         (te superaron, ganaste, tu recarga), cuidar la seguridad de la plataforma y prevenir
         fraudes. Nada más.
       </Sec>

@@ -133,7 +133,7 @@ function Solicitud({ contenido, Cabecera, estado, perfil }: any) {
         <Panel>
           <Text style={{ fontSize: 16, fontWeight: font.bold, color: color.ink, marginBottom: 6 }}>Tu solicitud está en revisión ⏳</Text>
           <Text style={{ ...T.muted, lineHeight: 21 }}>
-            Un administrador la revisa a mano. Apenas quede aprobada podrás publicar subastas y hacer shows en vivo.
+            Un administrador la revisa a mano. Apenas quede aprobada podrás publicar ventas y vender en vivo.
           </Text>
         </Panel>
       </Marco>
@@ -218,7 +218,7 @@ function Publicar({ contenido, Cabecera, perfil, router }: any) {
         imageURL: fotos[0] ?? null, imageURLs: fotos,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-      Alert.alert("¡Publicada! 🎉", "Tu subasta ya está en vivo.", [
+      Alert.alert("¡Publicada!", "Tu venta ya está disponible.", [
         { text: "Verla", onPress: () => router.push(`/auctions/${ref.id}`) },
         { text: "Publicar otra", onPress: () => { setTitulo(""); setDesc(""); setPrecio(""); setFotos([]); } },
       ]);
@@ -232,7 +232,7 @@ function Publicar({ contenido, Cabecera, perfil, router }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: color.bg }}>
-      <Cabecera titulo="Publicar subasta"/>
+      <Cabecera titulo="Publicar una venta"/>
       <ScrollView contentContainerStyle={{ alignItems: "center", paddingBottom: 44 }} keyboardShouldPersistTaps="handled">
         <View style={{ width: contenido, paddingHorizontal: space.lg, paddingTop: space.lg, gap: space.md }}>
 
@@ -241,8 +241,8 @@ function Publicar({ contenido, Cabecera, perfil, router }: any) {
           <Panel style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Text style={{ fontSize: 20 }}>📡</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13.5, fontWeight: font.bold, color: color.ink }}>¿Quieres hacer un show en vivo?</Text>
-              <Text style={{ color: color.ink3, fontSize: 12, lineHeight: 16 }}>Los shows con video se manejan desde la web, por ahora.</Text>
+              <Text style={{ fontSize: 13.5, fontWeight: font.bold, color: color.ink }}>¿Quieres vender en vivo?</Text>
+              <Text style={{ color: color.ink3, fontSize: 12, lineHeight: 16 }}>Las ventas con video se manejan desde la web, por ahora.</Text>
             </View>
             <Pressable onPress={() => Linking.openURL(`${BRAND.url}/seller`)}>
               <Text style={{ color: color.accent, fontWeight: font.bold, fontSize: 13 }}>Abrir →</Text>
@@ -268,11 +268,11 @@ function Publicar({ contenido, Cabecera, perfil, router }: any) {
           </Panel>
 
           <Panel>
-            <Campo label="Precio de salida (USD)" hint={bs ? `≈ Bs ${(bs * 745).toLocaleString("es-VE")} · la puja arranca aquí` : "En dólares; la puja arranca en este monto."}>
+            <Campo label="Precio de salida (USD)" hint={bs ? `≈ Bs ${(bs * 745).toLocaleString("es-VE")} · las ofertas arrancan aquí` : "En dólares; las ofertas arrancan en este monto."}>
               <TextInput style={inputStyle} value={precio} onChangeText={setPrecio} placeholder="Ej: 20" placeholderTextColor={color.ink3} keyboardType="decimal-pad"/>
             </Campo>
 
-            <Campo label="Incremento mínimo (USD)" hint="Cuánto tiene que subir cada puja.">
+            <Campo label="Incremento mínimo (USD)" hint="Cuánto sube cada uso de SUBELOO.">
               <TextInput style={inputStyle} value={incremento} onChangeText={setIncremento} placeholder="1" placeholderTextColor={color.ink3} keyboardType="decimal-pad"/>
             </Campo>
 
@@ -294,7 +294,7 @@ function Publicar({ contenido, Cabecera, perfil, router }: any) {
             </Campo>
           </Panel>
 
-          <Boton onPress={publicar} cargando={ocupado} tamano="lg">Publicar subasta</Boton>
+          <Boton onPress={publicar} cargando={ocupado} tamano="lg">Publicar venta</Boton>
         </View>
       </ScrollView>
     </View>

@@ -12,7 +12,7 @@ import { BRAND } from "@subastas-ve/shared";
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   waiting: { texto: "En cola", clase: "lv-badge--soft" },
-  active: { texto: "Subastando", clase: "lv-badge--accent" },
+  active: { texto: "En venta", clase: "lv-badge--accent" },
   sold: { texto: "Vendida", clase: "lv-badge--accent" },
   unsold: { texto: "Sin ganador", clase: "lv-badge--soft" },
   skipped: { texto: "Saltada", clase: "lv-badge--soft" },
@@ -37,7 +37,7 @@ function FilaProducto({ p, onSaltar, saltando, onPresentar, presentando }: { p: 
             {p.title}
           </div>
           <div className="lv-dim" style={{ fontSize: "0.72rem", marginTop: 1 }}>
-            ${(p.currentBidUsd ?? 0).toFixed(2)} · {p.bidsCount ?? 0} pujas
+            ${(p.currentBidUsd ?? 0).toFixed(2)} · {p.bidsCount ?? 0} ofertas
             {activa ? ` · ${texto}` : ""}
           </div>
           <span className={`lv-badge ${e.clase}`} style={{ marginTop: 4 }}>{e.texto}</span>
@@ -47,7 +47,7 @@ function FilaProducto({ p, onSaltar, saltando, onPresentar, presentando }: { p: 
       {/* En cola: subastarla ahora. Activa sin pujas: saltarla. */}
       {p.status === "waiting" && onPresentar && (
         <button className="lv-btn lv-btn--accent lv-btn--sm" disabled={presentando} onClick={onPresentar}>
-          {presentando ? "…" : "Subastar"}
+          {presentando ? "…" : "Vender ahora"}
         </button>
       )}
       {p.status === "active" && !p.currentBidderId && onSaltar && (
@@ -113,19 +113,19 @@ export default function SellerShowPage() {
       await agora.join(videoRef.current);
       avisar("ok", "¡Estás en vivo!");
     } catch (e: any) {
-      avisar("bad", e?.message ?? "No se pudo iniciar el show");
+      avisar("bad", e?.message ?? "No se pudo iniciar la venta en vivo");
     } finally { setOcupado(null); }
   };
 
   const terminar = async () => {
-    if (!confirm("¿Terminar el show? Se cancelan las subastas que queden en cola.")) return;
+    if (!confirm("¿Terminar la venta en vivo? Se cancelan los productos que queden en cola.")) return;
     setOcupado("end");
     try {
       await agora.leave();
       await httpsCallable(functions, "endShow")({ showId });
       router.push("/seller");
     } catch (e: any) {
-      avisar("bad", e?.message ?? "No se pudo terminar el show");
+      avisar("bad", e?.message ?? "No se pudo terminar la venta en vivo");
     } finally { setOcupado(null); }
   };
 
@@ -156,7 +156,7 @@ export default function SellerShowPage() {
       // En vivo y sin nada subastándose → arranca este al instante.
       if (show?.status === "live" && !productos.some(p => p.status === "active")) {
         await httpsCallable(functions, "presentAuction")({ showId, auctionId: ref.id });
-        avisar("ok", "¡Subastando!");
+        avisar("ok", "¡Producto en venta!");
       } else {
         avisar("ok", "Agregado a la cola");
       }
@@ -171,14 +171,14 @@ export default function SellerShowPage() {
     try {
       await httpsCallable(functions, "presentAuction")({ showId, auctionId });
     } catch (e: any) {
-      avisar("bad", e?.message ?? "No se pudo subastar");
+      avisar("bad", e?.message ?? "No se pudo poner a la venta");
     } finally { setOcupado(null); }
   };
 
   // Invitar gente: comparte el link del show (WhatsApp/redes) o lo copia.
   const compartir = async () => {
     const url = `${window.location.origin}/shows/${showId}`;
-    const texto = `🔴 Estoy EN VIVO rematando en ${BRAND.name}. ¡Entra a pujar! ${url}`;
+    const texto = `🔴 Estoy vendiendo EN VIVO en ${BRAND.name}. ¡Entra a mirar y usa SUBELOO! ${url}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
         await (navigator as any).share({ title: `${BRAND.name} — En vivo`, text: texto, url });
@@ -267,7 +267,7 @@ export default function SellerShowPage() {
         )}
 
         {show.status === "ended" ? (
-          <div className="lv-note">Este show ya terminó.</div>
+          <div className="lv-note">Esta venta en vivo ya terminó.</div>
         ) : !enVivo ? (
           /* ── Antes de salir en vivo ── */
           <section className="lv-panel" style={{ textAlign: "center", padding: "24px 18px" }}>
@@ -284,11 +284,11 @@ export default function SellerShowPage() {
           <>
             {activa ? (
               <section className="lv-panel" style={{ padding: "2px 16px", boxShadow: "inset 0 0 0 2px var(--accent)" }}>
-                <div className="lv-eyebrow" style={{ padding: "12px 0 2px", color: "var(--accent-strong)" }}>Subastando ahora</div>
+                <div className="lv-eyebrow" style={{ padding: "12px 0 2px", color: "var(--accent-strong)" }}>En venta ahora</div>
                 <FilaProducto p={activa} saltando={ocupado === `skip_${activa.id}`} onSaltar={() => saltar(activa.id)}/>
               </section>
             ) : (
-              <div className="lv-note lv-note--warn">Nada en subasta. Agrega un artículo abajo y sale al instante.</div>
+              <div className="lv-note lv-note--warn">No hay ningún producto en venta. Agrega uno abajo y saldrá al instante.</div>
             )}
 
             {/* Agregar lo que vendes — rápido: nombre, precio y minutos */}
@@ -326,7 +326,7 @@ export default function SellerShowPage() {
               </div>
 
               <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado === "add" || !titulo.trim() || !precio} onClick={agregar}>
-                {ocupado === "add" ? "Un momento…" : activa ? "Agregar a la cola" : "Subastar ahora"}
+                {ocupado === "add" ? "Un momento…" : activa ? "Agregar a la cola" : "Vender ahora"}
               </button>
             </section>
 
@@ -354,11 +354,11 @@ export default function SellerShowPage() {
             </button>
             {activa?.currentBidderId && (
               <div className="lv-note lv-note--warn" style={{ fontSize: "0.8rem" }}>
-                No puedes terminar mientras “{activa.title}” tiene pujas. Espera a que cierre — son segundos.
+                No puedes terminar mientras “{activa.title}” tiene ofertas. Espera a que cierre — son segundos.
               </div>
             )}
             <button className="lv-btn lv-btn--danger lv-btn--block" disabled={ocupado === "end" || !!activa?.currentBidderId} onClick={terminar}>
-              {ocupado === "end" ? "Terminando…" : "Terminar show"}
+              {ocupado === "end" ? "Terminando…" : "Terminar venta en vivo"}
             </button>
           </>
         )}

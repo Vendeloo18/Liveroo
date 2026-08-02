@@ -23,7 +23,7 @@ export default function Cuenta() {
     return (
       <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: insets.top + 10 }}>
         <Text style={{ ...T.title, paddingHorizontal: space.lg, paddingBottom: 12 }}>Mi cuenta</Text>
-        <Vacio titulo="No has iniciado sesión" texto="Entra para ver tus pujas, órdenes y perfil.">
+        <Vacio titulo="No has iniciado sesión" texto="Entra para ver tus ofertas, órdenes y perfil.">
           <View style={{ paddingHorizontal: space.lg }}>
             <Boton onPress={() => router.push("/login")}>Entrar</Boton>
           </View>
@@ -58,7 +58,7 @@ export default function Cuenta() {
             <Panel style={{ backgroundColor: "rgba(232,163,0,0.12)", borderColor: "transparent" }}>
               <Text style={{ color: color.warnInk, fontSize: 13, lineHeight: 19 }}>
                 <Text style={{ fontWeight: font.bold }}>Falta tu WhatsApp. </Text>
-                Quien gane tus subastas no tiene cómo contactarte. Agrégalo desde la web por ahora.
+                Quien gane una de tus ventas no tiene cómo contactarte. Agrégalo desde la web por ahora.
               </Text>
             </Panel>
           )}
@@ -93,7 +93,7 @@ export default function Cuenta() {
               <Text style={T.dim}>›</Text>
             </Fila>
             <Fila onPress={() => router.push("/explorar")} ultima>
-              <Text style={{ fontSize: 15, color: color.ink }}>Explorar subastas</Text>
+              <Text style={{ fontSize: 15, color: color.ink }}>Explorar ventas</Text>
               <Text style={T.dim}>›</Text>
             </Fila>
           </Panel>

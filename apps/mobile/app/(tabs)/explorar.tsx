@@ -16,7 +16,7 @@ const ORDENES = [
   ["cierre", "Cierran pronto"],
   ["precio_asc", "Más baratas"],
   ["precio_desc", "Más caras"],
-  ["pujas", "Más pujadas"],
+  ["pujas", "Más ofertadas"],
 ] as const;
 
 type Orden = typeof ORDENES[number][0];
@@ -87,9 +87,9 @@ export default function Explorar() {
             <TextInput
               value={busqueda}
               onChangeText={setBusqueda}
-              placeholder="Buscar subastas"
+              placeholder="Buscar ventas o productos"
               placeholderTextColor={color.ink3}
-              accessibilityLabel="Buscar subastas"
+              accessibilityLabel="Buscar ventas o productos"
               style={{
                 backgroundColor: color.surface2, borderRadius: radius.btn,
                 paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: color.ink,
@@ -110,7 +110,7 @@ export default function Explorar() {
           </ScrollView>
 
           {cargando ? <Cargando/> : visibles.length === 0 ? (
-            <Vacio titulo={filtrado ? "Nada con ese filtro" : "No hay subastas activas"}>
+            <Vacio titulo={filtrado ? "Nada con ese filtro" : "No hay ventas activas"}>
               {filtrado ? (
                 <View style={{ paddingHorizontal: space.lg }}>
                   <Boton variante="soft" onPress={() => { setBusqueda(""); setCat("Todas"); }}>

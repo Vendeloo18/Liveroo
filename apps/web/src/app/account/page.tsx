@@ -4,9 +4,9 @@ import { useAuthStore } from "../../store/authStore";
 import { BRAND } from "@subastas-ve/shared";
 
 const MENU_ITEMS = [
-  { label: "Mis órdenes", sub: "Compras y pujas", href: "/activity", icon: "M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z" },
+  { label: "Mis órdenes", sub: "Compras y ofertas", href: "/activity", icon: "M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z" },
   { label: "Mi billetera", sub: "Saldo y movimientos", href: "/wallet", icon: "M20 12V22H4V12M22 7H2v5h20V7zM12 22V7" },
-  { label: "Notificaciones", sub: "Shows, pujas y órdenes", href: "/notifications", icon: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" },
+  { label: "Notificaciones", sub: "En vivos, ofertas y órdenes", href: "/notifications", icon: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" },
   { label: "Soporte", sub: "Centro de ayuda", href: "/support", icon: "M12 17h.01M12 14a2 2 0 0 1 .5-1.3l1.2-1.2A2.5 2.5 0 1 0 9.5 9.5M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" },
   { label: "Configuración", sub: "Preferencias de la app", href: "/settings", icon: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
 ];
@@ -32,7 +32,7 @@ export default function AccountPage() {
       <div className="lv-app">
         <div className="lv-empty">
           <div className="lv-empty__title">No has iniciado sesión</div>
-          <div className="lv-empty__text">Entra para ver tus pujas, órdenes y perfil.</div>
+          <div className="lv-empty__text">Entra para ver tus ofertas, órdenes y perfil.</div>
           <button className="lv-btn lv-btn--primary" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>
             Entrar
           </button>
@@ -60,7 +60,7 @@ export default function AccountPage() {
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <div>
-              <strong>Falta tu WhatsApp.</strong> Quien gane tus subastas no tiene cómo
+              <strong>Falta tu WhatsApp.</strong> Quien gane una de tus ventas no tiene cómo
               contactarte para pagar. Toca aquí para agregarlo.
             </div>
           </button>
@@ -126,7 +126,7 @@ export default function AccountPage() {
             <p className="lv-dim" style={{ fontSize: "0.79rem", lineHeight: 1.5, marginBottom: 12 }}>
               {profile.sellerStatus === "pending"
                 ? "Tu solicitud está en revisión. Te avisamos cuando la aprueben."
-                : "Un administrador revisa cada cuenta antes de habilitarla para publicar subastas."}
+                : "Un administrador revisa cada cuenta antes de habilitarla para vender en vivo."}
             </p>
             <button
               className="lv-btn lv-btn--outline lv-btn--block"

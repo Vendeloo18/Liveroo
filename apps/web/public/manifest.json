@@ -1,7 +1,7 @@
 {
-  "name": "Vendeloo — Subastas en vivo de Venezuela",
+  "name": "Vendeloo — Ventas en vivo de Venezuela",
   "short_name": "Vendeloo",
-  "description": "Entra al vivo, puja en segundos y págalo cuando lo ganes. Todo en Venezuela.",
+  "description": "Mira productos en vivo, toca SUBELOO y llévatelos. Todo en Venezuela.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

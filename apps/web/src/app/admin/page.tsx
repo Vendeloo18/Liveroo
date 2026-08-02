@@ -156,8 +156,8 @@ export default function AdminPage() {
     finally { setOcupado(null); setTimeout(() => setAviso(null), 5000); }
   };
   const aprobar = (u: Usuario) => correr(`ap_${u.id}`, () => httpsCallable(functions, "approveSeller")({ sellerUid: u.id }), `${u.displayName ?? u.id} ya puede vender`);
-  const suspender = (u: Usuario) => { if (!confirm(`¿Suspender a ${u.displayName ?? u.id}? No podrá publicar más subastas.`)) return; correr(`sp_${u.id}`, () => httpsCallable(functions, "suspendSeller")({ sellerUid: u.id }), `${u.displayName ?? u.id} quedó suspendido`); };
-  const demoAccion = (accion: "seed" | "purge") => { if (accion === "purge" && !confirm(`¿Borrar las ${demo} subastas de demostración? Las reales no se tocan.`)) return; correr(`demo_${accion}`, () => httpsCallable(functions, "manageDemoAuctions")({ action: accion }), accion === "seed" ? "Catálogo de demostración sembrado" : "Demostración purgada"); };
+  const suspender = (u: Usuario) => { if (!confirm(`¿Suspender a ${u.displayName ?? u.id}? No podrá publicar más ventas.`)) return; correr(`sp_${u.id}`, () => httpsCallable(functions, "suspendSeller")({ sellerUid: u.id }), `${u.displayName ?? u.id} quedó suspendido`); };
+  const demoAccion = (accion: "seed" | "purge") => { if (accion === "purge" && !confirm(`¿Borrar las ${demo} ventas de demostración? Las reales no se tocan.`)) return; correr(`demo_${accion}`, () => httpsCallable(functions, "manageDemoAuctions")({ action: accion }), accion === "seed" ? "Catálogo de demostración sembrado" : "Demostración purgada"); };
   const decidirDeposito = (d: any, action: "approve" | "reject") => {
     let reason: string | undefined;
     if (action === "reject") { const r = prompt(`¿Por qué se rechaza la recarga de ${d.userName} (${formatUsd(d.amountUsd)}, ref ${d.reference})? El usuario lo va a ver:`); if (r === null) return; reason = r; }
@@ -176,8 +176,8 @@ export default function AdminPage() {
   const guardarCuentas = () => correr("cuentas", async () => { await setDoc(doc(db, "config", "paymentAccounts"), { pagoMovil: pmTel.trim() ? { banco: pmBanco.trim(), telefono: pmTel.trim(), cedula: pmCi.trim() } : null, zelle: zCorreo.trim() ? { correo: zCorreo.trim(), titular: zTitular.trim() } : null, nota: ctaNota.trim() || null, updatedAt: serverTimestamp() }); }, "Cuentas de recarga guardadas");
   const toggleSaldoObligatorio = () => {
     const activo = walletCfg?.biddingRequiresBalance === true;
-    if (!activo && depositos.length === 0 && !pmTel && !zCorreo) { if (!confirm("Nadie puede recargar todavía (no hay cuentas configuradas). Si activas esto, nadie sin saldo podrá pujar. ¿Seguro?")) return; }
-    correr("wallet_toggle", async () => { await setDoc(doc(db, "config", "wallet"), { biddingRequiresBalance: !activo, updatedAt: serverTimestamp() }, { merge: true }); }, !activo ? "Ahora pujar exige saldo en la billetera" : "Pujar vuelve a ser libre, sin saldo");
+    if (!activo && depositos.length === 0 && !pmTel && !zCorreo) { if (!confirm("Nadie puede recargar todavía (no hay cuentas configuradas). Si activas esto, nadie sin saldo podrá usar SUBELOO. ¿Seguro?")) return; }
+    correr("wallet_toggle", async () => { await setDoc(doc(db, "config", "wallet"), { biddingRequiresBalance: !activo, updatedAt: serverTimestamp() }, { merge: true }); }, !activo ? "Ahora SUBELOO exige saldo en la billetera" : "SUBELOO vuelve a ser libre, sin saldo");
   };
   const moverOrden = (o: any, cambios: Record<string, any>, pregunta: string, exito: string) => { if (!confirm(pregunta)) return; correr(`ord_${o.id}`, () => updateDoc(doc(db, "orders", o.id), { ...cambios, updatedAt: serverTimestamp() }), exito); };
   const traerBcv = () => correr("bcv", () => httpsCallable(functions, "syncBcvRateNow")({}), "Tasa actualizada desde el BCV");
@@ -307,7 +307,7 @@ export default function AdminPage() {
           <div><h1>{titulos[seccion].t}</h1><div className="sub">{titulos[seccion].s}</div></div>
           <div className="adm-kpis">
             <div className="adm-chip"><div className="k">Tasa BCV</div><div className="v mono">{tasa?.usdToBs ? `Bs ${tasa.usdToBs}` : "—"}</div></div>
-            <div className="adm-chip"><div className="k">Pujar exige saldo</div><div className="v"><span className={`adm-dot ${walletCfg?.biddingRequiresBalance ? "adm-dot--o" : "adm-dot--x"}`}/>{walletCfg?.biddingRequiresBalance ? "Activo" : "Apagado"}</div></div>
+            <div className="adm-chip"><div className="k">SUBELOO exige saldo</div><div className="v"><span className={`adm-dot ${walletCfg?.biddingRequiresBalance ? "adm-dot--o" : "adm-dot--x"}`}/>{walletCfg?.biddingRequiresBalance ? "Activo" : "Apagado"}</div></div>
           </div>
         </div>
 
@@ -321,7 +321,7 @@ export default function AdminPage() {
               <div className="adm-sech"><div className="t">Indicadores</div></div>
               <div className="adm-metrics">
                 <Metric label="Usuarios" icon={I.usuarios} value={usuarios.length} ctx={<><b>{compradores}</b> compradores · <b>{aprobados.length}</b> vendedores</>}/>
-                <Metric label="Subastas activas" icon={I.subasta} value={activas} ctx={<><b>{demo}</b> de demostración</>}/>
+                <Metric label="Ventas activas" icon={I.subasta} value={activas} ctx={<><b>{demo}</b> de demostración</>}/>
                 <Metric label="Órdenes" icon={I.ordenes} value={ordenes} ctx={<><b>{formatUsd(gmv)}</b> transados</>}/>
                 <Metric label="En billeteras" icon={I.pagos} value={walletsTotal ? formatUsd(walletsTotal.saldo) : "…"} ctx={walletsTotal ? <><b>{formatUsd(walletsTotal.retenido)}</b> retenidos</> : ""}/>
               </div>
@@ -357,7 +357,7 @@ export default function AdminPage() {
                   <div className="adm-panel__h"><span className="t">Estado de la plataforma</span></div>
                   <div className="adm-state">
                     <div className="r"><div className="l">Tasa de cambio<div className="s">Sincroniza sola cada 4 h</div></div><span className="v">{tasa?.usdToBs ? `Bs ${tasa.usdToBs}` : "—"}</span></div>
-                    <div className="r"><div className="l">Pujar exige saldo<div className="s">Beta por invitación</div></div><button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="Pujar exige saldo"><span/></button></div>
+                    <div className="r"><div className="l">SUBELOO exige saldo<div className="s">Beta por invitación</div></div><button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="SUBELOO exige saldo"><span/></button></div>
                     <div className="r"><div className="l">Cuentas de recarga<div className="s">Lo que ve el que deposita</div></div><span className={`lv-badge ${pmTel || zCorreo ? "adm-ok" : "adm-wn"}`}>{pmTel || zCorreo ? "Configuradas" : "Sin configurar"}</span></div>
                     <div className="r"><div className="l">Avisos push<div className="s">Te superaron · ganaste</div></div><span className={`lv-badge ${vapidOk ? "adm-ok" : "adm-wn"}`}>{vapidOk ? "Activos" : "Falta clave"}</span></div>
                   </div>
@@ -464,7 +464,7 @@ export default function AdminPage() {
             <>
               <div className="adm-metrics">
                 <Metric label="En billeteras" icon={I.pagos} value={walletsTotal ? formatUsd(walletsTotal.saldo) : "…"} ctx={<>{billeterasTop.length} billeteras con saldo</>}/>
-                <Metric label="Retenido en pujas" icon={I.reloj} value={walletsTotal ? formatUsd(walletsTotal.retenido) : "…"} ctx="respaldo de pujas líderes"/>
+                <Metric label="Retenido en ofertas" icon={I.reloj} value={walletsTotal ? formatUsd(walletsTotal.retenido) : "…"} ctx="respaldo de ofertas líderes"/>
                 <Metric alerta={depositos.length > 0} label="Recargas por aprobar" icon={I.sellermas} value={depositos.length} ctx={depositos.length > 0 ? <b>{suma2(depositos)}</b> : "todo al día"}/>
                 <Metric alerta={totalLiquidar > 0} label="Debes a vendedores" icon={I.vendedores} value={formatUsd(totalLiquidar)} ctx={totalLiquidar > 0 ? <>{liquidarPorVendedor.length} vendedor{liquidarPorVendedor.length === 1 ? "" : "es"} por liquidar</> : "todo liquidado"}/>
               </div>
@@ -524,8 +524,8 @@ export default function AdminPage() {
               </div>
 
               <div className="adm-panel"><div className="adm-panel__b" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ flex: 1 }}><div style={{ fontSize: "0.95rem", fontWeight: 800 }}>Pujar exige saldo</div><div className="adm-row__meta" style={{ whiteSpace: "normal", marginTop: 3, lineHeight: 1.45 }}>{walletCfg?.biddingRequiresBalance ? "Activo: cada puja se respalda con saldo. Al ganar, el motor debita y la orden nace pagada." : "Apagado: pujar es libre y el ganador coordina el pago después."}</div></div>
-                <button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="Pujar exige saldo"><span/></button>
+                <div style={{ flex: 1 }}><div style={{ fontSize: "0.95rem", fontWeight: 800 }}>SUBELOO exige saldo</div><div className="adm-row__meta" style={{ whiteSpace: "normal", marginTop: 3, lineHeight: 1.45 }}>{walletCfg?.biddingRequiresBalance ? "Activo: cada oferta se respalda con saldo. Al quedar primero, el motor debita y la orden nace pagada." : "Apagado: ofertar es libre y quien queda primero coordina el pago después."}</div></div>
+                <button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="SUBELOO exige saldo"><span/></button>
               </div></div>
 
               <div className="adm-panel"><div className="adm-panel__h"><span className="t">Acreditar o descontar saldo</span></div><div className="adm-panel__b">
@@ -622,7 +622,7 @@ export default function AdminPage() {
                   <div className="adm-row__meta" style={{ marginTop: 6, marginBottom: 16 }}>
                     por dólar{tasa?.source ? ` · fuente: ${tasa.source}` : ""}{tasa?.updatedAt?.toDate ? ` · ${tasa.updatedAt.toDate().toLocaleString("es-VE")}` : ""}
                   </div>
-                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.5 }}>Al cerrar una subasta, el motor congela esta tasa en la orden. Se sincroniza sola del BCV cada 4 h; fijarla a mano vale hasta la próxima sincronización.</p>
+                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.5 }}>Al cerrar una venta, el motor congela esta tasa en la orden. Se sincroniza sola del BCV cada 4 h; fijarla a mano vale hasta la próxima sincronización.</p>
                   <div className="lv-field"><label className="lv-field__label">Fijar a mano (Bs por dólar)</label><input className="lv-input" type="number" step="0.01" min="0" value={tasaInput} onChange={e => setTasaInput(e.target.value)} placeholder="Ej: 745"/></div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="lv-btn lv-btn--accent" style={{ flex: 1 }} disabled={ocupado === "tasa"} onClick={guardarTasa}>{ocupado === "tasa" ? "Guardando…" : "Guardar tasa"}</button>
@@ -650,7 +650,7 @@ export default function AdminPage() {
               <div className="adm-grid2">
                 <div className="adm-panel"><div className="adm-panel__h"><span className="t">Estado de la plataforma</span></div>
                   <div className="adm-state">
-                    <div className="r"><div className="l">Pujar exige saldo<div className="s">Beta por invitación con billetera</div></div><button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="Pujar exige saldo"><span/></button></div>
+                    <div className="r"><div className="l">SUBELOO exige saldo<div className="s">Beta por invitación con billetera</div></div><button className={`adm-toggle${walletCfg?.biddingRequiresBalance ? " on" : ""}`} disabled={ocupado === "wallet_toggle"} onClick={toggleSaldoObligatorio} aria-label="SUBELOO exige saldo"><span/></button></div>
                     <div className="r"><div className="l">Cuentas de recarga<div className="s">Se configuran en Pagos</div></div><span className={`lv-badge ${pmTel || zCorreo ? "adm-ok" : "adm-wn"}`}>{pmTel || zCorreo ? "Configuradas" : "Sin configurar"}</span></div>
                     <div className="r"><div className="l">Avisos push (VAPID)<div className="s">Te superaron · ganaste · recargas</div></div><span className={`lv-badge ${vapidOk ? "adm-ok" : "adm-wn"}`}>{vapidOk ? "Activos" : "Falta la clave"}</span></div>
                     <div className="r"><div className="l">Términos y privacidad<div className="s">/terminos · /privacidad</div></div><a className="lv-badge adm-ok" href="/terminos" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>Publicados</a></div>
@@ -658,7 +658,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="adm-panel"><div className="adm-panel__h"><span className="t">Catálogo de demostración</span><span className="lv-badge lv-badge--soft">{demo} activas</span></div><div className="adm-panel__b">
-                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.55 }}>Subastas de muestra con vendedores ficticios para que la app no se vea vacía. Llevan la insignia “Muestra”, <b>no se pueden pujar</b> y no generan órdenes.</p>
+                  <p className="adm-row__meta" style={{ whiteSpace: "normal", marginBottom: 14, lineHeight: 1.55 }}>Ventas de muestra con vendedores ficticios para que la app no se vea vacía. Llevan la insignia “Muestra”, <b>no aceptan ofertas</b> y no generan órdenes.</p>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="lv-btn lv-btn--accent lv-btn--sm" style={{ flex: 1 }} disabled={ocupado === "demo_seed"} onClick={() => demoAccion("seed")}>{ocupado === "demo_seed" ? "Sembrando…" : "Sembrar catálogo"}</button>
                     <button className="lv-btn lv-btn--outline lv-btn--sm" style={{ flex: 1 }} disabled={ocupado === "demo_purge" || demo === 0} onClick={() => demoAccion("purge")}>{ocupado === "demo_purge" ? "Borrando…" : "Purgar demo"}</button>

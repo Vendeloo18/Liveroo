@@ -72,7 +72,7 @@ export default function CategoriesPage() {
                   {c.nombre}
                 </div>
                 <div className="lv-dim" style={{ fontSize: "0.73rem" }}>
-                  {cargando ? "…" : n === 0 ? "Sin subastas" : `${n} ${n === 1 ? "subasta" : "subastas"}`}
+                  {cargando ? "…" : n === 0 ? "Sin ventas" : `${n} ${n === 1 ? "venta" : "ventas"}`}
                 </div>
               </button>
             );

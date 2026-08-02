@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@sentry/nextjs": "^7.116.0",
     "@subastas-ve/shared": "workspace:*",
     "agora-rtc-sdk-ng": "^4.24.3",

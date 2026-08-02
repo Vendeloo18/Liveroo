@@ -12,7 +12,7 @@ const ORDENES = [
   ["cierre", "Cierran pronto"],
   ["precio_asc", "Más baratas"],
   ["precio_desc", "Más caras"],
-  ["pujas", "Más pujadas"],
+  ["pujas", "Más ofertadas"],
 ] as const;
 
 type Orden = typeof ORDENES[number][0];
@@ -82,8 +82,8 @@ function ListaDeSubastas() {
             style={{ paddingLeft: 38 }}
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar subastas"
-            aria-label="Buscar subastas"
+            placeholder="Buscar ventas o productos"
+            aria-label="Buscar ventas o productos"
           />
         </div>
       </div>
@@ -119,7 +119,7 @@ function ListaDeSubastas() {
                 <path d="M14 11l-8 8M9 6l9 9M3 21h6M12.5 3.5l8 8"/>
               </svg>
             </div>
-            <div className="lv-empty__title">{filtrado ? "Nada con ese filtro" : "No hay subastas activas"}</div>
+            <div className="lv-empty__title">{filtrado ? "Nada con ese filtro" : "No hay ventas activas"}</div>
             {filtrado && (
               <button
                 className="lv-btn lv-btn--soft lv-btn--sm"

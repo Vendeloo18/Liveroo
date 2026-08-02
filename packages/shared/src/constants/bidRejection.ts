@@ -4,11 +4,11 @@
 
 export const MOTIVO_RECHAZO: Record<string, string> = {
   too_low: "Alguien pujó más rápido. Sube tu oferta.",
-  auction_closed: "La subasta ya cerró.",
-  own_bid: "Ya vas ganando esta subasta.",
+  auction_closed: "La venta ya cerró.",
+  own_bid: "Ya vas ganando esta venta.",
   show_not_live: "El show no está transmitiendo.",
-  insufficient_funds: "Saldo insuficiente. Recarga tu billetera para pujar.",
-  es_muestra: "Esta es una subasta de muestra, solo para explorar. No se puede pujar.",
-  not_found: "No encontramos esta subasta.",
-  race_condition: "No pudimos procesar la puja. Intenta de nuevo.",
+  insufficient_funds: "Saldo insuficiente. Recarga tu billetera para usar SUBELOO.",
+  es_muestra: "Esta es una venta de muestra, solo para explorar. No acepta ofertas.",
+  not_found: "No encontramos esta venta.",
+  race_condition: "No pudimos procesar la oferta. Intenta de nuevo.",
 };

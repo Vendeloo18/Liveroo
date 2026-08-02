@@ -122,7 +122,7 @@ export function useAgora(showId: string, role: "host" | "audience") {
       const c = String(e?.code ?? "") + " " + String(e?.name ?? "") + " " + String(e?.message ?? "");
       setError(
         /failed-precondition/i.test(c) ? "El video en vivo todavía no está configurado en este proyecto."
-        : /permission-denied/i.test(c) ? "Solo el vendedor del show puede transmitir."
+        : /permission-denied/i.test(c) ? "Solo el vendedor puede transmitir esta venta en vivo."
         : /unauthenticated/i.test(c) ? "Tienes que entrar a tu cuenta para ver el vivo."
         : /NotAllowed|PERMISSION_DENIED|NotReadable|NotFound(Error)?/i.test(c) ? "Dale permiso a la cámara y el micrófono en el navegador, y vuelve a intentar."
         : /GATEWAY|dynamic.?key|invalid.?token|CAN_NOT_GET/i.test(c) ? "El video rechazó la conexión. Revisa que las credenciales de Agora sean del proyecto correcto."

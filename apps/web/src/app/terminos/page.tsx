@@ -8,12 +8,12 @@ export default function TerminosPage() {
       <p style={{ fontSize: "0.88rem", lineHeight: 1.62, color: "var(--ink-2)", marginBottom: 22 }}>
         Al usar {BRAND.name} aceptas estos términos. {BRAND.name} está en una etapa
         de <strong>beta por invitación</strong>: es un producto en evolución y estas
-        reglas pueden cambiar. Léelas con calma antes de pujar o recargar.
+        reglas pueden cambiar. Léelas con calma antes de ofertar o recargar.
       </p>
 
       <Sec n={1} titulo={`Qué es ${BRAND.name}`}>
-        {BRAND.name} es una plataforma que conecta a compradores con vendedores en
-        subastas por internet, hechas en Venezuela. Nosotros ponemos el espacio y las
+        {BRAND.name} es una plataforma que conecta a compradores con vendedores mediante
+        ventas en vivo y ventas por ofertas, hechas en Venezuela. Nosotros ponemos el espacio y las
         herramientas; <strong>la compraventa ocurre directamente entre el comprador y
         el vendedor</strong>. {BRAND.name} no es dueño de los productos ni parte del
         contrato de compraventa.
@@ -25,17 +25,17 @@ export default function TerminosPage() {
         de edad.
       </Sec>
 
-      <Sec n={3} titulo="Cómo funcionan las subastas">
-        Cada puja es un <strong>compromiso real de compra</strong>: si eres el mayor postor
-        al cierre, ganas y se crea una orden a tu nombre. El precio se congela en bolívares
-        a la tasa vigente en ese momento. Si alguien puja en los últimos segundos, el reloj
+      <Sec n={3} titulo="Cómo funcionan las ventas por ofertas">
+        Cada oferta hecha con SUBELOO es un <strong>compromiso real de compra</strong>: si tu oferta
+        queda de primera al cierre, te llevas el producto y se crea una orden a tu nombre. El precio se congela en bolívares
+        a la tasa vigente en ese momento. Si alguien mejora el precio en los últimos segundos, el reloj
         puede estirarse para que nadie gane por sorpresa.
       </Sec>
 
       <Sec n={4} titulo="Billetera y recargas">
-        Durante la beta, pujar puede requerir <strong>saldo en tu billetera</strong>. Las
+        Durante la beta, usar SUBELOO puede requerir <strong>saldo en tu billetera</strong>. Las
         recargas se acreditan a mano una vez que el equipo verifica tu pago. El saldo solo
-        sirve para pujar y pagar dentro de {BRAND.name}. Al ganar con saldo, el monto se
+        sirve para respaldar ofertas y pagar dentro de {BRAND.name}. Al quedar primero con saldo, el monto se
         descuenta automáticamente y tu orden queda pagada.{" "}
         <strong>Las recargas no son reembolsables</strong>: no se devuelve saldo ni pagos.
         Recarga solo lo que pienses usar.
@@ -50,12 +50,12 @@ export default function TerminosPage() {
 
       <Sec n={6} titulo="Sin cancelaciones ni reembolsos">
         En esta etapa, las órdenes <strong>no se cancelan ni se reembolsan</strong> una vez
-        creadas. Piensa bien antes de pujar: una puja ganadora es una compra.
+        creadas. Piensa bien antes de usar SUBELOO: una oferta ganadora es una compra.
       </Sec>
 
       <Sec n={7} titulo="Conducta">
         No está permitido: publicar o vender artículos ilegales, robados o prohibidos;
-        suplantar a otra persona; manipular subastas con cuentas falsas; ni usar la
+        suplantar a otra persona; manipular ofertas con cuentas falsas; ni usar la
         plataforma para estafar. Podemos retirar publicaciones y suspender cuentas que
         incumplan.
       </Sec>

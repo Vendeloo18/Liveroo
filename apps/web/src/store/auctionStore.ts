@@ -137,21 +137,21 @@ export const useAuctionStore = create<AuctionState>((set, get) => ({
           setTimeout(() => set({ bidStatus: "idle" }), 3000);
         } else if (data.status === "rejected") {
           const reasonMap: Record<string, string> = {
-            too_low: "Tu puja es menor al mínimo requerido",
-            auction_closed: "La subasta ya cerró",
-            own_bid: "Ya eres el mayor postor",
+            too_low: "Tu oferta es menor al mínimo requerido",
+            auction_closed: "La venta ya cerró",
+            own_bid: "Tu oferta ya va de primera",
             race_condition: "Error temporal, intenta de nuevo",
           };
           set({
             bidStatus: "rejected",
-            bidError: reasonMap[data.rejectedReason] ?? "Puja rechazada",
+            bidError: reasonMap[data.rejectedReason] ?? "Oferta rechazada",
           });
           unsub();
           setTimeout(() => set({ bidStatus: "idle", bidError: null }), 5000);
         }
       });
     } catch (err) {
-      set({ bidStatus: "rejected", bidError: "Error enviando la puja" });
+      set({ bidStatus: "rejected", bidError: "Error enviando la oferta" });
       setTimeout(() => set({ bidStatus: "idle", bidError: null }), 5000);
     }
   },

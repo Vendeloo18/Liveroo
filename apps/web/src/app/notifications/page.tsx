@@ -91,7 +91,7 @@ export default function NotificationsPage() {
           tipo: ganando ? "ganando" : "superado",
           titulo: ganando ? `Vas ganando "${a.title}"` : `Te superaron en "${a.title}"`,
           detalle: ganando
-            ? `Tu puja de $${(a.currentBidUsd ?? 0).toFixed(2)} lidera`
+            ? `Tu oferta de $${(a.currentBidUsd ?? 0).toFixed(2)} va de primera`
             : `Ahora va en $${(a.currentBidUsd ?? 0).toFixed(2)}`,
           cuando: ms(a.updatedAt), ir: `/auctions/${a.id}`,
         });

@@ -57,6 +57,7 @@ export default function AuthPage() {
       <Hero
         onCrearCuenta={() => { setModo("crear"); clearError(); setVista("formulario"); }}
         onIniciarSesion={() => { setModo("entrar"); clearError(); setVista("formulario"); }}
+        onVerComoFunciona={() => router.push("/onboarding")}
         onEntrarSinCuenta={() => router.push("/")}
       />
     );
@@ -93,7 +94,7 @@ export default function AuthPage() {
           {modo === "crear" ? "Crea tu\ncuenta." : "Entra a\ntu cuenta."}
         </h1>
         <p style={{ color: "rgba(255,255,255,0.92)", fontSize: "0.98rem", fontWeight: 600, lineHeight: 1.45, marginTop: 14, maxWidth: 340 }}>
-          {modo === "crear" ? `${BRAND.tagline}. Puja, gana y coordina con el vendedor.` : "Tus pujas, tu saldo y tus órdenes te esperan."}
+          {modo === "crear" ? `${BRAND.tagline}. Mira, usa SUBELOO y llévatelo.` : "Tus ofertas, tus compras y tus ventas en vivo te esperan."}
         </p>
 
         <div style={{ background: "var(--bg)", borderRadius: "var(--r-card)", padding: 18, marginTop: 20, boxShadow: "0 24px 60px rgba(0,0,0,0.22)" }}>

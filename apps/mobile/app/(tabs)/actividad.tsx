@@ -42,10 +42,10 @@ function FilaPuja({ s, monto, uid, ultima }: { s: any; monto: number; uid: strin
         </View>
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: font.bold, color: color.ink }}>
-            {s.title ?? "Subasta"}
+            {s.title ?? "Venta"}
           </Text>
           <Text style={{ ...T.dim, marginTop: 2 }}>
-            Pujaste ${monto.toFixed(2)} · ahora ${(s.currentBidUsd ?? 0).toFixed(2)}
+            Ofertaste ${monto.toFixed(2)} · ahora ${(s.currentBidUsd ?? 0).toFixed(2)}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 5 }}>
             <Insignia tono={estado.tono}>{estado.t}</Insignia>
@@ -117,7 +117,7 @@ export default function Actividad() {
     return (
       <View style={{ flex: 1, backgroundColor: color.bg, paddingTop: insets.top + 10 }}>
         <Text style={{ ...T.title, paddingHorizontal: space.lg, paddingBottom: 12 }}>Actividad</Text>
-        <Vacio titulo="Entra para ver tu actividad" texto="Ahí quedan tus pujas y tus compras.">
+        <Vacio titulo="Entra para ver tu actividad" texto="Ahí quedan tus ofertas y tus compras.">
           <View style={{ paddingHorizontal: space.lg }}>
             <Boton onPress={() => router.push("/login")}>Entrar</Boton>
           </View>
@@ -138,7 +138,7 @@ export default function Actividad() {
       <ScrollView contentContainerStyle={{ paddingBottom: 24, alignItems: "center" }}>
         <View style={{ width: contenido, paddingHorizontal: space.lg }}>
           <View style={{ flexDirection: "row", gap: 8, paddingVertical: 12 }}>
-            {([["pujas", `Mis pujas${ordenadas.length ? ` (${ordenadas.length})` : ""}`],
+            {([["pujas", `Mis ofertas${ordenadas.length ? ` (${ordenadas.length})` : ""}`],
                ["compras", `Mis compras${ordenes.length ? ` (${ordenes.length})` : ""}`]] as const).map(([v, l]) => (
               <Boton key={v} block={false} tamano="sm"
                      variante={tab === v ? "primary" : "soft"}
@@ -149,8 +149,8 @@ export default function Actividad() {
           {tab === "pujas" ? (
             cargando ? <Cargando/> :
             ordenadas.length === 0 ? (
-              <Vacio titulo="Todavía no has pujado" texto="Cuando pujes, aquí ves si vas ganando.">
-                <Boton onPress={() => router.push("/explorar")}>Ver subastas</Boton>
+              <Vacio titulo="Todavía no has usado SUBELOO" texto="Cuando hagas una oferta, aquí verás si va de primera.">
+                <Boton onPress={() => router.push("/explorar")}>Ver ventas</Boton>
               </Vacio>
             ) : (
               <Panel style={{ paddingVertical: 2 }}>
@@ -163,7 +163,7 @@ export default function Actividad() {
             )
           ) : (
             ordenes.length === 0 ? (
-              <Vacio titulo="Aún no has ganado nada" texto="Cuando ganes una subasta, tu orden aparece aquí."/>
+              <Vacio titulo="Aún no has ganado nada" texto="Cuando ganes una venta, tu orden aparece aquí."/>
             ) : (
               <Panel style={{ paddingVertical: 2 }}>
                 {ordenes.map((o, i) => (

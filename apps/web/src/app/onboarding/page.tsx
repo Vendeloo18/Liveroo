@@ -11,7 +11,7 @@ import { SlideToBid } from "../../components/ui/SlideToBid";
 // =============================================================
 // Onboarding — 3 pasos sobre el naranja de marca
 // =============================================================
-// 1 Qué es esto · 2 Dos formas de comprar · 3 Puja de práctica con el
+// 1 Qué es esto · 2 Dos formas de comprar · 3 Oferta de práctica con el
 // MISMO slide de la app: deslizarlo es lo que te hace entrar (se clava
 // en verde y pasa solo). Iconos SVG de línea — nada de emojis.
 // Se muestra UNA vez: localStorage por dispositivo y, con cuenta,
@@ -57,9 +57,9 @@ export default function OnboardingPage() {
   }, [paso]);
 
   const titulos: [string, string][] = [
-    ["Subastas\nen vivo.\nPrecios de\nverdad.", "Vendedores de todo el país rematan en vivo. Tú pujas, ganas y coordinas la entrega."],
+    ["Ventas\nen vivo.\nPrecios de\nverdad.", "Vendedores de todo el país presentan sus productos en vivo. Tú miras, usas SUBELOO y te lo llevas."],
     ["Dos formas\nde encontrar\ntu próxima\ncompra.", "Toca cada opción para ver cómo funciona."],
-    ["Haz una puja\nde práctica.", "Es una simulación: no usa tu saldo. Deslizar la puja te lleva adentro."],
+    ["Prueba\nSUBELOO en\nsegundos.", "Es una simulación: no usa tu saldo. Desliza para sentir cómo funciona una venta."],
   ];
 
   return (
@@ -114,11 +114,11 @@ export default function OnboardingPage() {
             <div style={{ display: "grid", gap: 4 }}>
               {([
                 [ic(<><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></>),
-                  "Shows en vivo", "El vendedor presenta cada artículo por video y tú pujas al momento."],
+                  "Ventas con video", "El vendedor presenta cada artículo en directo y tú ofertas al momento."],
                 [ic(<><path d="M12 2v3M12 19v3M5 12H2M22 12h-3M4.9 4.9l2.1 2.1M16.9 16.9l2.2 2.2M19.1 4.9L17 7M7 17l-2.1 2.1"/></>),
-                  "Subastas de verdad", "El precio lo decide la gente pujando, no una etiqueta."],
+                  "Precio por ofertas", "El precio lo decide la gente participando, no una etiqueta."],
                 [ic(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></>),
-                  "Pagas en bolívares", "Precios en dólares, pago local. Todo en Venezuela."],
+                  "Pagas en bolívares", "Precios en dólares, pago local y vendedores de Venezuela."],
               ] as [React.ReactNode, string, string][]).map(([icono, t, s]) => (
                 <div key={t} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "9px 2px" }}>
                   {icono}
@@ -154,22 +154,22 @@ export default function OnboardingPage() {
                 {modo === "vivo" ? "Rápido y en directo" : "Con calma"}
               </div>
               <div className="lv-display" style={{ fontSize: "1.35rem", marginTop: 6, lineHeight: 1.05 }}>
-                {modo === "vivo" ? "Mira al vendedor y puja en segundos." : "Subastas que duran horas o días."}
+                {modo === "vivo" ? "Mira la venta y usa SUBELOO en segundos." : "Ventas abiertas por horas o días."}
               </div>
               <p className="lv-dim" style={{ fontSize: "0.84rem", lineHeight: 1.55, marginTop: 8 }}>
                 {modo === "vivo"
-                  ? "Ves cada lote mientras el vendedor lo presenta y reaccionas al momento, como en primera fila de un remate."
-                  : "Encuentras el artículo, dejas tu puja y te avisamos si alguien te supera. Vuelves cuando quieras."}
+                  ? "Ves cada producto mientras el vendedor lo presenta y participas al momento, como si estuvieras en primera fila."
+                  : "Encuentras el producto, dejas tu oferta y te avisamos si alguien la supera. Vuelves cuando quieras."}
               </p>
             </div>
           )}
 
-          {/* ── Paso 3: puja de práctica — deslizar ES continuar ── */}
+          {/* ── Paso 3: oferta de práctica — deslizar ES continuar ── */}
           {paso === 2 && (
             <div onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                 <span className="lv-badge lv-badge--accent">Demo</span>
-                <span className="lv-eyebrow">Puja actual</span>
+                <span className="lv-eyebrow">Precio actual</span>
               </div>
               <div className="lv-price" style={{ fontSize: "2.6rem", lineHeight: 1 }}>${pujaDemo}</div>
 
@@ -192,7 +192,7 @@ export default function OnboardingPage() {
               </div>
 
               <SlideToBid
-                label={`Puja $${pujaDemo + inc}`}
+                label={`SUBELOO · $${pujaDemo + inc}`}
                 successLabel="¡Vas ganando!"
                 holdSuccess
                 onConfirm={() => {
@@ -203,7 +203,7 @@ export default function OnboardingPage() {
               />
 
               <div style={{ textAlign: "center", fontSize: "0.8rem", fontWeight: 700, color: pujado ? "var(--ok)" : "var(--ink-3)", marginTop: 12, minHeight: 18, transition: "color 0.3s" }}>
-                {pujado ? "Puja registrada. Entrando a Vendeloo…" : "Desliza la flecha hacia la derecha para pujar y entrar."}
+                {pujado ? "Oferta registrada. Entrando a Vendeloo…" : "Desliza hacia la derecha para usar SUBELOO y entrar."}
               </div>
             </div>
           )}
@@ -231,7 +231,7 @@ export default function OnboardingPage() {
             </button>
           ) : (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.9)", fontSize: "0.85rem", fontWeight: 700 }}>
-              Desliza la puja para entrar
+              Desliza SUBELOO para entrar
             </div>
           )}
         </div>

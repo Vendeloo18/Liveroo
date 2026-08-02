@@ -96,7 +96,7 @@ function Buscador() {
               enterKeyHint="search"
               value={termino}
               onChange={e => setTermino(e.target.value)}
-              placeholder="Producto, show o vendedor"
+              placeholder="Producto, venta en vivo o vendedor"
               autoFocus
               aria-label="Buscar"
             />
@@ -107,8 +107,8 @@ function Buscador() {
 
       {buscado && (
         <div className="lv-chips">
-          {([["subastas", `Subastas (${subastas.length})`],
-             ["shows", `Shows (${shows.length})`],
+          {([["subastas", `Ventas (${subastas.length})`],
+             ["shows", `En vivo (${shows.length})`],
              ["vendedores", `Vendedores (${vendedores.length})`]] as [Tab, string][]).map(([v, label]) => (
             <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
           ))}
@@ -124,7 +124,7 @@ function Buscador() {
               </svg>
             </div>
             <div className="lv-empty__title">¿Qué estás buscando?</div>
-            <div className="lv-empty__text">Escribe un producto, un show o el nombre de un vendedor.</div>
+            <div className="lv-empty__text">Escribe un producto, una venta en vivo o el nombre de un vendedor.</div>
           </div>
         ) : cargando ? (
           <div className="lv-grid">
@@ -139,13 +139,13 @@ function Buscador() {
           <>
             {tab === "subastas" && (
               subastas.length === 0
-                ? <div className="lv-empty"><div className="lv-empty__title">Sin subastas con ese nombre</div></div>
+                ? <div className="lv-empty"><div className="lv-empty__title">Sin ventas con ese nombre</div></div>
                 : <div className="lv-grid">{subastas.map(a => <AuctionCard key={a.id} auction={a}/>)}</div>
             )}
 
             {tab === "shows" && (
               shows.length === 0
-                ? <div className="lv-empty"><div className="lv-empty__title">Sin shows con ese nombre</div></div>
+                ? <div className="lv-empty"><div className="lv-empty__title">Sin ventas en vivo con ese nombre</div></div>
                 : <section className="lv-panel" style={{ padding: "2px 16px" }}>
                     {shows.map(s => (
                       <button key={s.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/shows/${s.id}`)}>

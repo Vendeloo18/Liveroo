@@ -135,14 +135,14 @@ export default function SellerProfilePage() {
 
         {enVivo.length > 0 && (
           <button className="lv-btn lv-btn--danger lv-btn--block lv-btn--lg" onClick={() => router.push(`/shows/${enVivo[0].id}`)}>
-            <i className="lv-dot"/> Entrar al show en vivo
+            <i className="lv-dot"/> Entrar a la venta en vivo
           </button>
         )}
       </div>
 
       <div className="lv-chips">
-        {([["subastas", `Subastas (${activas.length})`],
-           ["shows", `Shows (${shows.length})`],
+        {([["subastas", `Ventas (${activas.length})`],
+           ["shows", `En vivo (${shows.length})`],
            ["opiniones", `Opiniones (${opiniones.length})`]] as [Tab, string][]).map(([v, label]) => (
           <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
         ))}
@@ -152,7 +152,7 @@ export default function SellerProfilePage() {
         {tab === "subastas" && (
           activas.length === 0 ? (
             <div className="lv-empty">
-              <div className="lv-empty__title">Sin subastas activas</div>
+              <div className="lv-empty__title">Sin ventas activas</div>
               <div className="lv-empty__text">Vuelve pronto.</div>
             </div>
           ) : (
@@ -164,7 +164,7 @@ export default function SellerProfilePage() {
 
         {tab === "shows" && (
           shows.length === 0 ? (
-            <div className="lv-empty"><div className="lv-empty__title">Todavía no ha hecho shows</div></div>
+            <div className="lv-empty"><div className="lv-empty__title">Todavía no ha vendido en vivo</div></div>
           ) : (
             <section className="lv-panel" style={{ padding: "2px 16px" }}>
               {shows.map(s => {

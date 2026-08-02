@@ -69,7 +69,7 @@ export default function VentasPage() {
         ) : ventas.length === 0 ? (
           <div className="lv-empty">
             <div className="lv-empty__title">Todavía no has vendido nada</div>
-            <div className="lv-empty__text">Cuando alguien gane una de tus subastas, la venta aparece aquí con su número de pedido.</div>
+            <div className="lv-empty__text">Cuando alguien se lleve una de tus ventas por ofertas, aparecerá aquí con su número de pedido.</div>
           </div>
         ) : (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>

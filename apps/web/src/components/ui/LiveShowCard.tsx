@@ -64,11 +64,11 @@ export function LiveShowCard({ show, onClick }: { show: any; onClick: () => void
 
         {precio != null ? (
           <>
-            <div className="lv-eyebrow" style={{ color: "var(--accent-light)" }}>Subastando</div>
+            <div className="lv-eyebrow" style={{ color: "var(--accent-light)" }}>Vendiendo en vivo</div>
             <div style={{ fontSize: "0.9rem", fontWeight: 800, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{titulo}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
               <span style={{ fontSize: "1.4rem", fontWeight: 900, letterSpacing: "-0.02em" }}>{formatUsd(precio)}</span>
-              <span className="lv-badge lv-badge--live" style={{ fontSize: "0.55rem", padding: "3px 7px" }}><i className="lv-dot"/> pujando</span>
+              <span className="lv-badge lv-badge--live" style={{ fontSize: "0.55rem", padding: "3px 7px" }}><i className="lv-dot"/> ofertas</span>
             </div>
           </>
         ) : (

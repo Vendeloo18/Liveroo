@@ -80,7 +80,7 @@ export function AuctionCard({ auction, onClick }: { auction: AuctionCardData; on
               textShadow:"0 1px 3px rgba(0,0,0,0.5)",
               overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis",
             }}>
-              {auction.sellerName}{pujas > 0 ? ` · ${pujas} ${pujas === 1 ? "puja" : "pujas"}` : ""}
+              {auction.sellerName}{pujas > 0 ? ` · ${pujas} ${pujas === 1 ? "oferta" : "ofertas"}` : ""}
             </span>
           </div>
         )}
@@ -91,9 +91,9 @@ export function AuctionCard({ auction, onClick }: { auction: AuctionCardData; on
         <div className="lv-card__foot">
           <div style={{ minWidth: 0, display: "flex", alignItems: "baseline", gap: 6 }}>
             <div className="lv-price">${precio % 1 === 0 ? precio : precio.toFixed(2)}</div>
-            {pujas > 0 && <span className="lv-dim" style={{ fontSize: "0.7rem", fontWeight: 600 }}>{pujas} {pujas === 1 ? "puja" : "pujas"}</span>}
+            {pujas > 0 && <span className="lv-dim" style={{ fontSize: "0.7rem", fontWeight: 600 }}>{pujas} {pujas === 1 ? "oferta" : "ofertas"}</span>}
           </div>
-          <span className="lv-btn lv-btn--sm lv-btn--accent">Pujar</span>
+          <span className="lv-btn lv-btn--sm lv-btn--accent">SUBELOO</span>
         </div>
       </div>
     </article>

@@ -66,7 +66,7 @@ export function isValidBidAmount(
   if (proposedUsd < minBid) {
     return {
       valid: false,
-      reason: `La puja mínima es ${formatUsd(minBid)}`,
+      reason: `La próxima oferta debe ser de al menos ${formatUsd(minBid)}`,
     };
   }
   return { valid: true };
@@ -108,7 +108,7 @@ export function buildWhatsappMessage(params: {
   const { buyerName, productTitle, bidAmountUsd, bidAmountBs, frozenRate, orderId, showTitle } =
     params;
   return (
-    `¡Hola! Soy *${buyerName}* y gané la subasta de *${productTitle}* ` +
+    `¡Hola! Soy *${buyerName}* y me llevé *${productTitle}* en Vendeloo ` +
     `en el show *${showTitle}*.\n\n` +
     `📦 *Pedido:* #${orderId}\n` +
     `💵 *Monto USD:* ${formatUsd(bidAmountUsd)}\n` +

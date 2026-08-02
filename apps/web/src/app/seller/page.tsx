@@ -58,7 +58,7 @@ function FilaSubasta({ a, onClick }: { a: any; onClick: () => void }) {
           </div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 2 }}>
             <span className="lv-price" style={{ fontSize: "1.1rem" }}>{formatUsd(a.currentBidUsd ?? 0)}</span>
-            <span className="lv-dim" style={{ fontSize: "0.72rem" }}>{pujas} {pujas === 1 ? "puja" : "pujas"}</span>
+            <span className="lv-dim" style={{ fontSize: "0.72rem" }}>{pujas} {pujas === 1 ? "oferta" : "ofertas"}</span>
           </div>
           {activa
             ? <span className="lv-badge lv-badge--data" style={{ marginTop: 5, fontSize: "0.62rem" }}>{texto}</span>
@@ -225,7 +225,7 @@ export default function SellerPage() {
       // Directo a la página del show: ahí agrega las subastas y sale en vivo.
       router.push(`/seller/show/${ref.id}`);
     } catch (e: any) {
-      avisar("bad", e.message ?? "No se pudo crear el show");
+      avisar("bad", e.message ?? "No se pudo crear la venta en vivo");
     } finally { setOcupado(false); }
   };
 
@@ -247,7 +247,7 @@ export default function SellerPage() {
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
       setTProd(""); setPrecioProd(""); setFotosProd([]);
-      avisar("ok", "Subasta agregada a la cola del show");
+      avisar("ok", "Producto agregado a la venta en vivo");
     } catch (e: any) {
       avisar("bad", e.message ?? "No se pudo agregar");
     } finally { setOcupado(false); }
@@ -281,7 +281,7 @@ export default function SellerPage() {
           <div className="seller-apply__hero-copy">
             <div className="lv-eyebrow">Tu próxima venta empieza aquí</div>
             <h1 className="lv-display">Vende lo tuyo.<br/>Llega a todo el país.</h1>
-            <p>Publica subastas, vende en vivo y construye una tienda que la gente pueda seguir.</p>
+            <p>Crea ventas en vivo, publica productos y construye una tienda que la gente quiera seguir.</p>
           </div>
         </header>
 
@@ -309,7 +309,7 @@ export default function SellerPage() {
               <div className="seller-apply__timeline" aria-label="Estado de la solicitud">
                 <div className="is-done"><span>1</span><div><b>Solicitud enviada</b><small>Información recibida</small></div></div>
                 <div className="is-current"><span>2</span><div><b>Revisión de Vendeloo</b><small>Estamos validando tu tienda</small></div></div>
-                <div><span>3</span><div><b>Lista para vender</b><small>Publica tu primera subasta</small></div></div>
+                <div><span>3</span><div><b>Lista para vender</b><small>Publica tu primera venta</small></div></div>
               </div>
               <button className="lv-btn lv-btn--soft lv-btn--block" onClick={() => router.push("/account")}>
                 Volver a mi cuenta
@@ -320,7 +320,7 @@ export default function SellerPage() {
               <section className="seller-apply__benefits" aria-label="Cómo funciona">
                 <div><span>01</span><p><b>Cuéntanos qué vendes</b><small>Solo toma un minuto</small></p></div>
                 <div><span>02</span><p><b>Revisamos tu tienda</b><small>Protegemos a la comunidad</small></p></div>
-                <div><span>03</span><p><b>Empieza a vender</b><small>Subastas y shows en vivo</small></p></div>
+                <div><span>03</span><p><b>Empieza a vender</b><small>Ventas en vivo y por tiempo</small></p></div>
               </section>
 
               <form className="seller-apply__form" onSubmit={e => { e.preventDefault(); enviarSolicitudVendedor(); }}>
@@ -405,7 +405,7 @@ export default function SellerPage() {
   if (pantalla === "subasta") {
     return (
       <div className="lv-app">
-        <Encabezado titulo="Publicar subasta"/>
+        <Encabezado titulo="Publicar una venta"/>
         <div className="lv-pad" style={{ paddingTop: 18 }}>
           {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
 
@@ -454,11 +454,11 @@ export default function SellerPage() {
           </div>
 
           <div className="lv-note" style={{ marginBottom: 14 }}>
-            Una vez publicada y con pujas encima, ya no podrás cambiarle el precio ni borrarla.
+            Una vez publicada y con ofertas, ya no podrás cambiarle el precio ni borrarla.
           </div>
 
           <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !tSub.trim() || !precio} onClick={crearSubasta}>
-            {ocupado ? "Publicando…" : "Publicar subasta"}
+            {ocupado ? "Publicando…" : "Publicar venta"}
           </button>
         </div>
       </div>
@@ -469,18 +469,18 @@ export default function SellerPage() {
   if (pantalla === "show") {
     return (
       <div className="lv-app">
-        <Encabezado titulo="Nuevo show"/>
+        <Encabezado titulo="Nueva venta en vivo"/>
         <div className="lv-pad" style={{ paddingTop: 18 }}>
           {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
 
           <div className="lv-field">
-            <label className="lv-field__label" htmlFor="ts">Título del show</label>
+            <label className="lv-field__label" htmlFor="ts">Título de la venta en vivo</label>
             <input id="ts" className="lv-input" value={tShow} onChange={e => setTShow(e.target.value)} placeholder="Sneakers exclusivos importados"/>
           </div>
 
           <div className="lv-field">
             <label className="lv-field__label" htmlFor="ds">Descripción</label>
-            <textarea id="ds" className="lv-input" rows={3} value={dShow} onChange={e => setDShow(e.target.value)} placeholder="Qué vas a subastar en vivo"/>
+            <textarea id="ds" className="lv-input" rows={3} value={dShow} onChange={e => setDShow(e.target.value)} placeholder="Qué vas a vender en vivo"/>
           </div>
 
           <div className="lv-field">
@@ -493,11 +493,11 @@ export default function SellerPage() {
           </div>
 
           <div className="lv-note" style={{ marginBottom: 14 }}>
-            Al crear el show entras directo a su panel: ahí le agregas las subastas y, cuando estés listo, sales en vivo por video.
+            Al crear la venta entras directo a su panel: ahí agregas los productos y, cuando estés listo, sales en vivo por video.
           </div>
 
           <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !tShow.trim()} onClick={crearShow}>
-            {ocupado ? "Creando…" : "Crear show y continuar"}
+            {ocupado ? "Creando…" : "Crear venta en vivo"}
           </button>
         </div>
       </div>
@@ -509,19 +509,19 @@ export default function SellerPage() {
     const programados = shows.filter(s => ["draft", "scheduled", "live"].includes(s.status));
     return (
       <div className="lv-app">
-        <Encabezado titulo="Agregar a un show"/>
+        <Encabezado titulo="Agregar a una venta en vivo"/>
         <div className="lv-pad" style={{ paddingTop: 18 }}>
           {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
 
           {programados.length === 0 ? (
             <div className="lv-empty">
-              <div className="lv-empty__title">No tienes shows abiertos</div>
-              <button className="lv-btn lv-btn--accent" style={{ marginTop: 14 }} onClick={() => setPantalla("show")}>Crear un show</button>
+              <div className="lv-empty__title">No tienes ventas en vivo abiertas</div>
+              <button className="lv-btn lv-btn--accent" style={{ marginTop: 14 }} onClick={() => setPantalla("show")}>Crear una venta en vivo</button>
             </div>
           ) : (
             <>
               <div className="lv-field">
-                <span className="lv-field__label">¿A cuál show?</span>
+                <span className="lv-field__label">¿A cuál venta en vivo?</span>
                 <div style={{ display: "grid", gap: 8 }}>
                   {programados.map(s => (
                     <button
@@ -629,7 +629,7 @@ export default function SellerPage() {
         {showsActivos.length > 0 && (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
-              <span className="lv-eyebrow">Shows</span>
+              <span className="lv-eyebrow">Ventas en vivo</span>
               {showsActivos.some(s => s.status === "live")
                 ? <span className="lv-badge lv-badge--live" style={{ fontSize: "0.6rem" }}><i className="lv-dot"/> EN VIVO</span>
                 : <span className="lv-badge lv-badge--soft" style={{ fontSize: "0.6rem" }}>{showsActivos.length}</span>}
@@ -653,11 +653,11 @@ export default function SellerPage() {
           </section>
         )}
 
-        {/* Subastas activas */}
+        {/* Ventas activas */}
         {activas.length > 0 && (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
-              <span className="lv-eyebrow">Subastas activas</span>
+              <span className="lv-eyebrow">Ventas activas</span>
               <span className="lv-badge lv-badge--accent" style={{ fontSize: "0.62rem" }}>{activas.length}</span>
             </div>
             {activas.map(a => (

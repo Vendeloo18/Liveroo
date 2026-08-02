@@ -35,7 +35,7 @@ const TIPO_MOVIMIENTO: Record<string, string> = {
   deposit: "Recarga aprobada",
   admin_credit: "Crédito del equipo",
   admin_debit: "Ajuste del equipo",
-  auction_payment: "Pago de subasta",
+  auction_payment: "Pago de venta",
   refund: "Reembolso",
 };
 
@@ -153,13 +153,13 @@ export default function WalletPage() {
 
         {/* Saldo */}
         <section className="lv-panel" style={{ textAlign: "center", padding: "22px 16px" }}>
-          <div className="lv-eyebrow">Disponible para pujar</div>
+          <div className="lv-eyebrow">Disponible para SUBELOO</div>
           <div className="lv-price lv-price--xl" style={{ fontSize: "2.1rem", marginTop: 4 }}>
             {saldo === null ? "…" : formatUsd(Math.max(0, saldo.total - saldo.retenido))}
           </div>
           {saldo !== null && saldo.retenido > 0 && (
             <div className="lv-dim" style={{ fontSize: "0.78rem", marginTop: 4 }}>
-              Saldo total {formatUsd(saldo.total)} · <strong>{formatUsd(saldo.retenido)} respaldando tus pujas líderes</strong>
+              Saldo total {formatUsd(saldo.total)} · <strong>{formatUsd(saldo.retenido)} respaldando tus ofertas líderes</strong>
             </div>
           )}
           {tasa && saldo !== null && saldo.total - saldo.retenido > 0 && (
@@ -168,7 +168,7 @@ export default function WalletPage() {
             </div>
           )}
           <p className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.5, marginTop: 10 }}>
-            Mientras tu puja va ganando, ese monto queda apartado.
+            Mientras tu oferta va ganando, ese monto queda apartado.
             Si te superan, se libera al instante; si ganas, paga tu orden solo.
           </p>
           <button
@@ -261,7 +261,7 @@ export default function WalletPage() {
                 </button>
                 <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.5, marginTop: 10 }}>
                   <strong>Importante:</strong> las recargas no son reembolsables. El saldo
-                  se usa para pujar y pagar dentro de Vendeloo.
+                  se usa para respaldar ofertas y pagar dentro de Vendeloo.
                 </p>
               </section>
             </>
@@ -314,7 +314,7 @@ export default function WalletPage() {
 
         <p className="lv-dim" style={{ fontSize: "0.72rem", lineHeight: 1.55, textAlign: "center", padding: "0 8px 10px" }}>
           Las recargas se acreditan cuando el equipo verifica el pago y no son
-          reembolsables. Si ganas una subasta, tu puja es un compromiso de compra.
+          reembolsables. Si quedas primero en una venta, tu oferta es un compromiso de compra.
           ¿Algo no cuadra? Escríbenos por soporte con tu referencia.
         </p>
       </div>

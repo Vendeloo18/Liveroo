@@ -8,16 +8,16 @@ import { BRAND } from "@subastas-ve/shared";
 // aquí — prometer algo que el motor no hace es lo peor que puede pasar.
 const FAQS = [
   {
-    q: "¿Cómo funciona una subasta?",
-    a: "Cada subasta tiene una fecha de cierre. Pujas antes de que termine y el mayor postor gana. Si alguien puja faltando poco, el cierre se estira automáticamente para que nadie gane disparando en el último segundo.",
+    q: "¿Cómo funciona una venta por ofertas?",
+    a: "Cada venta tiene una fecha de cierre. Toca SUBELOO antes de que termine y la oferta más alta se lleva el producto. Si alguien mejora el precio faltando poco, el cierre se extiende para que todos tengan oportunidad.",
   },
   {
     q: "¿Qué pasa cuando gano?",
     a: "Se crea tu orden con el precio final y el monto en bolívares a la tasa del momento del cierre. Ese monto queda congelado aunque la tasa cambie después.",
   },
   {
-    q: "¿Cómo tengo saldo para pujar?",
-    a: `Pujar requiere saldo en tu billetera, que respalda tus ofertas. Durante esta etapa el equipo de ${BRAND.name} activa tu saldo a mano cuando confirmas tu pago: escríbenos por soporte para coordinarlo.`,
+    q: "¿Cómo tengo saldo para usar SUBELOO?",
+    a: `SUBELOO requiere saldo en tu billetera para respaldar tus ofertas. Durante esta etapa el equipo de ${BRAND.name} activa tu saldo a mano cuando confirmas tu pago: escríbenos por soporte para coordinarlo.`,
   },
   {
     q: "¿Cómo pago cuando gano?",
@@ -25,19 +25,19 @@ const FAQS = [
   },
   {
     q: "¿Cómo funciona mi saldo mientras pujo?",
-    a: "Mientras tu puja va ganando, ese monto queda apartado y no lo puedes usar en otra subasta. Si alguien te supera, se libera al instante y vuelve a estar disponible. Así nunca comprometes más de lo que tienes.",
+    a: "Mientras tu oferta va ganando, ese monto queda apartado y no lo puedes usar en otra venta. Si alguien te supera, se libera al instante y vuelve a estar disponible. Así nunca comprometes más de lo que tienes.",
   },
   {
-    q: "¿Puedo cancelar una puja o pedir reembolso?",
-    a: "No. Una puja es un compromiso de compra: si ganas, la orden es tuya. Las recargas de saldo tampoco son reembolsables. Puja solo por lo que de verdad quieres llevar.",
+    q: "¿Puedo cancelar una oferta o pedir reembolso?",
+    a: "No. Cada oferta es un compromiso de compra: si quedas primero, la orden es tuya. Las recargas de saldo tampoco son reembolsables. Usa SUBELOO solo por lo que de verdad quieres llevar.",
   },
   {
-    q: "¿Por qué me rechazaron una puja?",
-    a: "Puede ser porque alguien pujó unas décimas antes y tu monto quedó bajo el nuevo mínimo, porque la subasta ya cerró, porque ya ibas ganando, o porque no te alcanza el saldo disponible. El motivo exacto te sale en pantalla al momento.",
+    q: "¿Por qué rechazaron mi oferta?",
+    a: "Puede ser porque alguien pujó unas décimas antes y tu monto quedó bajo el nuevo mínimo, porque la venta ya cerró, porque ya ibas ganando, o porque no te alcanza el saldo disponible. El motivo exacto aparece en pantalla.",
   },
   {
     q: "¿Cómo me convierto en vendedor?",
-    a: "Desde Vender pides tu cuenta y un administrador la revisa. Es lo que evita que cualquiera publique subastas en la plataforma.",
+    a: "Desde Vender solicitas tu cuenta y un administrador la revisa. Es lo que evita que cualquiera publique ventas en la plataforma.",
   },
   {
     q: "¿Quién ve mis datos?",

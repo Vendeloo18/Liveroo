@@ -25,7 +25,7 @@ export default function Inicio() {
     const q = query(collection(db, "auctions"), where("status", "==", "active"));
     return onSnapshot(q,
       s => { setSubastas(s.docs.map(d => ({ id: d.id, ...d.data() } as DatosSubasta))); setCargando(false); },
-      e => { setError(`No se pudieron cargar las subastas (${e.code})`); setCargando(false); });
+      e => { setError(`No se pudieron cargar las ventas (${e.code})`); setCargando(false); });
   }, []);
 
   const visibles = useMemo(() => {
@@ -90,7 +90,7 @@ export default function Inicio() {
             flexDirection: "row", alignItems: "center", justifyContent: "space-between",
             paddingHorizontal: space.lg, paddingTop: 10, paddingBottom: 12,
           }}>
-            <Text style={T.section}>Subastas activas</Text>
+            <Text style={T.section}>Ventas activas</Text>
             <Pressable onPress={() => router.push("/explorar")}>
               <Text style={{ ...T.muted, fontWeight: "700" }}>Ver todas →</Text>
             </Pressable>
@@ -104,7 +104,7 @@ export default function Inicio() {
             <Cargando/>
           ) : visibles.length === 0 ? (
             <Vacio
-              titulo={cat === "Para Ti" ? "Todavía no hay subastas activas" : `Nada en ${cat}`}
+              titulo={cat === "Para Ti" ? "Todavía no hay ventas activas" : `Nada en ${cat}`}
               texto="Vuelve pronto o publica la tuya."
             >
               <View style={{ paddingHorizontal: space.lg }}>

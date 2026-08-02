@@ -65,7 +65,7 @@ export default function DetalleSubasta() {
     const valor = parseFloat(monto);
     const minimo = subasta.currentBidUsd + subasta.minIncrementUsd;
     if (!isFinite(valor) || valor < minimo) {
-      setError(`La puja mínima es $${minimo.toFixed(2)}`);
+      setError(`La próxima oferta debe ser de al menos $${minimo.toFixed(2)}`);
       setEstado("err");
       setTimeout(() => setEstado("idle"), 3000);
       return;
@@ -83,12 +83,12 @@ export default function DetalleSubasta() {
         if (!d || d.status === "pending") return;
         unsub();
         if (d.status === "processed") setEstado("ok");
-        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Puja rechazada"); setEstado("err"); }
+        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Oferta rechazada"); setEstado("err"); }
         setTimeout(() => setEstado("idle"), 3500);
       });
       setTimeout(() => { unsub(); setEstado(p => p === "pending" ? "idle" : p); }, 15000);
     } catch {
-      setError("No se pudo enviar la puja");
+      setError("No se pudo enviar la oferta");
       setEstado("err");
       setTimeout(() => setEstado("idle"), 3000);
     }
@@ -136,7 +136,7 @@ export default function DetalleSubasta() {
                 {activa ? `⏱ ${cuenta}` : "Finalizada"}
               </Insignia>
               {(subasta.bidsCount ?? 0) > 0 && (
-                <Insignia tono="flotante">{subasta.bidsCount} pujas</Insignia>
+                <Insignia tono="flotante">{subasta.bidsCount} ofertas</Insignia>
               )}
             </View>
           </View>
@@ -159,7 +159,7 @@ export default function DetalleSubasta() {
             </View>
 
             <Panel>
-              <Text style={T.eyebrow}>{(subasta.bidsCount ?? 0) > 0 ? "Puja actual" : "Precio inicial"}</Text>
+              <Text style={T.eyebrow}>{(subasta.bidsCount ?? 0) > 0 ? "Precio actual" : "Precio inicial"}</Text>
               <Text style={{ ...T.priceXl, marginVertical: 3 }}>${subasta.currentBidUsd.toFixed(2)}</Text>
               <Text style={T.dim}>
                 Salió en ${subasta.startingPriceUsd?.toFixed(2)} · sube de ${subasta.minIncrementUsd?.toFixed(2)} en ${subasta.minIncrementUsd?.toFixed(2)}
@@ -179,12 +179,12 @@ export default function DetalleSubasta() {
                 {subasta.status === "sold"
                   ? `🏆 Ganó ${subasta.winnerName} por $${subasta.finalPriceUsd?.toFixed(2)}`
                   : subasta.status === "unsold" ? "Cerró sin ganador."
-                  : "El tiempo terminó. Estamos cerrando la subasta…"}
+                  : "El tiempo terminó. Estamos cerrando la venta…"}
               </Aviso>
             )}
 
             {voyGanando && activa && <Aviso tono="ok">Vas ganando. Te avisamos si alguien te supera.</Aviso>}
-            {esMia && <Aviso>Esta subasta es tuya, no puedes pujar en ella.</Aviso>}
+            {esMia && <Aviso>Esta venta es tuya, no puedes hacer una oferta.</Aviso>}
 
             <Aviso>
               Si ganas, coordinas el pago y la entrega directamente con el vendedor por WhatsApp.
@@ -193,7 +193,7 @@ export default function DetalleSubasta() {
 
             {pujas.length > 0 && (
               <Panel>
-                <Text style={{ ...T.eyebrow, marginBottom: 4 }}>Historial · {pujas.length}</Text>
+                <Text style={{ ...T.eyebrow, marginBottom: 4 }}>Historial de ofertas · {pujas.length}</Text>
                 {pujas.map((b, i) => (
                   <Fila key={b.id} ultima={i === pujas.length - 1}>
                     <Text style={{ fontSize: 14, fontWeight: i === 0 ? font.bold : font.regular, color: color.ink }}>
@@ -216,7 +216,7 @@ export default function DetalleSubasta() {
           alignItems: "center",
         }}>
           <View style={{ width: contenido - space.lg * 2, gap: 10 }}>
-            {estado === "ok" && <Aviso tono="ok">Puja aceptada</Aviso>}
+            {estado === "ok" && <Aviso tono="ok">¡SUBELOO! Oferta registrada</Aviso>}
             {estado === "err" && error ? <Aviso tono="bad">{error}</Aviso> : null}
 
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -239,7 +239,7 @@ export default function DetalleSubasta() {
                 value={monto}
                 onChangeText={setMonto}
                 keyboardType="decimal-pad"
-                accessibilityLabel="Monto de tu puja"
+                accessibilityLabel="Monto de tu oferta"
                 style={{
                   flex: 1, backgroundColor: color.surface2, borderRadius: radius.btn,
                   paddingHorizontal: 14, height: 52, fontSize: 18,
@@ -254,7 +254,7 @@ export default function DetalleSubasta() {
                 onPress={pujar}
                 style={{ minWidth: 132 }}
               >
-                {voyGanando ? "Vas ganando" : "Pujar"}
+                {voyGanando ? "Vas ganando" : "SUBELOO"}
               </Boton>
             </View>
           </View>

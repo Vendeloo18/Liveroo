@@ -60,10 +60,10 @@ function FilaPuja({ subasta, monto, uid, onClick }: { subasta: Subasta; monto: n
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {subasta.title ?? "Subasta"}
+            {subasta.title ?? "Venta"}
           </div>
           <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
-            Pujaste ${monto.toFixed(2)} · ahora ${(subasta.currentBidUsd ?? 0).toFixed(2)}
+            Ofertaste ${monto.toFixed(2)} · ahora ${(subasta.currentBidUsd ?? 0).toFixed(2)}
           </div>
           <div style={{ marginTop: 5, display: "flex", alignItems: "center", gap: 6 }}>
             <span className={`lv-badge ${estado.c}`}>{estado.t}</span>
@@ -111,7 +111,7 @@ export default function ActivityPage() {
       setCargando(false);
     }, e => {
       setError(e.code === "failed-precondition"
-        ? "Falta desplegar el índice de pujas. Corre: firebase deploy --only firestore:indexes"
+        ? "Falta desplegar el índice de ofertas. Corre: firebase deploy --only firestore:indexes"
         : `No se pudo cargar tu actividad (${e.code})`);
       setCargando(false);
     });
@@ -153,7 +153,7 @@ export default function ActivityPage() {
         <header className="lv-topbar"><h1 className="lv-topbar__title">Actividad</h1></header>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para ver tu actividad</div>
-          <div className="lv-empty__text">Ahí quedan tus pujas y tus compras.</div>
+          <div className="lv-empty__text">Ahí quedan tus ofertas y tus compras.</div>
           <button className="lv-btn lv-btn--primary" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>
             Entrar
           </button>
@@ -169,7 +169,7 @@ export default function ActivityPage() {
       </header>
 
       <div className="lv-chips">
-        {([["pujas", `Mis pujas${pujasOrdenadas.length ? ` (${pujasOrdenadas.length})` : ""}`],
+        {([["pujas", `Mis ofertas${pujasOrdenadas.length ? ` (${pujasOrdenadas.length})` : ""}`],
            ["compras", `Mis compras${ordenes.length ? ` (${ordenes.length})` : ""}`]] as [Tab, string][]).map(([v, label]) => (
           <button key={v} onClick={() => setTab(v)} className={`lv-chip${tab === v ? " lv-chip--active" : ""}`}>{label}</button>
         ))}
@@ -190,10 +190,10 @@ export default function ActivityPage() {
                   <path d="M14 11l-8 8M9 6l9 9M3 21h6M12.5 3.5l8 8"/>
                 </svg>
               </div>
-              <div className="lv-empty__title">Todavía no has pujado</div>
+              <div className="lv-empty__title">Todavía no has usado SUBELOO</div>
               <div className="lv-empty__text">Cuando pujes, aquí ves si vas ganando.</div>
               <button className="lv-btn lv-btn--accent" style={{ marginTop: 16 }} onClick={() => router.push("/auctions")}>
-                Ver subastas
+                Ver ventas
               </button>
             </div>
           ) : (
@@ -224,7 +224,7 @@ export default function ActivityPage() {
                 </svg>
               </div>
               <div className="lv-empty__title">Aún no has ganado nada</div>
-              <div className="lv-empty__text">Cuando ganes una subasta, tu orden aparece aquí.</div>
+              <div className="lv-empty__text">Cuando ganes una venta, tu orden aparece aquí.</div>
             </div>
           ) : (
             <section className="lv-panel" style={{ padding: "2px 16px" }}>

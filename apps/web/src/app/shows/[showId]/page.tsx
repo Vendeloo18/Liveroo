@@ -194,7 +194,7 @@ export default function ShowPage() {
         if (!d || d.status === "pending") return;
         unsub();
         if (d.status === "processed") setEstado("ok");
-        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Puja rechazada"); setEstado("err"); }
+        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Oferta rechazada"); setEstado("err"); }
         setTimeout(() => setEstado("idle"), 2500);
       });
       setTimeout(() => { unsub(); setEstado(p => p === "pending" ? "idle" : p); }, 15000);
@@ -235,7 +235,7 @@ export default function ShowPage() {
   // Invitar: compartir el link del vivo (WhatsApp/redes) o copiarlo.
   const compartir = async () => {
     const url = `${window.location.origin}/shows/${showId}`;
-    const texto = `🔴 ${show?.sellerName ?? "Un vendedor"} está EN VIVO en Vendeloo. ¡Entra a pujar! ${url}`;
+    const texto = `🔴 ${show?.sellerName ?? "Un vendedor"} está EN VIVO en Vendeloo. ¡Entra y usa SUBELOO! ${url}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
         await (navigator as any).share({ title: "Vendeloo — En vivo", text: texto, url });
@@ -283,8 +283,8 @@ export default function ShowPage() {
             {agora.loading ? "Conectando…"
               : agora.error ? agora.error
               : show?.status === "live" ? "Conectando transmisión…"
-              : show?.status === "ended" ? "Este show ya terminó"
-              : "El show todavía no empieza"}
+              : show?.status === "ended" ? "Esta venta en vivo ya terminó"
+              : "La venta en vivo todavía no empieza"}
           </div>
         </div>
       )}
@@ -383,7 +383,7 @@ export default function ShowPage() {
                 <div style={{ fontSize: "0.72rem", fontWeight: voyGanando || superado ? 800 : 400, color: voyGanando ? "#4ade80" : superado ? "#ff6b6b" : "rgba(255,255,255,0.55)", marginTop: 2 }}>
                   {subasta.currentBidderName
                     ? (voyGanando ? "✓ Vas ganando" : superado ? "Te superaron" : `Va ganando ${subasta.currentBidderName}`)
-                    : "Nadie ha pujado"}
+                    : "Todavía no hay ofertas"}
                 </div>
               </div>
 
@@ -410,7 +410,7 @@ export default function ShowPage() {
             borderRadius: 12, padding: "9px 13px", fontSize: "0.78rem", fontWeight: 700, textAlign: "center",
             background: estado === "ok" ? "rgba(20,164,77,0.9)" : "rgba(245,51,63,0.9)", color: "#fff",
           }}>
-            {estado === "ok" ? "Puja aceptada" : error}
+            {estado === "ok" ? "¡SUBELOO! Oferta registrada" : error}
           </div>
         </div>
       )}
@@ -445,11 +445,11 @@ export default function ShowPage() {
                     className="lv-btn lv-btn--accent"
                     style={{ width: "100%", height: 48, borderRadius: 999 }}
                   >
-                    Recargar para pujar
+                    Recargar para usar SUBELOO
                   </button>
                 ) : (
                   <SlideToBid
-                    label={estado === "pending" ? "Validando…" : `Puja ${formatUsd(parseFloat(bidInput) || minimo)}`}
+                    label={estado === "pending" ? "Validando…" : `SUBELOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
                     color={superado ? "var(--error)" : "var(--accent)"}
                     disabled={estado === "pending"}
                     onConfirm={() => pujar(parseFloat(bidInput) || minimo)}
@@ -465,7 +465,7 @@ export default function ShowPage() {
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") enviarChat(); }}
-            placeholder={show?.status === "live" ? "Escribe algo…" : "El chat abre cuando empiece el show"}
+            placeholder={show?.status === "live" ? "Escribe algo…" : "El chat abre cuando empiece la venta en vivo"}
             disabled={show?.status !== "live"}
             maxLength={300}
             aria-label="Mensaje del chat"

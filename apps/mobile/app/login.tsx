@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   View, Text, ScrollView, TextInput, Pressable,
-  KeyboardAvoidingView, Platform, useWindowDimensions,
+  KeyboardAvoidingView, Platform, useWindowDimensions, Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -54,6 +54,7 @@ export default function Login() {
       <Hero
         onCrearCuenta={() => { setModo("crear"); clearError(); setVista("formulario"); }}
         onIniciarSesion={() => { setModo("entrar"); clearError(); setVista("formulario"); }}
+        onVerComoFunciona={() => Linking.openURL(`${BRAND.url}/onboarding`)}
         onEntrarSinCuenta={() => router.replace("/")}
       />
     );
@@ -71,7 +72,7 @@ export default function Login() {
         <View style={{ width: contenido, paddingHorizontal: space.lg, paddingTop: insets.top + 40 }}>
           <Logo tamano={30}/>
           <Text style={{ ...T.muted, lineHeight: 21, marginTop: 8, marginBottom: 26 }}>
-            {BRAND.tagline}. Puja, gana y coordina con el vendedor.
+            {BRAND.tagline}. Mira, usa SUBELOO y llévatelo.
           </Text>
 
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 18 }}>
@@ -132,7 +133,7 @@ export default function Login() {
           </Text>
 
           <Boton variante="soft" style={{ marginTop: 18 }} onPress={() => router.replace("/")}>
-            Ver subastas sin entrar
+            Explorar ventas sin entrar
           </Boton>
         </View>
       </ScrollView>

@@ -35,7 +35,7 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
   const precio = subasta.currentBidUsd ?? subasta.startingPriceUsd ?? 0;
   const pujas = subasta.bidsCount ?? 0;
   const meta = pujas > 0
-    ? `${subasta.sellerName} · ${pujas} ${pujas === 1 ? "puja" : "pujas"}`
+    ? `${subasta.sellerName} · ${pujas} ${pujas === 1 ? "oferta" : "ofertas"}`
     : subasta.sellerName;
 
   return (
@@ -109,14 +109,14 @@ export function AuctionCard({ subasta, ancho }: { subasta: DatosSubasta; ancho: 
         </Text>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
           <View style={{ flex: 1 }}>
-            <Text style={T.eyebrow}>{pujas > 0 ? "Puja actual" : "Desde"}</Text>
+            <Text style={T.eyebrow}>{pujas > 0 ? "Precio actual" : "Desde"}</Text>
             <Text style={T.price}>${precio.toFixed(2)}</Text>
           </View>
           <View style={{
             backgroundColor: color.accent, borderRadius: radius.pill,
             paddingHorizontal: 15, paddingVertical: 8,
           }}>
-            <Text style={{ color: color.accentInk, fontFamily: familia.cuerpoExtra, fontSize: 12 }}>Pujar</Text>
+            <Text style={{ color: color.accentInk, fontFamily: familia.cuerpoExtra, fontSize: 12 }}>SUBELOO</Text>
           </View>
         </View>
       </View>

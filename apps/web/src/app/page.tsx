@@ -137,7 +137,7 @@ export default function Home() {
           <div className="lv-section">
             <h2 className="lv-section__title">
               <span className="lv-badge lv-badge--live"><i className="lv-dot"/> EN VIVO</span>
-              {shows.length} {shows.length === 1 ? "show" : "shows"}
+              {shows.length} {shows.length === 1 ? "venta en vivo" : "ventas en vivo"}
             </h2>
           </div>
           <div className="lv-pad" style={{ display:"flex", gap:12, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
@@ -148,9 +148,9 @@ export default function Home() {
         </>
       )}
 
-      {/* Subastas */}
+      {/* Ventas por ofertas */}
       <div className="lv-section">
-        <h2 className="lv-section__title">Subastas activas</h2>
+        <h2 className="lv-section__title">Ventas activas</h2>
         <button className="lv-section__link" onClick={() => router.push("/auctions")}>Ver todas →</button>
       </div>
 
@@ -167,7 +167,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="lv-empty__title">
-              {cat === "Para Ti" ? "Todavía no hay subastas activas" : `Nada en ${cat}`}
+              {cat === "Para Ti" ? "Todavía no hay ventas activas" : `Nada en ${cat}`}
             </div>
             <div className="lv-empty__text">Vuelve pronto o publica la tuya.</div>
           </div>

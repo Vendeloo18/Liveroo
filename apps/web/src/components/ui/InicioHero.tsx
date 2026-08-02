@@ -53,12 +53,12 @@ export function InicioHero({
             <path fillRule="evenodd" clipRule="evenodd" d={SIMBOLO_PATH}/>
           </svg>
           <div style={{ position: "relative", zIndex: 1 }}>
-            <div className="lv-eyebrow" style={{ color: "#fff", opacity: 0.9 }}>Subastas en vivo · Venezuela</div>
+            <div className="lv-eyebrow" style={{ color: "#fff", opacity: 0.9 }}>Ventas en vivo · Venezuela</div>
             <h1 className="lv-display" style={{ color: "#fff", fontSize: "clamp(1.9rem, 9vw, 2.5rem)", lineHeight: 0.94, marginTop: 8 }}>
-              Entra al vivo.<br/>Puja. Gana.
+              Entra al vivo.<br/>SUBELOO. Llévatelo.
             </h1>
             <button onClick={onExplorar} className="lv-btn lv-btn--lg" style={{ marginTop: 16, background: "#fff", color: "var(--accent-strong, #dc5a00)" }}>
-              Explorar todas las subastas →
+              Explorar ventas →
             </button>
           </div>
         </div>
@@ -124,7 +124,7 @@ export function InicioHero({
                 {tienda.nombre}
               </div>
               <div style={{ fontSize: "0.76rem", fontWeight: 600, opacity: 0.9, marginTop: 3, textShadow: "0 1px 4px rgba(0,0,0,0.55)" }}>
-                {tienda.activas} {tienda.activas === 1 ? "subasta activa" : "subastas activas"}
+                {tienda.activas} {tienda.activas === 1 ? "venta activa" : "ventas activas"}
               </div>
             </div>
             <span className="lv-btn lv-btn--sm" style={{ background: "#fff", color: "var(--accent-strong, #dc5a00)", flexShrink: 0, fontWeight: 800, alignSelf: "center" }}>
@@ -148,7 +148,7 @@ export function InicioHero({
         className="lv-btn lv-btn--soft lv-btn--block"
         style={{ marginTop: 10 }}
       >
-        Explorar todas las subastas →
+        Explorar todas las ventas →
       </button>
     </div>
   );

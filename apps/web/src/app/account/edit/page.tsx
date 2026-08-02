@@ -124,7 +124,7 @@ export default function EditProfilePage() {
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <div>
-              <strong>Te falta el WhatsApp.</strong> Sin él, quien gane tus subastas
+              <strong>Te falta el WhatsApp.</strong> Sin él, quien gane una de tus ventas
               no tiene cómo escribirte para pagar.
             </div>
           </div>

@@ -79,7 +79,7 @@ export default function AuctionPage() {
       const a = { id: s.id, ...s.data() } as Auction;
       setAuction(a);
       setBidInput(prev => prev || ((a.bidsCount ?? 0) > 0 ? a.currentBidUsd + a.minIncrementUsd : a.startingPriceUsd).toFixed(2));
-    }, e => setError(`No se pudo cargar la subasta (${e.code})`));
+    }, e => setError(`No se pudo cargar la venta (${e.code})`));
   }, [auctionId]);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function AuctionPage() {
     const minimo = (auction.bidsCount ?? 0) > 0 ? auction.currentBidUsd + auction.minIncrementUsd : auction.startingPriceUsd;
     const monto = montoArg ?? parseFloat(bidInput);
     if (!isFinite(monto) || monto < minimo) {
-      setError(`La puja mínima es ${formatUsd(minimo)}`);
+      setError(`La próxima oferta debe ser de al menos ${formatUsd(minimo)}`);
       setEstado("err"); setTimeout(() => setEstado("idle"), 3000);
       return;
     }
@@ -123,12 +123,12 @@ export default function AuctionPage() {
         if (!d || d.status === "pending") return;
         unsub();
         if (d.status === "processed") setEstado("ok");
-        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Puja rechazada"); setEstado("err"); }
+        else { setError(MOTIVO_RECHAZO[d.rejectedReason] ?? "Oferta rechazada"); setEstado("err"); }
         setTimeout(() => setEstado("idle"), 3500);
       });
       setTimeout(() => { unsub(); setEstado(p => p === "pending" ? "idle" : p); }, 15000);
     } catch {
-      setError("No se pudo enviar la puja");
+      setError("No se pudo enviar la oferta");
       setEstado("err"); setTimeout(() => setEstado("idle"), 3000);
     }
   };
@@ -137,7 +137,7 @@ export default function AuctionPage() {
     const url = `${window.location.origin}/auctions/${auctionId}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
-        await (navigator as any).share({ title: "Vendeloo", text: `Mira esta subasta: ${auction?.title ?? ""}`, url });
+        await (navigator as any).share({ title: "Vendeloo", text: `Mira esta venta: ${auction?.title ?? ""}`, url });
       } else {
         await navigator.clipboard.writeText(url);
         setCopiado(true); setTimeout(() => setCopiado(false), 2200);
@@ -179,7 +179,7 @@ export default function AuctionPage() {
           <span className={`lv-badge lv-badge--float${urgente && activa ? " lv-badge--urgent" : ""}`} style={{ position: "static", fontSize: "0.8rem", padding: "8px 12px" }}>
             {activa ? cuenta : "Finalizada"}
           </span>
-          {pujas > 0 && <span className="lv-badge lv-badge--float" style={{ position: "static", fontSize: "0.8rem", padding: "8px 12px" }}>{pujas} {pujas === 1 ? "puja" : "pujas"}</span>}
+          {pujas > 0 && <span className="lv-badge lv-badge--float" style={{ position: "static", fontSize: "0.8rem", padding: "8px 12px" }}>{pujas} {pujas === 1 ? "oferta" : "ofertas"}</span>}
         </div>
 
         {copiado && (
@@ -205,7 +205,7 @@ export default function AuctionPage() {
 
         {/* Precio */}
         <section className="lv-panel">
-          <div className="lv-eyebrow">{pujas > 0 ? "Puja actual" : "Precio inicial"}</div>
+          <div className="lv-eyebrow">{pujas > 0 ? "Precio actual" : "Precio inicial"}</div>
           <div className="lv-price lv-price--xl" style={{ margin: "2px 0 6px" }}>{formatUsd(auction.currentBidUsd)}</div>
           <div className="lv-dim" style={{ fontSize: "0.78rem" }}>
             Salió en {formatUsd(auction.startingPriceUsd)} · sube de {formatUsd(auction.minIncrementUsd)} en {formatUsd(auction.minIncrementUsd)}
@@ -231,19 +231,19 @@ export default function AuctionPage() {
             <div className={`lv-note${auction.status === "sold" ? " lv-note--ok" : ""}`}>
               {auction.status === "sold" ? <span>Ganó <strong>{auction.winnerName}</strong> por {formatUsd(auction.finalPriceUsd ?? 0)}</span>
                 : auction.status === "unsold" ? "Cerró sin ganador."
-                : auction.status === "cancelled" ? "Esta subasta fue cancelada."
-                : "El tiempo terminó. Estamos cerrando la subasta…"}
+                : auction.status === "cancelled" ? "Esta venta fue cancelada."
+                : "El tiempo terminó. Estamos cerrando la venta…"}
             </div>
           )
         )}
 
-        {esMia && activa && <div className="lv-note">Esta subasta es tuya, no puedes pujar en ella.</div>}
+        {esMia && activa && <div className="lv-note">Esta venta es tuya, no puedes hacer una oferta.</div>}
 
         {/* Historial */}
         {bids.length > 0 && (
           <section className="lv-panel">
             <button onClick={() => setHistorial(h => !h)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span className="lv-eyebrow">Historial de pujas · {bids.length}</span>
+              <span className="lv-eyebrow">Historial de ofertas · {bids.length}</span>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ transform: historial ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}><path d="M6 9l6 6 6-6"/></svg>
             </button>
             {historial && (
@@ -269,7 +269,7 @@ export default function AuctionPage() {
       {/* Barra fija de puja */}
       {puedePujar && (
         <div style={{ position: "fixed", bottom: "var(--nav-h)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "var(--app-max)", background: "var(--bg)", borderTop: "1px solid var(--line)", padding: "12px 16px 14px", zIndex: 50, boxShadow: "0 -6px 20px rgba(11,11,13,0.05)" }}>
-          {estado === "ok" && <div className="lv-note lv-note--ok" style={{ marginBottom: 10 }}>Puja aceptada</div>}
+          {estado === "ok" && <div className="lv-note lv-note--ok" style={{ marginBottom: 10 }}>¡SUBELOO! Oferta registrada</div>}
           {estado === "err" && error && <div className="lv-note lv-note--bad" style={{ marginBottom: 10 }}>{error}</div>}
 
           {exigeSaldo && profile && (
@@ -296,10 +296,10 @@ export default function AuctionPage() {
               {voyGanando ? (
                 <VasGanandoPill/>
               ) : saldoCorto ? (
-                <button onClick={() => router.push("/wallet")} className="lv-btn lv-btn--accent" style={{ width: "100%", height: BID_H, borderRadius: 999 }}>Recargar para pujar</button>
+                <button onClick={() => router.push("/wallet")} className="lv-btn lv-btn--accent" style={{ width: "100%", height: BID_H, borderRadius: 999 }}>Recargar para usar SUBELOO</button>
               ) : (
                 <SlideToBid
-                  label={estado === "pending" ? "Validando…" : `Puja ${formatUsd(parseFloat(bidInput) || minimo)}`}
+                  label={estado === "pending" ? "Validando…" : `SUBELOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
                   color={superado ? "var(--error)" : "var(--accent)"}
                   disabled={estado === "pending"}
                   onConfirm={() => pujar(parseFloat(bidInput) || minimo)}

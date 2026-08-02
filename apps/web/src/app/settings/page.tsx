@@ -18,7 +18,7 @@ interface Prefs { shows: boolean; pujas: boolean; ordenes: boolean; promo: boole
 const POR_DEFECTO: Prefs = { shows: true, pujas: true, ordenes: true, promo: false };
 
 const AVISOS: [keyof Prefs, string, string][] = [
-  ["pujas", "Te superaron en una puja", "Para que puedas volver a pujar a tiempo"],
+  ["pujas", "Superaron tu oferta", "Para que puedas usar SUBELOO a tiempo"],
   ["ordenes", "Cambios en tus órdenes", "Pago confirmado, envío y entrega"],
   ["promo", "Novedades y promociones", `Ofertas y anuncios de ${BRAND.name}`],
 ];
@@ -203,8 +203,8 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.5, marginTop: 10 }}>
-            Las pujas siempre se hacen en dólares. Los bolívares se calculan con la tasa
-            del momento y se congelan al cerrar la subasta.
+            Las ofertas siempre se hacen en dólares. Los bolívares se calculan con la tasa
+            del momento y se congelan al cerrar la venta.
           </p>
         </section>
 

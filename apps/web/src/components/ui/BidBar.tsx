@@ -34,7 +34,7 @@ export function BidAmount({
       <input
         type="number" inputMode="decimal" step={step} min={min} disabled={disabled}
         value={value} onChange={e => onChange(e.target.value)}
-        aria-label="Monto de tu puja"
+        aria-label="Monto de tu oferta"
         style={{
           flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none",
           fontSize: "0.98rem", fontWeight: 800, color: dark ? "#fff" : "var(--ink)", padding: 0,
