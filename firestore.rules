@@ -193,7 +193,9 @@ service cloud.firestore {
     // son sobre uno mismo: sin este filtro, cualquiera podía perfilar a otro
     // comprador (qué compra, cuánto paga) en toda la plataforma.
     match /{path=**}/bids/{bidId} {
-      allow read: if isSignedIn() && resource.data.bidderId == uid();
+      // El admin sí necesita el grupo entero: la ficha de una persona en la
+      // consola muestra su historial de ofertas para poder atender un reclamo.
+      allow read: if isSignedIn() && (resource.data.bidderId == uid() || isAdmin());
       allow write: if false;
     }
 
