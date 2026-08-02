@@ -233,7 +233,7 @@ export default function OnboardingPage() {
                 <SlideToBid
                   key={bonusIntento}
                   prominent
-                  label={profile ? "DESLIZA Y GANA $1" : "DESLIZA Y ACTIVA TU $1"}
+                  label={profile ? "SUBELOO Y GANA $1" : "SUBELOO Y ACTIVA TU $1"}
                   successLabel={successLabel}
                   holdSuccess
                   disabled={subido}
@@ -258,7 +258,7 @@ export default function OnboardingPage() {
         <footer className="vlo-onb__footer">
           {paso < TOTAL - 1 && (
             <button type="button" className="vlo-onb__continue" onClick={siguiente}>
-              Probar SUBELOO y ganar $1
+              QUIERO MI $1
             </button>
           )}
 
