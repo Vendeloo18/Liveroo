@@ -477,18 +477,28 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__hero-product {
   position: absolute;
   z-index: 1;
-  right: 11px;
-  bottom: 35px;
-  width: 54%;
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: contain;
-  object-position: center;
-  background: var(--accent);
-  border: 1px solid rgba(255,255,255,0.22);
-  border-radius: 27px;
-  box-shadow: 0 18px 38px rgba(120,34,0,0.2);
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  height: 74%;
+  object-fit: cover;
+  object-position: center bottom;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   animation: vlo-onb-product-in 0.45s ease both;
+}
+
+.vlo-onb--step-1 .vlo-onb__hero-product {
+  height: 76%;
+  object-position: center 64%;
+}
+
+.vlo-onb--step-2 .vlo-onb__hero-product {
+  height: 72%;
+  object-position: center 58%;
 }
 
 .vlo-onb--step-1 .vlo-onb__mark,
@@ -497,21 +507,22 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb--step-1 .vlo-onb__hero-copy,
 .vlo-onb--step-2 .vlo-onb__hero-copy,
 .vlo-onb--step-3 .vlo-onb__hero-copy {
-  width: 52%;
-  margin-top: 34px;
+  width: 92%;
+  margin-top: 31px;
 }
 
 .vlo-onb--step-1 .vlo-onb__title,
 .vlo-onb--step-2 .vlo-onb__title,
 .vlo-onb--step-3 .vlo-onb__title {
-  font-size: clamp(2.3rem, 10.6vw, 3.15rem);
+  font-size: clamp(2.7rem, 12.4vw, 3.75rem);
 }
 
 .vlo-onb--step-1 .vlo-onb__description,
 .vlo-onb--step-2 .vlo-onb__description,
 .vlo-onb--step-3 .vlo-onb__description {
-  max-width: 210px;
-  font-size: 0.76rem;
+  max-width: 255px;
+  font-size: 0.8rem;
+  text-shadow: 0 2px 10px rgba(91,24,0,0.34);
 }
 
 .vlo-onb__top {
@@ -667,58 +678,6 @@ button:disabled { cursor: not-allowed; }
   line-height: 1.35;
 }
 
-.vlo-onb__live-sample {
-  position: relative;
-  min-height: 94px;
-  padding: 8px 62px 8px 8px;
-  display: grid;
-  grid-template-columns: 78px minmax(0,1fr);
-  gap: 11px;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid #ffd5b8;
-  border-radius: 20px;
-  background: var(--accent-tint);
-}
-
-.vlo-onb__live-sample > img {
-  width: 78px;
-  height: 78px;
-  object-fit: contain;
-  border-radius: 14px;
-  background: var(--accent);
-}
-
-.vlo-onb__live-sample span,
-.vlo-onb__live-sample b,
-.vlo-onb__live-sample small { display: block; }
-.vlo-onb__live-sample span {
-  color: var(--accent-strong);
-  font-size: 0.55rem;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-}
-.vlo-onb__live-sample span i {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 3px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.vlo-onb__live-sample b { margin-top: 4px; font-size: 0.8rem; line-height: 1.18; }
-.vlo-onb__live-sample small { margin-top: 4px; color: var(--ink-2); font-size: 0.61rem; line-height: 1.28; }
-.vlo-onb__live-sample em {
-  position: absolute;
-  top: 11px;
-  right: 10px;
-  color: var(--accent);
-  font-size: 0.5rem;
-  font-style: normal;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
 .vlo-onb__modes {
   display: grid;
   gap: 11px;
@@ -870,19 +829,15 @@ button:disabled { cursor: not-allowed; }
   min-height: 76px;
   padding: 10px 16px;
   display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 17px;
+  grid-template-columns: minmax(0,0.85fr) 28px minmax(0,1.25fr);
+  gap: 10px;
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: var(--surface-2);
 }
 
-.vlo-onb__price-card > i {
-  width: 1px;
-  height: 38px;
-  background: var(--line-strong);
-}
+.vlo-onb__price-card > svg { color: var(--accent); }
 
 .vlo-onb__price-card span,
 .vlo-onb__price-card strong { display: block; }
@@ -902,11 +857,21 @@ button:disabled { cursor: not-allowed; }
 }
 .vlo-onb__price-card strong.is-accent { color: var(--accent); }
 
+.vlo-onb__increment-label {
+  margin-top: 9px;
+  color: var(--ink-2);
+  text-align: center;
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .vlo-onb__increments {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 8px 0;
+  margin: 6px 0 0;
 }
 
 .vlo-onb__increments button {
@@ -914,7 +879,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--ink-2);
   border-radius: var(--r-pill);
   background: var(--surface-2);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 900;
 }
 
@@ -1072,12 +1037,10 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__process-icon { width: 61px; height: 61px; }
   .vlo-onb__process > i { margin-top: 39px; }
   .vlo-onb__process p { font-size: 0.62rem; }
-  .vlo-onb__hero-product { right: 8px; width: 51%; }
+  .vlo-onb__hero-product { right: 0; width: 100%; }
   .vlo-onb--step-1 .vlo-onb__title,
   .vlo-onb--step-2 .vlo-onb__title,
-  .vlo-onb--step-3 .vlo-onb__title { font-size: 2.16rem; }
-  .vlo-onb__live-sample { grid-template-columns: 68px minmax(0,1fr); padding-right: 48px; }
-  .vlo-onb__live-sample > img { width: 68px; height: 68px; }
+  .vlo-onb--step-3 .vlo-onb__title { font-size: 2.65rem; }
   .vlo-onb__demo-product { grid-template-columns: 108px minmax(0,1fr); }
   .vlo-onb__demo-product img { width: 108px; }
   .vlo-subeloo--prominent .vlo-subeloo__label { font-size: 0.78rem; }
@@ -1094,16 +1057,13 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__process > i { margin-top: 35px; }
   .vlo-onb__process p { display: none; }
   .vlo-onb__welcome { gap: 11px; }
-  .vlo-onb__live-sample { min-height: 75px; }
-  .vlo-onb__live-sample > img { width: 62px; height: 62px; }
-  .vlo-onb__live-sample { grid-template-columns: 62px minmax(0,1fr); }
   .vlo-onb__mode { min-height: 86px; padding-top: 10px; padding-bottom: 10px; }
   .vlo-onb__mode-copy small { font-size: 0.66rem; }
   .vlo-onb__mode-meta { margin-top: 4px; padding-top: 3px; padding-bottom: 3px; }
   .vlo-onb--step-1 .vlo-onb__hero-copy,
   .vlo-onb--step-2 .vlo-onb__hero-copy,
   .vlo-onb--step-3 .vlo-onb__hero-copy { margin-top: 19px; }
-  .vlo-onb__hero-product { bottom: 28px; }
+  .vlo-onb__hero-product { bottom: 0; }
   .vlo-onb__demo-product { min-height: 66px; margin-bottom: 7px; }
   .vlo-onb__demo-product img { width: 112px; height: 72px; }
   .vlo-onb__demo-product { grid-template-columns: 112px minmax(0,1fr); }

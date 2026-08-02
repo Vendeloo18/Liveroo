@@ -6,6 +6,7 @@ import Image from "next/image";
 import { doc, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
+  ArrowRight,
   CaretLeft,
   Eye,
   Gavel,
@@ -173,15 +174,6 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="vlo-onb__live-sample">
-                <Image src="/brand/onboarding-productos-v2.png" alt="Productos en vivo ahora" width={1254} height={1254}/>
-                <div>
-                  <span><i/> EN VIVO AHORA</span>
-                  <b>Tu próxima compra puede estar aquí</b>
-                  <small>Productos desde $4 · vendedores de Venezuela</small>
-                </div>
-                <em>MIRALOO</em>
-              </div>
             </div>
           )}
 
@@ -204,16 +196,17 @@ export default function OnboardingPage() {
 
               <div className="vlo-onb__price-card">
                 <div>
-                  <span>Precio actual</span>
+                  <span>Ahora va en</span>
                   <strong>${pujaDemo}</strong>
                 </div>
-                <i aria-hidden="true"/>
+                <ArrowRight size={23} weight="bold" aria-hidden="true"/>
                 <div>
-                  <span>Tu oferta</span>
+                  <span>Con +${inc} ofreces</span>
                   <strong className="is-accent">${pujaDemo + inc}</strong>
                 </div>
               </div>
 
+              <p className="vlo-onb__increment-label">Elige cuánto quieres subir</p>
               <div className="vlo-onb__increments" aria-label="Cuánto quieres subir">
                 {[1, 5, 10].map(valor => (
                   <button
@@ -224,7 +217,7 @@ export default function OnboardingPage() {
                     disabled={subido}
                     onClick={() => setInc(valor)}
                   >
-                    +${valor}
+                    SUBIR ${valor}
                   </button>
                 ))}
               </div>
