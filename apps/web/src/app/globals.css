@@ -480,6 +480,12 @@ button:disabled { cursor: not-allowed; }
 .vlo-flow-hero--showcase .vlo-flow-hero__art { object-position: center 62%; }
 .vlo-flow-hero--entry .vlo-flow-hero__art { object-position: center center; }
 
+/* El primer paso le da prioridad al producto. En pantallas altas el hero
+   ocupa dos tercios del viewport y evita que la hoja blanca domine la vista. */
+.vlo-onb--step-1 .vlo-flow-hero {
+  min-height: clamp(560px, 67dvh, 660px);
+}
+
 .vlo-onb--step-1 .vlo-flow-hero__copy {
   top: calc(88px + env(safe-area-inset-top));
   max-width: 244px;
@@ -1314,6 +1320,13 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__footer { gap: 4px; margin-top: 11px; }
   .vlo-onb__continue { min-height: 48px; }
   .vlo-onb__back { padding-top: 4px; padding-bottom: 4px; }
+}
+
+/* En teléfonos bajos conservamos todos los pasos y el CTA dentro del flujo. */
+@media (max-height: 850px) {
+  .vlo-onb--step-1 .vlo-flow-hero {
+    min-height: clamp(480px, 60dvh, 520px);
+  }
 }
 
 /* =============================================================
