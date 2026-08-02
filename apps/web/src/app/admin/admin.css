@@ -10,25 +10,27 @@
 .adm {
   display: flex; min-height: 100vh; min-height: 100dvh;
   background: var(--surface-2); color: var(--ink);
-  font-family: var(--f-cuerpo), -apple-system, sans-serif;
+  font-family: var(--f-cuerpo);
+  font-synthesis: none;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
-.adm .mono { font-family: var(--f-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.adm .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
 /* ── Barra lateral: clara, como una tarjeta de la app ── */
 .adm-side {
   width: 248px; flex-shrink: 0; background: var(--bg); border-right: 1px solid var(--line);
   display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; height: 100dvh;
 }
-.adm-side__brand { display: flex; align-items: center; gap: 11px; padding: 22px 20px 16px; }
+.adm-side__brand { display: flex; align-items: center; gap: 11px; padding: 22px 20px 18px; }
 .adm-side__brand .mk {
-  width: 38px; height: 38px; border-radius: 12px; background: var(--accent);
+  width: 40px; height: 40px; border-radius: 13px; background: var(--accent);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(255, 106, 0, 0.32);
+  box-shadow: 0 7px 18px rgba(255, 106, 0, 0.28);
 }
 .adm-side__brand .mk svg { width: 22px; height: 22px; }
-.adm-side__brand .wm { font-family: var(--f-campaign); font-size: 1.35rem; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
-.adm-side__brand .pl { font-family: var(--f-mono); font-size: 0.56rem; font-weight: 500; letter-spacing: 0.2em; color: var(--accent-strong); margin-top: 3px; }
+.adm-side__brand .wm { font-family: var(--f-campaign); font-size: 1.42rem; font-weight: 400; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; }
+.adm-side__brand .pl { font-size: 0.55rem; font-weight: 800; letter-spacing: 0.16em; color: var(--accent-strong); margin-top: 3px; }
 
 .adm-side__nav { flex: 1; padding: 4px 12px; overflow-y: auto; }
 .adm-side__grp {
@@ -42,13 +44,13 @@
 }
 .adm-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 .adm-nav-item:hover { background: var(--surface-2); color: var(--ink); }
-.adm-nav-item.active { background: var(--accent); color: var(--accent-ink); box-shadow: 0 5px 16px rgba(255, 106, 0, 0.32); }
+.adm-nav-item.active { background: var(--accent-tint); color: var(--accent-strong); box-shadow: inset 0 0 0 1px var(--accent-soft); }
 .adm-nav-item .ct {
   margin-left: auto; font-family: var(--f-mono); font-size: 0.7rem; font-weight: 600;
   min-width: 20px; height: 19px; padding: 0 6px; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff;
 }
-.adm-nav-item.active .ct { background: rgba(255, 255, 255, 0.28); }
+.adm-nav-item.active .ct { background: var(--accent); color: #fff; }
 
 .adm-side__foot { padding: 14px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
 .adm-side__foot .av {
@@ -65,10 +67,10 @@
 .adm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .adm-top {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 32px;
-  background: color-mix(in srgb, var(--surface-2) 88%, transparent); backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--accent-soft); position: sticky; top: 0; z-index: 5;
 }
-.adm-top h1 { font-family: var(--f-display); font-size: 1.5rem; font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+.adm-top h1 { font-family: var(--f-display); font-size: 1.58rem; font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: -0.02em; }
 .adm-top .sub { font-size: 0.82rem; color: var(--ink-3); margin-top: 4px; }
 .adm-kpis { display: flex; gap: 10px; }
 .adm-chip { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; }
@@ -94,7 +96,7 @@
 .adm-mc__ic svg { width: 18px; height: 18px; }
 .adm-mc__num { font-family: var(--f-display); font-size: 2.1rem; font-weight: 800; line-height: 1; color: var(--accent); letter-spacing: -0.03em; }
 .adm-mc__ctx { font-size: 0.74rem; color: var(--ink-3); margin-top: 8px; }
-.adm-mc__ctx b { color: var(--ink-2); font-weight: 650; }
+.adm-mc__ctx b { color: var(--ink-2); font-weight: 700; }
 /* Con pendientes: se tiñe durazno, como la tarjeta "Por atender" del vendedor */
 .adm-mc--alerta { background: var(--accent-tint); border-color: transparent; }
 .adm-mc--alerta .adm-mc__num { color: var(--accent-strong); }
@@ -151,7 +153,7 @@
 /* Estado (lista de pares) */
 .adm-state .r { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
 .adm-state .r:last-child { border-bottom: none; }
-.adm-state .r .l { font-size: 0.86rem; font-weight: 650; }
+.adm-state .r .l { font-size: 0.86rem; font-weight: 700; }
 .adm-state .r .l .s { font-size: 0.72rem; color: var(--ink-3); font-weight: 400; margin-top: 2px; }
 .adm-state .r .v { font-family: var(--f-mono); font-weight: 600; font-size: 0.9rem; }
 
@@ -161,7 +163,7 @@
 /* ── Login: el hero naranja de la app, con la tarjeta blanca ── */
 .adm-login {
   min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px;
-  font-family: var(--f-cuerpo), -apple-system, sans-serif; color: var(--ink);
+  font-family: var(--f-cuerpo); color: var(--ink); font-synthesis: none;
   background: var(--accent); position: relative; overflow: hidden;
 }
 .adm-login__wm { position: absolute; right: -12%; top: 8%; width: 62%; fill: var(--accent-light); opacity: 0.5; pointer-events: none; }
@@ -172,9 +174,9 @@
 .adm-login__brand { display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
 .adm-login__brand .mk { width: 40px; height: 40px; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px rgba(255, 106, 0, 0.35); }
 .adm-login__brand .mk svg { width: 23px; height: 23px; }
-.adm-login__brand .wm { font-family: var(--f-campaign); font-size: 1.4rem; line-height: 1; text-transform: uppercase; }
-.adm-login__brand .pl { font-family: var(--f-mono); font-size: 0.56rem; letter-spacing: 0.2em; color: var(--accent-strong); margin-top: 3px; }
-.adm-login h1 { font-family: var(--f-display); font-size: 1.5rem; font-weight: 800; text-transform: uppercase; line-height: 1.05; margin-bottom: 8px; }
+.adm-login__brand .wm { font-family: var(--f-campaign); font-size: 1.46rem; font-weight: 400; line-height: 1; letter-spacing: 0.01em; text-transform: uppercase; }
+.adm-login__brand .pl { font-size: 0.56rem; font-weight: 800; letter-spacing: 0.16em; color: var(--accent-strong); margin-top: 3px; }
+.adm-login h1 { font-family: var(--f-campaign); font-size: clamp(2.45rem, 8vw, 3.15rem); font-weight: 400; text-transform: uppercase; letter-spacing: 0.005em; line-height: 0.88; margin-bottom: 12px; }
 .adm-login p { font-size: 0.84rem; color: var(--ink-2); line-height: 1.5; margin-bottom: 20px; }
 
 /* Responsive */
@@ -192,6 +194,23 @@
   .adm-body { padding: 18px 16px 50px; }
   .adm-top { padding: 15px 16px; }
   .adm-kpis { display: none; }
+}
+
+@media (max-width: 600px) {
+  .adm-top { align-items: flex-start; }
+  .adm-top .sub { max-width: 290px; line-height: 1.35; }
+  .adm-body { padding: 14px 12px 44px; }
+  .adm-metrics { gap: 10px; }
+  .adm-mc { padding: 14px; }
+  .adm-mc__num { font-size: 1.7rem; }
+  .adm-row { align-items: flex-start; flex-direction: column; padding: 14px 16px; }
+  .adm-row__main { width: 100%; }
+  .adm-row__act { width: 100%; justify-content: flex-end; }
+  .adm-row__act .lv-btn { flex: 1; }
+  .adm-panel { overflow-x: auto; }
+  .adm-tbl { min-width: 680px; }
+  .adm-login { padding: 16px; align-items: flex-end; }
+  .adm-login__card { max-width: 480px; padding: 27px 22px calc(24px + env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0; }
 }
 
 /* =============================================================
