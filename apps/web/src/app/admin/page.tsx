@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import {
-  collection, doc, onSnapshot, query, where, orderBy, limit,
+  collection, collectionGroup, doc, onSnapshot, query, where, orderBy, limit,
   updateDoc, setDoc, serverTimestamp,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
@@ -11,15 +11,21 @@ import { SIMBOLO_PATH, formatUsd } from "@subastas-ve/shared";
 import {
   CaretDown,
   Clock,
+  ClockCounterClockwise,
   CreditCard,
   GearSix,
   GoogleLogo,
+  Gavel,
   MagnifyingGlass,
   Package,
   Plus,
+  ShoppingBag,
   SignOut,
   Storefront,
+  Tag,
+  UserPlus,
   UsersThree,
+  Wallet,
 } from "@phosphor-icons/react";
 
 // =============================================================
@@ -60,6 +66,11 @@ const METODO: Record<string, string> = {
   pago_movil: "Pago móvil", zelle: "Zelle", binance: "Binance",
   efectivo: "Efectivo", wallet: "Billetera",
 };
+const MOVIMIENTO: Record<string, string> = {
+  deposit: "Recarga acreditada", welcome_bonus: "Bono de bienvenida",
+  admin_credit: "Crédito administrativo", admin_debit: "Débito administrativo",
+  auction_payment: "Pago de una compra", refund: "Reembolso",
+};
 const MONTOS_RAPIDOS = [5, 10, 20, 50];
 
 const tiempoDesde = (t: any): string => {
@@ -74,6 +85,23 @@ const tiempoDesde = (t: any): string => {
   return `${a} año${a === 1 ? "" : "s"}`;
 };
 const fecha = (t: any) => t?.toDate?.()?.toLocaleString("es-VE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) ?? "—";
+const fechaMs = (t: any) => t?.toMillis?.() ?? t?.toDate?.()?.getTime?.() ?? (t ? new Date(t).getTime() : 0);
+
+type EventoPersona = {
+  id: string; tipo: "cuenta" | "recarga" | "saldo" | "oferta" | "publicacion" | "compra" | "venta";
+  titulo: string; detalle: string; cuando: any; monto?: number;
+};
+
+const IconoEvento = ({ tipo }: { tipo: EventoPersona["tipo"] }) => {
+  const props = { size: 17, weight: "bold" as const, "aria-hidden": true };
+  if (tipo === "cuenta") return <UserPlus {...props}/>;
+  if (tipo === "recarga") return <CreditCard {...props}/>;
+  if (tipo === "saldo") return <Wallet {...props}/>;
+  if (tipo === "oferta") return <Gavel {...props}/>;
+  if (tipo === "publicacion") return <Tag {...props}/>;
+  if (tipo === "compra") return <ShoppingBag {...props}/>;
+  return <Storefront {...props}/>;
+};
 
 const I = {
   cobranza: <CreditCard weight="bold" aria-hidden="true"/>,
@@ -126,6 +154,13 @@ export default function AdminPage() {
   // ── personas ──
   const [buscaP, setBuscaP] = useState("");
   const [abierta, setAbierta] = useState<string | null>(null);
+  const [movimientosPersona, setMovimientosPersona] = useState<any[]>([]);
+  const [ofertasPersona, setOfertasPersona] = useState<any[]>([]);
+  const [publicacionesPersona, setPublicacionesPersona] = useState<any[]>([]);
+  const [comprasPersona, setComprasPersona] = useState<any[]>([]);
+  const [ventasPersona, setVentasPersona] = useState<any[]>([]);
+  const [recargasPersona, setRecargasPersona] = useState<any[]>([]);
+  const [historialCargando, setHistorialCargando] = useState(false);
 
   // ── ventas ──
   const [filtro, setFiltro] = useState("todas");
@@ -176,6 +211,37 @@ export default function AdminPage() {
     ];
     return () => subs.forEach(u => u());
   }, [esAdmin]);
+
+  // La ficha de una persona carga su historial bajo demanda. Así el directorio
+  // sigue liviano y sólo escuchamos las colecciones necesarias al abrir una card.
+  useEffect(() => {
+    if (!esAdmin || !abierta) {
+      setMovimientosPersona([]); setOfertasPersona([]); setPublicacionesPersona([]);
+      setComprasPersona([]); setVentasPersona([]); setRecargasPersona([]);
+      setHistorialCargando(false);
+      return;
+    }
+
+    setHistorialCargando(true);
+    const recibidos = new Set<number>();
+    const listo = (indice: number) => {
+      recibidos.add(indice);
+      if (recibidos.size === 6) setHistorialCargando(false);
+    };
+    const escuchar = (indice: number, q: any, setter: (v: any[]) => void) => onSnapshot(q,
+      (s: any) => { setter(s.docs.map((d: any) => ({ id: d.id, ...d.data() }))); listo(indice); },
+      () => { setter([]); listo(indice); });
+
+    const subs = [
+      escuchar(0, query(collection(db, "walletTransactions"), where("userId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setMovimientosPersona),
+      escuchar(1, query(collectionGroup(db, "bids"), where("bidderId", "==", abierta), orderBy("placedAt", "desc"), limit(100)), setOfertasPersona),
+      escuchar(2, query(collection(db, "auctions"), where("sellerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setPublicacionesPersona),
+      escuchar(3, query(collection(db, "orders"), where("buyerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setComprasPersona),
+      escuchar(4, query(collection(db, "orders"), where("sellerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setVentasPersona),
+      escuchar(5, query(collection(db, "deposits"), where("userId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setRecargasPersona),
+    ];
+    return () => subs.forEach(u => u());
+  }, [esAdmin, abierta]);
 
   const correr = async (clave: string, fn: () => Promise<any>, exito: string) => {
     setOcupado(clave); setAviso(null);
@@ -620,7 +686,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <div className="adm-panel">
+              <div className="adm-panel adm-people__directory">
                 <div className="adm-people__toolbar">
                   <label className="adm-people__search">
                     <MagnifyingGlass size={19} weight="bold" aria-hidden="true"/>
@@ -639,8 +705,49 @@ export default function AdminPage() {
                 {personas.slice(0, 60).map(u => {
                   const w = saldoDe(u.id);
                   const abierto = abierta === u.id;
-                  const compras = comprasDe(u.id); const ventas = ventasDe(u.id); const deps = depositosDe(u.id);
+                  const compras = comprasDe(u.id); const ventas = ventasDe(u.id);
                   const esVendedor = u.sellerStatus === "approved";
+                  const comprasCompletas = abierto ? comprasPersona.filter(o => o.status !== "cancelled") : compras;
+                  const ventasCompletas = abierto ? ventasPersona.filter(o => o.status !== "cancelled") : ventas;
+                  const tituloDe = (auctionId?: string) => publicacionesPersona.find(a => a.id === auctionId)?.title ?? (auctionId ? `Venta #${auctionId.slice(-6).toUpperCase()}` : "Venta");
+                  const eventos: EventoPersona[] = abierto ? [
+                    {
+                      id: `cuenta-${u.id}`, tipo: "cuenta" as const, titulo: "Abrió su cuenta",
+                      detalle: esVendedor ? "Se registró y actualmente es vendedor" : "Se registró como comprador",
+                      cuando: u.createdAt,
+                    },
+                    ...recargasPersona.map(d => ({
+                      id: `recarga-${d.id}`, tipo: "recarga" as const,
+                      titulo: d.status === "approved" ? "Recarga acreditada" : d.status === "rejected" ? "Recarga rechazada" : "Reportó una recarga",
+                      detalle: `${METODO[d.method] ?? d.method ?? "Método sin indicar"}${d.reference ? ` · ref ${d.reference}` : ""}`,
+                      cuando: d.createdAt, monto: d.amountUsd ?? 0,
+                    })),
+                    ...movimientosPersona.map(m => ({
+                      id: `saldo-${m.id}`, tipo: "saldo" as const,
+                      titulo: MOVIMIENTO[m.type] ?? "Movimiento de saldo",
+                      detalle: m.note ?? "Movimiento registrado en su billetera",
+                      cuando: m.createdAt, monto: m.amountUsd ?? m.amount ?? 0,
+                    })),
+                    ...ofertasPersona.map(b => ({
+                      id: `oferta-${b.id}`, tipo: "oferta" as const, titulo: "Hizo un SUBELOO",
+                      detalle: tituloDe(b.auctionId), cuando: b.placedAt ?? b.createdAt, monto: b.amountUsd ?? 0,
+                    })),
+                    ...publicacionesPersona.map(a => ({
+                      id: `publicacion-${a.id}`, tipo: "publicacion" as const, titulo: `Publicó “${a.title ?? "Producto sin nombre"}”`,
+                      detalle: a.status === "active" ? "Publicación activa" : a.status === "sold" || a.status === "ended" ? "Publicación finalizada" : a.status === "cancelled" ? "Publicación cancelada" : `Estado: ${a.status ?? "sin indicar"}`,
+                      cuando: a.createdAt, monto: a.currentBidUsd ?? a.startingPriceUsd ?? 0,
+                    })),
+                    ...comprasPersona.map(o => ({
+                      id: `compra-${o.id}`, tipo: "compra" as const, titulo: `Compró “${o.productTitle ?? "Producto"}”`,
+                      detalle: `${ESTADO_ORDEN[o.status]?.texto ?? o.status ?? "Orden creada"}${o.sellerName ? ` · vendedor ${o.sellerName}` : ""}`,
+                      cuando: o.createdAt, monto: o.bidAmountUsd ?? 0,
+                    })),
+                    ...ventasPersona.map(o => ({
+                      id: `venta-${o.id}`, tipo: "venta" as const, titulo: `Vendió “${o.productTitle ?? "Producto"}”`,
+                      detalle: `${ESTADO_ORDEN[o.status]?.texto ?? o.status ?? "Orden creada"}${o.buyerName ? ` · comprador ${o.buyerName}` : ""}`,
+                      cuando: o.createdAt, monto: o.payoutUsd ?? o.sellerReceivesUsd ?? o.bidAmountUsd ?? 0,
+                    })),
+                  ].sort((a, b) => fechaMs(b.cuando) - fechaMs(a.cuando)) : [];
                   return (
                     <div key={u.id}>
                       <button className={`adm-person-row${abierto ? " is-open" : ""}`} onClick={() => setAbierta(abierto ? null : u.id)}>
@@ -674,31 +781,39 @@ export default function AdminPage() {
                         <div className="adm-persona">
                           <div className="adm-det__grid">
                             <div className="adm-det__stat"><div className="k">Saldo</div><div className="v">{formatUsd(w.saldo)}</div><div className="s">{bs(w.saldo) ?? "—"}</div></div>
-                            <div className="adm-det__stat"><div className="k">Compras</div><div className="v">{compras.length}</div><div className="s">{formatUsd(suma(compras))} gastados</div></div>
-                            <div className="adm-det__stat"><div className="k">Ventas</div><div className="v">{esVendedor ? ventas.length : "—"}</div><div className="s">{esVendedor ? `${formatUsd(suma(ventas))} vendidos` : "no vende"}</div></div>
+                            <div className="adm-det__stat"><div className="k">Compras</div><div className="v">{comprasCompletas.length}</div><div className="s">{formatUsd(suma(comprasCompletas))} gastados</div></div>
+                            <div className="adm-det__stat"><div className="k">Ventas</div><div className="v">{esVendedor ? ventasCompletas.length : "—"}</div><div className="s">{esVendedor ? `${formatUsd(suma(ventasCompletas))} vendidos` : "no vende"}</div></div>
                             <div className="adm-det__stat"><div className="k">En la app</div><div className="v" style={{ fontSize: "1.05rem", paddingTop: 3 }}>{tiempoDesde(u.createdAt)}</div><div className="s">{u.ratingAvg ? `${u.ratingAvg.toFixed(1)}★` : "sin calificar"}</div></div>
                           </div>
 
-                          <div className="adm-row__meta" style={{ whiteSpace: "normal", lineHeight: 1.7 }}>
-                            WhatsApp: {u.whatsapp
-                              ? <a href={`https://wa.me/${String(u.whatsapp).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent-strong)", fontWeight: 700 }}>{u.whatsapp}</a>
-                              : "—"}
-                            {" · "}Correo: {u.email ?? "—"}
-                            {u.cedula ? <> · Cédula: {u.cedula}</> : null}
-                            {u.shopName ? <> · Tienda: <b>{u.shopName}</b></> : null}
+                          <div className="adm-persona__profile-grid">
+                            <div><span>Correo</span><b>{u.email ?? "—"}</b></div>
+                            <div><span>WhatsApp</span>{u.whatsapp ? <a href={`https://wa.me/${String(u.whatsapp).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">{u.whatsapp}</a> : <b>—</b>}</div>
+                            <div><span>Cédula</span><b>{u.cedula ?? "—"}</b></div>
+                            <div><span>Ciudad</span><b>{u.city ?? "—"}</b></div>
+                            <div><span>Tienda</span><b>{u.shopName ?? "No tiene tienda"}</b></div>
+                            <div><span>Cuenta creada</span><b>{fecha(u.createdAt)}</b></div>
                           </div>
 
-                          {deps.length > 0 && (
-                            <div className="adm-persona__hist">
-                              <div className="t">Sus recargas</div>
-                              {deps.slice(0, 5).map(d => (
-                                <div key={d.id} className="l">
-                                  <span>{fecha(d.createdAt)} · {METODO[d.method] ?? d.method} · ref {d.reference}</span>
-                                  <strong>{formatUsd(d.amountUsd ?? 0)} · {(ESTADO_DEP[d.status] ?? { texto: d.status }).texto}</strong>
-                                </div>
-                              ))}
+                          <div className="adm-persona__hist">
+                            <div className="adm-persona__hist-head">
+                              <div><ClockCounterClockwise size={18} weight="bold" aria-hidden="true"/><span>Historial completo</span></div>
+                              <span>{historialCargando ? "Cargando…" : `${eventos.length} eventos`}</span>
                             </div>
-                          )}
+                            {historialCargando && <div className="adm-persona__loading">Buscando compras, ventas, SUBELOOS y movimientos…</div>}
+                            {!historialCargando && eventos.length === 0 && <div className="adm-empty">Todavía no hay actividad registrada.</div>}
+                            {!historialCargando && eventos.slice(0, 150).map(e => (
+                              <div key={e.id} className={`adm-persona__event adm-persona__event--${e.tipo}`}>
+                                <span className="adm-persona__event-icon"><IconoEvento tipo={e.tipo}/></span>
+                                <div><b>{e.titulo}</b><span>{e.detalle}</span></div>
+                                <div className="adm-persona__event-side">
+                                  {typeof e.monto === "number" && e.monto !== 0 && <strong>{e.monto > 0 && e.tipo === "saldo" ? "+" : ""}{formatUsd(e.monto)}</strong>}
+                                  <time>{fecha(e.cuando)}</time>
+                                </div>
+                              </div>
+                            ))}
+                            {!historialCargando && eventos.length > 150 && <div className="adm-persona__limit">Mostrando los 150 eventos más recientes.</div>}
+                          </div>
 
                           <div className="adm-persona__acciones">
                             <button className="lv-btn lv-btn--accent lv-btn--sm" onClick={() => { setElegido(u); setSeccion("cobranza"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
