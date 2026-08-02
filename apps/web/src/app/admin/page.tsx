@@ -233,12 +233,12 @@ export default function AdminPage() {
       () => { setter([]); listo(indice); });
 
     const subs = [
-      escuchar(0, query(collection(db, "walletTransactions"), where("userId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setMovimientosPersona),
-      escuchar(1, query(collectionGroup(db, "bids"), where("bidderId", "==", abierta), orderBy("placedAt", "desc"), limit(100)), setOfertasPersona),
-      escuchar(2, query(collection(db, "auctions"), where("sellerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setPublicacionesPersona),
-      escuchar(3, query(collection(db, "orders"), where("buyerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setComprasPersona),
-      escuchar(4, query(collection(db, "orders"), where("sellerId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setVentasPersona),
-      escuchar(5, query(collection(db, "deposits"), where("userId", "==", abierta), orderBy("createdAt", "desc"), limit(100)), setRecargasPersona),
+      escuchar(0, query(collection(db, "walletTransactions"), where("userId", "==", abierta), orderBy("createdAt", "desc")), setMovimientosPersona),
+      escuchar(1, query(collectionGroup(db, "bids"), where("bidderId", "==", abierta), orderBy("placedAt", "desc")), setOfertasPersona),
+      escuchar(2, query(collection(db, "auctions"), where("sellerId", "==", abierta), orderBy("createdAt", "desc")), setPublicacionesPersona),
+      escuchar(3, query(collection(db, "orders"), where("buyerId", "==", abierta), orderBy("createdAt", "desc")), setComprasPersona),
+      escuchar(4, query(collection(db, "orders"), where("sellerId", "==", abierta), orderBy("createdAt", "desc")), setVentasPersona),
+      escuchar(5, query(collection(db, "deposits"), where("userId", "==", abierta), orderBy("createdAt", "desc")), setRecargasPersona),
     ];
     return () => subs.forEach(u => u());
   }, [esAdmin, abierta]);
@@ -802,7 +802,7 @@ export default function AdminPage() {
                             </div>
                             {historialCargando && <div className="adm-persona__loading">Buscando compras, ventas, SUBELOOS y movimientos…</div>}
                             {!historialCargando && eventos.length === 0 && <div className="adm-empty">Todavía no hay actividad registrada.</div>}
-                            {!historialCargando && eventos.slice(0, 150).map(e => (
+                            {!historialCargando && eventos.map(e => (
                               <div key={e.id} className={`adm-persona__event adm-persona__event--${e.tipo}`}>
                                 <span className="adm-persona__event-icon"><IconoEvento tipo={e.tipo}/></span>
                                 <div><b>{e.titulo}</b><span>{e.detalle}</span></div>
@@ -812,7 +812,6 @@ export default function AdminPage() {
                                 </div>
                               </div>
                             ))}
-                            {!historialCargando && eventos.length > 150 && <div className="adm-persona__limit">Mostrando los 150 eventos más recientes.</div>}
                           </div>
 
                           <div className="adm-persona__acciones">
