@@ -531,7 +531,11 @@ button:disabled { cursor: not-allowed; }
 }
 
 .vlo-flow-hero__eyebrow {
-  margin-bottom: 9px;
+  /* Los titulares van en Anton con interlineado 0.86, más apretado que la caja
+     real de la letra: una mayúscula con tilde (la Í de MÍRALO) se sube por
+     encima de su línea y llega a tocar este antetítulo. El margen le da el
+     aire que la tilde necesita. */
+  margin-bottom: 16px;
   color: rgba(255,255,255,0.84);
   font-size: 0.65rem;
   font-weight: 900;
