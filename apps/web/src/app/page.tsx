@@ -15,7 +15,10 @@ interface Show {
   viewerCount?: number; totalProducts?: number; coverImageURL?: string;
 }
 
-const CATEGORIAS = ["Para Ti", "Moda y Ropa", "Electronica", "Calzado", "Joyas y Relojes", "Hogar", "Deportes"];
+// Las fichas salen de lo que HAY publicado, no de una lista fija. Con una
+// lista fija de 7 de las 26 categorías, un producto en "Consolas y
+// Videojuegos" no se encontraba navegando — y las fichas mostraban
+// categorías vacías. Ordenadas por cantidad: primero donde hay más que ver.
 
 export default function Home() {
   const router = useRouter();
@@ -93,8 +96,21 @@ export default function Home() {
     .slice(0, 5)
     .map(t => ({ ...t, avatar: avatares[t.id] }));
 
+  const categorias = (() => {
+    const cuenta = new Map<string, number>();
+    for (const a of auctions) {
+      const c = (a as any).category;
+      if (c) cuenta.set(c, (cuenta.get(c) ?? 0) + 1);
+    }
+    return ["Para Ti", ...Array.from(cuenta.entries()).sort((x, y) => y[1] - x[1]).map(([c]) => c)];
+  })();
+
+  // Si la categoría elegida se queda sin nada (cerró la última venta), se
+  // vuelve a "Para Ti" en vez de dejar la pantalla vacía sin explicación.
+  const catActiva = categorias.includes(cat) ? cat : "Para Ti";
+
   const visibles = auctions
-    .filter(a => cat === "Para Ti" || (a as any).category === cat)
+    .filter(a => catActiva === "Para Ti" || (a as any).category === catActiva)
     .sort((a, b) => ms((a as any).endsAt) - ms((b as any).endsAt));
 
   return (
@@ -130,8 +146,8 @@ export default function Home() {
 
       {/* Categorías */}
       <div className="lv-chips">
-        {CATEGORIAS.map(c => (
-          <button key={c} onClick={() => setCat(c)} className={`lv-chip${cat === c ? " lv-chip--active" : ""}`}>
+        {categorias.map(c => (
+          <button key={c} onClick={() => setCat(c)} className={`lv-chip${catActiva === c ? " lv-chip--active" : ""}`}>
             {c}
           </button>
         ))}

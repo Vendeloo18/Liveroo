@@ -216,7 +216,14 @@ export default function ActivityPage() {
         )}
 
         {tab === "compras" && (
-          ordenes.length === 0 ? (
+          // Sin esta espera, el que ACABA de ganar veía "Aún no has ganado
+          // nada" durante el primer instante — justo cuando entra ilusionado
+          // a ver su orden.
+          cargando ? (
+            <div style={{ display: "grid", gap: 10 }}>
+              {[0,1,2].map(i => <div key={i} className="lv-skel" style={{ height: 76 }}/>)}
+            </div>
+          ) : ordenes.length === 0 ? (
             <div className="lv-empty">
               <div className="lv-empty__icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
