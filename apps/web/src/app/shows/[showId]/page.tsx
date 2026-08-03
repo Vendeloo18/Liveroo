@@ -30,6 +30,12 @@ interface Corazon { id: number; x: number; hue: number; emoji: string }
 
 const EMOJIS = ["❤️", "🔥", "😂", "👏"];
 
+// Un "se unió" vale mientras es noticia: dos minutos.
+const reciente = (t: any) => {
+  const ms = t?.toMillis?.() ?? (t ? new Date(t).getTime() : 0);
+  return ms > 0 && Date.now() - ms < 120_000;
+};
+
 export default function ShowPage() {
   const { showId } = useParams() as { showId: string };
   const router = useRouter();
@@ -108,6 +114,19 @@ export default function ShowPage() {
       setBidInput(calcMinNextBid(a.currentBidUsd, a.minIncrementUsd, (a.bidsCount ?? 0) > 0).toFixed(2));
     });
   }, [show?.currentAuctionId]);
+
+  // "Fulano se unió": lo escribe el propio dispositivo al entrar, una sola
+  // vez por show. El vendedor no se anuncia (es su casa) y el aviso no
+  // lleva texto libre: el nombre lo validan las reglas contra el perfil.
+  const anunciado = useRef(false);
+  useEffect(() => {
+    if (!profile || !show || show.status !== "live" || esHost || anunciado.current) return;
+    anunciado.current = true;
+    addDoc(collection(db, "shows", showId, "messages"), {
+      showId, authorId: profile.uid, authorName: profile.displayName ?? "Alguien",
+      type: "join", text: "", createdAt: serverTimestamp(),
+    }).catch(() => undefined);
+  }, [profile?.uid, show?.status, esHost, showId]);
 
   useEffect(() => {
     const q = query(collection(db, "shows", showId, "messages"), orderBy("createdAt", "desc"), limit(40));
@@ -243,7 +262,10 @@ export default function ShowPage() {
     const ahora = Date.now();
     if (profile && ahora - ultimoCorazon.current > 300) {
       ultimoCorazon.current = ahora;
-      httpsCallable(functions, "sendReactionV2")({ showId, emoji }).catch(() => undefined);
+      // v1: la v2 corre con la cuenta de servicio de Cloud Run, que en este
+      // proyecto no tiene acceso a Firestore — las reacciones fallaban en
+      // silencio, igual que pasaba con el token del video.
+      httpsCallable(functions, "sendReaction")({ showId, emoji }).catch(() => undefined);
     }
   };
 
@@ -378,12 +400,22 @@ export default function ShowPage() {
         }}
       >
         {mensajes.map(m => (
-          <div key={m.id} style={{ fontSize: "0.79rem", lineHeight: 1.4, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-            {m.type === "chat" && (
-              <span style={{ fontWeight: 800, color: "rgba(255,255,255,0.55)", marginRight: 6 }}>{m.authorName}</span>
-            )}
-            <span style={{ color: colorMensaje(m.type), fontWeight: m.type === "chat" ? 500 : 700 }}>{m.text}</span>
-          </div>
+          m.type === "join" ? (
+            // Entra y se va: pasado un rato deja de mostrarse para no
+            // llenar el chat de gente que llegó hace media hora.
+            reciente(m.createdAt) ? (
+              <div key={m.id} style={{ fontSize: "0.74rem", lineHeight: 1.4, color: "rgba(255,255,255,0.5)", fontWeight: 600, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 800 }}>{m.authorName}</span> se unió
+              </div>
+            ) : null
+          ) : (
+            <div key={m.id} style={{ fontSize: "0.79rem", lineHeight: 1.4, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+              {m.type === "chat" && (
+                <span style={{ fontWeight: 800, color: "rgba(255,255,255,0.55)", marginRight: 6 }}>{m.authorName}</span>
+              )}
+              <span style={{ color: colorMensaje(m.type), fontWeight: m.type === "chat" ? 500 : 700 }}>{m.text}</span>
+            </div>
+          )
         ))}
       </div>
 

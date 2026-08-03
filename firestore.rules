@@ -282,9 +282,14 @@ service cloud.firestore {
           // El nombre que se muestra es el del perfil real: sin esto se
           // podía chatear suplantando a cualquiera con authorId propio.
           && request.resource.data.authorName == get(/databases/$(database)/documents/users/$(uid())).data.displayName
-          && request.resource.data.type == 'chat'
+          // 'join' es el aviso de que alguien entró al vivo: lo escribe su
+          // propio dispositivo al conectarse, con su nombre real, y sin
+          // texto libre — así no sirve para colar mensajes disfrazados.
+          && request.resource.data.type in ['chat', 'join']
           && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
+          && (request.resource.data.type == 'join'
+              ? request.resource.data.text == ''
+              : request.resource.data.text.size() > 0)
           && request.resource.data.text.size() <= 300
           // La hora la pone el servidor. Con fecha libre se podían mandar
           // 40 mensajes fechados en el año 2999: se clavaban arriba de la

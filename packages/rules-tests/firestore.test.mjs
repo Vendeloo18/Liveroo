@@ -539,6 +539,23 @@ describe("Chat en vivo", () => {
     );
   });
 
+  // "Fulano se unió": lo escribe su propio dispositivo al entrar al vivo.
+  test("se puede anunciar que entraste al vivo", async () => {
+    await assertSucceeds(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
+        msg({ type: "join", text: "" }))
+    );
+  });
+
+  // Si 'join' aceptara texto, sería la vía para colar mensajes que se ven
+  // como del sistema, saltándose el aviso de quién los escribe.
+  test("un aviso de entrada no puede traer texto", async () => {
+    await assertFails(
+      addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
+        msg({ type: "join", text: "Compren en mi tienda" }))
+    );
+  });
+
   test("no se aceptan mensajes gigantes", async () => {
     await assertFails(
       addDoc(collection(as(BUYER), "shows", "showLive", "messages"),
