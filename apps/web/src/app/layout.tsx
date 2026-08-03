@@ -6,6 +6,7 @@ import { AuthProvider } from "../components/ui/AuthProvider";
 import { BottomNavWrapper } from "../components/ui/BottomNavWrapper";
 import { PushForeground } from "../components/ui/PushForeground";
 import { AutoActualizar } from "../components/ui/AutoActualizar";
+import { InstalarApp } from "../components/ui/InstalarApp";
 
 // Dos tipografías, cada una con un trabajo claro en toda la aplicación:
 //
@@ -85,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {children}
           <PushForeground/>
+          <InstalarApp/>
           <BottomNavWrapper/>
         </AuthProvider>
       </body>
