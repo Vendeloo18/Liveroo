@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CaretDoubleRight, Check } from "@phosphor-icons/react";
 
 /**
- * SUBELOO: el gesto distintivo de Vendeloo.
+ * PUJALOO: el gesto distintivo de Vendeloo.
  *
  * La etiqueta queda centrada de verdad, la perilla responde sin depender del
  * ritmo de render de React y el mismo control funciona con puntero, tacto y

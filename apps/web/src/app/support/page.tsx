@@ -31,8 +31,8 @@ const GRUPOS: Grupo[] = [
         a: "No. Puedes explorar todo sin cuenta. Necesitas cuenta para ofertar, para ver las transmisiones en vivo y para vender.",
       },
       {
-        q: "¿Qué significan MIRALOO, SUBELOO y RECIBELOO?",
-        a: "Son los tres pasos: MIRALOO es ver lo que hay, SUBELOO es hacer tu oferta (deslizando el botón), y RECIBELOO es coordinar la entrega cuando ganas.",
+        q: "¿Qué significan MÍRALO EN VIVO, PUJALOO y GANALOO?",
+        a: "Son los tres pasos: MÍRALO EN VIVO es ver lo que hay, PUJALOO es hacer tu oferta (deslizando el botón), y GANALOO es coordinar la entrega cuando ganas.",
       },
       {
         q: "¿Cuánto cuesta usar la app?",

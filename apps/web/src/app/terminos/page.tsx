@@ -26,14 +26,14 @@ export default function TerminosPage() {
       </Sec>
 
       <Sec n={3} titulo="Cómo funcionan las ventas por ofertas">
-        Cada oferta hecha con SUBELOO es un <strong>compromiso real de compra</strong>: si tu oferta
+        Cada oferta hecha con PUJALOO es un <strong>compromiso real de compra</strong>: si tu oferta
         queda de primera al cierre, te llevas el producto y se crea una orden a tu nombre. El precio se congela en bolívares
         a la tasa vigente en ese momento. Si alguien mejora el precio en los últimos segundos, el reloj
         puede estirarse para que nadie gane por sorpresa.
       </Sec>
 
       <Sec n={4} titulo="Billetera y recargas">
-        Durante la beta, usar SUBELOO puede requerir <strong>saldo en tu billetera</strong>. Las
+        Durante la beta, usar PUJALOO puede requerir <strong>saldo en tu billetera</strong>. Las
         recargas se acreditan a mano una vez que el equipo verifica tu pago. El saldo solo
         sirve para respaldar ofertas y pagar dentro de {BRAND.name}. Al quedar primero con saldo, el monto se
         descuenta automáticamente y tu orden queda pagada.{" "}
@@ -52,7 +52,7 @@ export default function TerminosPage() {
 
       <Sec n={6} titulo="Sin cancelaciones ni reembolsos">
         En esta etapa, las órdenes <strong>no se cancelan ni se reembolsan</strong> una vez
-        creadas. Piensa bien antes de usar SUBELOO: una oferta ganadora es una compra.
+        creadas. Piensa bien antes de usar PUJALOO: una oferta ganadora es una compra.
       </Sec>
 
       <Sec n={7} titulo="Conducta">

@@ -155,7 +155,7 @@ export default function WalletPage() {
 
         {/* Saldo */}
         <section className="lv-panel" style={{ textAlign: "center", padding: "22px 16px" }}>
-          <div className="lv-eyebrow">Disponible para SUBELOO</div>
+          <div className="lv-eyebrow">Disponible para PUJALOO</div>
           <div className="lv-price lv-price--xl" style={{ fontSize: "2.1rem", marginTop: 4 }}>
             {saldo === null ? "…" : formatUsd(Math.max(0, saldo.total - saldo.retenido))}
           </div>

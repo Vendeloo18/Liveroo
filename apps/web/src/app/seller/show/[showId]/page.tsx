@@ -191,7 +191,7 @@ export default function SellerShowPage() {
   // Invitar gente: comparte el link del show (WhatsApp/redes) o lo copia.
   const compartir = async () => {
     const url = `${window.location.origin}/shows/${showId}`;
-    const texto = `🔴 Estoy vendiendo EN VIVO en ${BRAND.name}. ¡Entra a mirar y usa SUBELOO! ${url}`;
+    const texto = `🔴 Estoy vendiendo EN VIVO en ${BRAND.name}. ¡Entra a mirar y usa PUJALOO! ${url}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
         await (navigator as any).share({ title: `${BRAND.name} — En vivo`, text: texto, url });

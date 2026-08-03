@@ -6,9 +6,9 @@ import { BRAND } from "@subastas-ve/shared";
 import { Logo } from "./Logo";
 
 const PASOS = [
-  { titulo: "MIRALOO", texto: "Descubre productos en directo.", Icono: Eye },
-  { titulo: "SUBELOO", texto: "Sube tu oferta en segundos.", Icono: Gavel },
-  { titulo: "RECIBELOO", texto: "Gana y coordina la entrega.", Icono: Trophy },
+  { titulo: "MÍRALO EN VIVO", texto: "Descubre productos en directo.", Icono: Eye },
+  { titulo: "PUJALOO", texto: "Sube tu oferta en segundos.", Icono: Gavel },
+  { titulo: "GANALOO", texto: "Gana y coordina la entrega.", Icono: Trophy },
 ];
 
 /**

@@ -760,7 +760,7 @@ export default function AdminPage() {
                       cuando: m.createdAt, monto: m.amountUsd ?? m.amount ?? 0,
                     })),
                     ...ofertasPersona.map(b => ({
-                      id: `oferta-${b.id}`, tipo: "oferta" as const, titulo: "Hizo un SUBELOO",
+                      id: `oferta-${b.id}`, tipo: "oferta" as const, titulo: "Hizo un PUJALOO",
                       detalle: tituloDe(b.auctionId), cuando: b.placedAt ?? b.createdAt, monto: b.amountUsd ?? 0,
                     })),
                     ...publicacionesPersona.map(a => ({
@@ -850,7 +850,7 @@ export default function AdminPage() {
                               <div><ClockCounterClockwise size={18} weight="bold" aria-hidden="true"/><span>Historial completo</span></div>
                               <span>{historialCargando ? "Cargando…" : `${eventos.length} eventos`}</span>
                             </div>
-                            {historialCargando && <div className="adm-persona__loading">Buscando compras, ventas, SUBELOOS y movimientos…</div>}
+                            {historialCargando && <div className="adm-persona__loading">Buscando compras, ventas, PUJALOOS y movimientos…</div>}
                             {!historialCargando && eventos.length === 0 && <div className="adm-empty">Todavía no hay actividad registrada.</div>}
                             {!historialCargando && eventos.map(e => (
                               <div key={e.id} className={`adm-persona__event adm-persona__event--${e.tipo}`}>

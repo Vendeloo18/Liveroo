@@ -18,7 +18,7 @@ interface Prefs { shows: boolean; pujas: boolean; ordenes: boolean; promo: boole
 const POR_DEFECTO: Prefs = { shows: true, pujas: true, ordenes: true, promo: false };
 
 const AVISOS: [keyof Prefs, string, string][] = [
-  ["pujas", "Superaron tu oferta", "Para que puedas usar SUBELOO a tiempo"],
+  ["pujas", "Superaron tu oferta", "Para que puedas usar PUJALOO a tiempo"],
   ["ordenes", "Cambios en tus órdenes", "Pago confirmado, envío y entrega"],
   ["promo", "Novedades y promociones", `Ofertas y anuncios de ${BRAND.name}`],
 ];

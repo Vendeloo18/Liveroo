@@ -23,7 +23,9 @@ const CELEBRATION_MS = 3200;
 const escenas = [
   {
     eyebrow: "Paso 1 de 2 · Descubre",
-    title: <>MIRALOO.<br/>DESCUBRE.</>,
+    // Apilado en dos líneas: "MÍRALO EN VIVO. DESCUBRE." en un titular de
+    // campaña se parte solo y queda desordenado.
+    title: <>MÍRALO.<br/>EN VIVO.</>,
     description: "Productos reales, vendedores en vivo y oportunidades en segundos.",
     imageSrc: "/brand/onboarding-productos-v2.png",
     imageAlt: "Control, teléfono y zapatos disponibles en Vendeloo",
@@ -31,7 +33,7 @@ const escenas = [
   },
   {
     eyebrow: "Paso 2 de 2 · Participa",
-    title: <>SUBELOO.<br/>RECIBELOO.</>,
+    title: <>PUJALOO.<br/>GANALOO.</>,
     description: "Haz el gesto una vez y recibe $1 para comenzar.",
     imageSrc: "/brand/onboarding-productos-live-v3.png",
     imageAlt: "Consola portátil, cámara instantánea y reloj inteligente disponibles en Vendeloo",
@@ -103,7 +105,7 @@ export default function OnboardingPage() {
       ? "¡TE GANASTE $1!"
       : bonusEstado === "acreditado"
         ? "TU $1 YA ESTÁ ACREDITADO"
-        : "SUBELOO";
+        : "PUJALOO";
 
   return (
     <main className={`vlo-flow-shell vlo-onb vlo-onb--step-${paso + 1}`}>
@@ -133,19 +135,19 @@ export default function OnboardingPage() {
                 <div>
                   <span className="vlo-onb__process-number">1</span>
                   <span className="vlo-onb__process-icon"><Eye size={28} weight="bold"/></span>
-                  <b>MIRALOO</b>
+                  <b>MÍRALO EN VIVO</b>
                 </div>
                 <i aria-hidden="true"/>
                 <div>
                   <span className="vlo-onb__process-number">2</span>
                   <span className="vlo-onb__process-icon"><Gavel size={28} weight="bold"/></span>
-                  <b>SUBELOO</b>
+                  <b>PUJALOO</b>
                 </div>
                 <i aria-hidden="true"/>
                 <div>
                   <span className="vlo-onb__process-number">3</span>
                   <span className="vlo-onb__process-icon"><Trophy size={28} weight="bold"/></span>
-                  <b>RECIBELOO</b>
+                  <b>GANALOO</b>
                 </div>
               </div>
 
@@ -162,7 +164,7 @@ export default function OnboardingPage() {
                 <SlideToBid
                   key={bonusIntento}
                   prominent
-                  label="SUBELOO"
+                  label="PUJALOO"
                   successLabel={successLabel}
                   holdSuccess
                   disabled={subido}

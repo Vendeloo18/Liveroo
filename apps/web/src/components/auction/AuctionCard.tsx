@@ -93,7 +93,7 @@ export function AuctionCard({ auction, onClick }: { auction: AuctionCardData; on
             <div className="lv-price">${precio % 1 === 0 ? precio : precio.toFixed(2)}</div>
             {pujas > 0 && <span className="lv-dim" style={{ fontSize: "0.7rem", fontWeight: 600 }}>{pujas} {pujas === 1 ? "oferta" : "ofertas"}</span>}
           </div>
-          <span className="lv-btn lv-btn--sm lv-btn--accent">SUBELOO</span>
+          <span className="lv-btn lv-btn--sm lv-btn--accent">PUJALOO</span>
         </div>
       </div>
     </article>

@@ -914,9 +914,17 @@ button:disabled { cursor: not-allowed; }
 
 .vlo-onb__process b {
   display: block;
-  font-size: 0.78rem;
+  /* "MÍRALO EN VIVO" es bastante más largo que "PUJALOO" y "GANALOO": se
+     achica un punto y se permite que ocupe dos líneas sin descuadrar la
+     fila, que es de tres columnas iguales. */
+  font-size: 0.72rem;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
+  min-height: 2.3em;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: center;
 }
 
 .vlo-onb__process p {
@@ -1200,7 +1208,7 @@ button:disabled { cursor: not-allowed; }
   text-transform: uppercase;
 }
 
-/* SUBELOO: una acción imposible de confundir con un botón normal. */
+/* PUJALOO: una acción imposible de confundir con un botón normal. */
 .vlo-subeloo {
   --subeloo-color: var(--accent);
   --subeloo-height: 52px;

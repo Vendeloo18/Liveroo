@@ -272,7 +272,7 @@ export default function ShowPage() {
   // Invitar: compartir el link del vivo (WhatsApp/redes) o copiarlo.
   const compartir = async () => {
     const url = `${window.location.origin}/shows/${showId}`;
-    const texto = `🔴 ${show?.sellerName ?? "Un vendedor"} está EN VIVO en Vendeloo. ¡Entra y usa SUBELOO! ${url}`;
+    const texto = `🔴 ${show?.sellerName ?? "Un vendedor"} está EN VIVO en Vendeloo. ¡Entra y usa PUJALOO! ${url}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
         await (navigator as any).share({ title: "Vendeloo — En vivo", text: texto, url });
@@ -471,7 +471,7 @@ export default function ShowPage() {
             borderRadius: 12, padding: "9px 13px", fontSize: "0.78rem", fontWeight: 700, textAlign: "center",
             background: estado === "ok" ? "rgba(20,164,77,0.9)" : "rgba(245,51,63,0.9)", color: "#fff",
           }}>
-            {estado === "ok" ? "¡SUBELOO! Oferta registrada" : error}
+            {estado === "ok" ? "¡PUJALOO! Oferta registrada" : error}
           </div>
         </div>
       )}
@@ -506,11 +506,11 @@ export default function ShowPage() {
                     className="lv-btn lv-btn--accent"
                     style={{ width: "100%", height: 48, borderRadius: 999 }}
                   >
-                    Recargar para usar SUBELOO
+                    Recargar para usar PUJALOO
                   </button>
                 ) : (
                   <SlideToBid
-                    label={estado === "pending" ? "Validando…" : `SUBELOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
+                    label={estado === "pending" ? "Validando…" : `PUJALOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
                     color={superado ? "var(--error)" : "var(--accent)"}
                     disabled={estado === "pending"}
                     onConfirm={() => pujar(parseFloat(bidInput) || minimo)}

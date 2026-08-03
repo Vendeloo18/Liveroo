@@ -178,7 +178,7 @@ export default function AuctionPage() {
     const url = `${window.location.origin}/auctions/${auctionId}`;
     try {
       if (typeof navigator !== "undefined" && (navigator as any).share) {
-        await (navigator as any).share({ title: "Vendeloo", text: `MIRALOO en Vendeloo: ${auction?.title ?? ""}. SUBELOO y RECIBELOO.`, url });
+        await (navigator as any).share({ title: "Vendeloo", text: `MÍRALO EN VIVO en Vendeloo: ${auction?.title ?? ""}. PUJALOO y GANALOO.`, url });
       } else {
         await navigator.clipboard.writeText(url);
         setCopiado(true); setTimeout(() => setCopiado(false), 2200);
@@ -345,7 +345,7 @@ export default function AuctionPage() {
       {/* Barra fija de puja */}
       {puedePujar && (
         <div style={{ position: "fixed", bottom: "var(--nav-h)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: "var(--app-max)", background: "var(--bg)", borderTop: "1px solid var(--line)", padding: "12px 16px 14px", zIndex: 50, boxShadow: "0 -6px 20px rgba(11,11,13,0.05)" }}>
-          {estado === "ok" && <div className="lv-note lv-note--ok" style={{ marginBottom: 10 }}>¡SUBELOO! Oferta registrada</div>}
+          {estado === "ok" && <div className="lv-note lv-note--ok" style={{ marginBottom: 10 }}>¡PUJALOO! Oferta registrada</div>}
           {estado === "err" && error && <div className="lv-note lv-note--bad" style={{ marginBottom: 10 }}>{error}</div>}
 
           {exigeSaldo && profile && (
@@ -372,10 +372,10 @@ export default function AuctionPage() {
               {voyGanando ? (
                 <VasGanandoPill/>
               ) : saldoCorto ? (
-                <button onClick={() => router.push("/wallet")} className="lv-btn lv-btn--accent" style={{ width: "100%", height: BID_H, borderRadius: 999 }}>Recargar para usar SUBELOO</button>
+                <button onClick={() => router.push("/wallet")} className="lv-btn lv-btn--accent" style={{ width: "100%", height: BID_H, borderRadius: 999 }}>Recargar para usar PUJALOO</button>
               ) : (
                 <SlideToBid
-                  label={estado === "pending" ? "Validando…" : `SUBELOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
+                  label={estado === "pending" ? "Validando…" : `PUJALOO · ${formatUsd(parseFloat(bidInput) || minimo)}`}
                   color={superado ? "var(--error)" : "var(--accent)"}
                   disabled={estado === "pending"}
                   onConfirm={() => pujar(parseFloat(bidInput) || minimo)}

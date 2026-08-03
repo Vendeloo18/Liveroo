@@ -113,7 +113,7 @@ export default function AuthPage() {
         imageAlt="Audífonos presentados en una venta en vivo de Vendeloo"
         eyebrow="Vendeloo · Ventas en vivo"
         title={<>COMPRAR<br/>EN VIVO ES<br/>ASÍ DE FÁCIL.</>}
-        description="MIRALOO · SUBELOO · RECIBELOO."
+        description="MÍRALO EN VIVO · PUJALOO · GANALOO."
         actionLabel="Explorar"
         onAction={() => router.push("/")}
         variant="entry"

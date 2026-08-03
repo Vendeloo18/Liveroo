@@ -190,7 +190,7 @@ export default function ActivityPage() {
                   <path d="M14 11l-8 8M9 6l9 9M3 21h6M12.5 3.5l8 8"/>
                 </svg>
               </div>
-              <div className="lv-empty__title">Todavía no has usado SUBELOO</div>
+              <div className="lv-empty__title">Todavía no has usado PUJALOO</div>
               <div className="lv-empty__text">Cuando pujes, aquí ves si vas ganando.</div>
               <button className="lv-btn lv-btn--accent" style={{ marginTop: 16 }} onClick={() => router.push("/auctions")}>
                 Ver ventas
