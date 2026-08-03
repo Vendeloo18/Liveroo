@@ -94,6 +94,8 @@ export default function SellerPage() {
   const [tShow, setTShow] = useState("");
   const [dShow, setDShow] = useState("");
   const [catShow, setCatShow] = useState("Moda y Ropa");
+  const [verCategorias, setVerCategorias] = useState(false);
+  const [verDescripcion, setVerDescripcion] = useState(false);
 
   // Solicitud de vendedor (estado no-aprobado)
   const [solTienda, setSolTienda] = useState("");
@@ -112,6 +114,11 @@ export default function SellerPage() {
     setSolCiudad(actual => actual || p.city || "");
     setSolTienda(actual => actual || p.shopName || "");
     setSolCat(actual => p.sellerCat || actual);
+    // Salir en vivo no debería empezar por llenar una ficha: el nombre de
+    // la tienda y la categoría ya los eligió al hacerse vendedor. Se
+    // proponen y se sale al aire; ambos se pueden cambiar antes de crear.
+    setTShow(actual => actual || (p.shopName ? `${p.shopName} en vivo` : ""));
+    setCatShow(actual => p.sellerCat || actual);
   }, [profile]);
 
   useEffect(() => {
@@ -490,27 +497,50 @@ export default function SellerPage() {
             <input id="ts" className="lv-input" value={tShow} onChange={e => setTShow(e.target.value)} placeholder="Sneakers exclusivos importados"/>
           </div>
 
-          <div className="lv-field">
-            <label className="lv-field__label" htmlFor="ds">Descripción</label>
-            <textarea id="ds" className="lv-input" rows={3} value={dShow} onChange={e => setDShow(e.target.value)} placeholder="Qué vas a vender en vivo"/>
-          </div>
+          {/* La categoría se muestra resuelta, no como un muro de 26 fichas */}
+          <button
+            className="lv-row"
+            style={{ width: "100%", textAlign: "left", marginBottom: 14 }}
+            onClick={() => setVerCategorias(v => !v)}
+          >
+            <div>
+              <div className="lv-eyebrow">Categoría</div>
+              <div style={{ fontSize: "0.95rem", fontWeight: 700, marginTop: 2 }}>{catShow}</div>
+            </div>
+            <span style={{ color: "var(--accent-strong)", fontSize: "0.82rem", fontWeight: 700 }}>
+              {verCategorias ? "Listo" : "Cambiar"}
+            </span>
+          </button>
 
-          <div className="lv-field">
-            <span className="lv-field__label">Categoría</span>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {verCategorias && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
               {CATEGORIAS.map(c => (
-                <button key={c} onClick={() => setCatShow(c)} className={`lv-chip${catShow === c ? " lv-chip--active" : ""}`}>{c}</button>
+                <button key={c} onClick={() => { setCatShow(c); setVerCategorias(false); }} className={`lv-chip${catShow === c ? " lv-chip--active" : ""}`}>{c}</button>
               ))}
             </div>
-          </div>
-
-          <div className="lv-note" style={{ marginBottom: 14 }}>
-            Al crear la venta entras directo a su panel: ahí agregas los productos y, cuando estés listo, sales en vivo por video.
-          </div>
+          )}
 
           <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !tShow.trim()} onClick={crearShow}>
-            {ocupado ? "Creando…" : "Crear venta en vivo"}
+            {ocupado ? "Creando…" : "Salir en vivo"}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setVerDescripcion(v => !v)}
+            style={{ display: "block", margin: "12px auto 0", fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-3)" }}
+          >
+            {verDescripcion ? "Listo" : "Agregar una descripción"}
+          </button>
+
+          {verDescripcion && (
+            <div className="lv-field" style={{ marginTop: 14 }}>
+              <textarea id="ds" className="lv-input" rows={3} value={dShow} onChange={e => setDShow(e.target.value)} placeholder="Qué vas a vender en vivo" aria-label="Descripción"/>
+            </div>
+          )}
+
+          <p className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.5, textAlign: "center", marginTop: 16 }}>
+            Entras directo a tu panel: ahí prendes la cámara y vas sacando los productos uno por uno.
+          </p>
         </div>
       </div>
     );
