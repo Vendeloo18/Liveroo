@@ -16,14 +16,6 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Las fotos de producto solo las sube quien puede publicar. Antes
-    // cualquier comprador podía escribir en auctions/<su-uid>/ y subir
-    // 5 MB por archivo sin límite de cantidad: puro costo de almacenamiento
-    // y de salida, a cuenta del proyecto.
-    function esVendedorAprobado() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.sellerStatus == 'approved';
-    }
-
     function isImageUnder5MB() {
       return request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('image/(jpeg|jpg|png|webp|gif|heic|heif)');
@@ -32,20 +24,20 @@ service firebase.storage {
     // Fotos de subastas y productos
     match /auctions/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isOwner(userId) && esVendedorAprobado() && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
       allow delete: if isOwner(userId);
     }
 
     match /products/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isOwner(userId) && esVendedorAprobado() && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
       allow delete: if isOwner(userId);
     }
 
     // Portadas de shows
     match /shows/{userId}/{fileName} {
       allow read: if true;
-      allow create, update: if isOwner(userId) && esVendedorAprobado() && isImageUnder5MB();
+      allow create, update: if isOwner(userId) && isImageUnder5MB();
       allow delete: if isOwner(userId);
     }
 

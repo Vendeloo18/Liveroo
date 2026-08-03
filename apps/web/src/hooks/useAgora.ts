@@ -47,7 +47,14 @@ export function useAgora(showId: string, role: "host" | "audience") {
         const r = await httpsCallable<
           { showId: string; role: "publisher" | "subscriber" },
           Credenciales
-        >(functions, "generateAgoraTokenV2")({
+        // v1 a propósito. La v2 corre con la cuenta de servicio por defecto
+        // de Cloud Run, que en este proyecto NO tiene acceso a Firestore: al
+        // leer el show fallaba con "Missing or insufficient permissions" y el
+        // vendedor veía "Se cayó la conexión al pedir el video". La v1 corre
+        // con la cuenta de App Engine, que sí lo tiene. Ambas ejecutan el
+        // mismo código (buildAgoraCredentials). Para volver a la v2 hay que
+        // darle el rol "Usuario de Cloud Datastore" a la cuenta de Cloud Run.
+        >(functions, "generateAgoraToken")({
           showId,
           role: role === "host" ? "publisher" : "subscriber",
         });
