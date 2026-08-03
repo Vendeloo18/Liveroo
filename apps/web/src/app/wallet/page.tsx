@@ -6,6 +6,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuthStore } from "../../store/authStore";
+import { Copiable } from "../../components/ui/Copiable";
 import { formatUsd } from "@subastas-ve/shared";
 
 // =============================================================
@@ -200,27 +201,27 @@ export default function WalletPage() {
                 <div className="lv-eyebrow" style={{ marginBottom: 8 }}>1 · Envía tu pago a</div>
                 {cuentas?.pagoMovil?.telefono && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Pago móvil</div>
-                    <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
-                      {cuentas.pagoMovil.banco && <>Banco: <strong>{cuentas.pagoMovil.banco}</strong><br/></>}
-                      Teléfono: <strong>{cuentas.pagoMovil.telefono}</strong><br/>
-                      {cuentas.pagoMovil.cedula && <>Cédula/RIF: <strong>{cuentas.pagoMovil.cedula}</strong></>}
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, marginBottom: 8 }}>Pago móvil</div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {cuentas.pagoMovil.banco && <Copiable etiqueta="Banco" valor={cuentas.pagoMovil.banco}/>}
+                      <Copiable etiqueta="Teléfono" valor={cuentas.pagoMovil.telefono} destacado/>
+                      {cuentas.pagoMovil.cedula && <Copiable etiqueta="Cédula / RIF" valor={cuentas.pagoMovil.cedula}/>}
                     </div>
                   </div>
                 )}
                 {cuentas?.zelle?.correo && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Zelle</div>
-                    <div className="lv-dim" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
-                      Correo: <strong>{cuentas.zelle.correo}</strong>
-                      {cuentas.zelle.titular && <><br/>Titular: <strong>{cuentas.zelle.titular}</strong></>}
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, marginBottom: 8 }}>Zelle</div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <Copiable etiqueta="Correo" valor={cuentas.zelle.correo} destacado/>
+                      {cuentas.zelle.titular && <Copiable etiqueta="Titular" valor={cuentas.zelle.titular}/>}
                     </div>
                   </div>
                 )}
                 {cuentas?.binance && (
                   <div className="lv-panel lv-panel--flat" style={{ padding: "10px 12px", marginBottom: 8 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700 }}>Binance Pay</div>
-                    <div className="lv-dim" style={{ fontSize: "0.78rem" }}>{cuentas.binance}</div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, marginBottom: 8 }}>Binance Pay</div>
+                    <Copiable etiqueta="Binance Pay" valor={String(cuentas.binance)} destacado/>
                   </div>
                 )}
                 {cuentas?.nota && <p className="lv-dim" style={{ fontSize: "0.74rem", lineHeight: 1.5 }}>{cuentas.nota}</p>}
@@ -234,7 +235,18 @@ export default function WalletPage() {
                   <input id="w-monto" className="lv-input" type="number" inputMode="decimal" min="1" step="0.01"
                     value={monto} onChange={e => setMonto(e.target.value)} placeholder="Ej: 20"/>
                   {tasa && isFinite(parseFloat(monto)) && parseFloat(monto) > 0 && (
-                    <div className="lv-field__hint">≈ Bs {(parseFloat(monto) * tasa).toLocaleString("es-VE", { maximumFractionDigits: 2 })}</div>
+                    <div style={{ marginTop: 8 }}>
+                      {/* Lo que se escribe en la app del banco es esto, no los
+                          dólares: por eso va copiable y no como texto de ayuda. */}
+                      <Copiable
+                        etiqueta="Envía exactamente"
+                        valor={(parseFloat(monto) * tasa).toFixed(2)}
+                        destacado
+                      />
+                      <div className="lv-field__hint" style={{ marginTop: 4 }}>
+                        Bolívares, a la tasa de hoy (Bs {tasa} por dólar).
+                      </div>
+                    </div>
                   )}
                 </div>
 

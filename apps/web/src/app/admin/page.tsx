@@ -172,6 +172,7 @@ export default function AdminPage() {
   const [modoInput, setModoInput] = useState<"seller_collects" | "platform_collects">("seller_collects");
   const [pmBanco, setPmBanco] = useState(""); const [pmTel, setPmTel] = useState(""); const [pmCi, setPmCi] = useState("");
   const [zCorreo, setZCorreo] = useState(""); const [zTitular, setZTitular] = useState(""); const [ctaNota, setCtaNota] = useState("");
+  const [binance, setBinance] = useState("");
 
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
@@ -222,6 +223,7 @@ export default function AdminPage() {
         const d = s.data() as any; if (!d) return;
         setPmBanco(d.pagoMovil?.banco ?? ""); setPmTel(d.pagoMovil?.telefono ?? ""); setPmCi(d.pagoMovil?.cedula ?? "");
         setZCorreo(d.zelle?.correo ?? ""); setZTitular(d.zelle?.titular ?? ""); setCtaNota(d.nota ?? "");
+        setBinance(d.binance ?? "");
       }, () => undefined),
     ];
     return () => subs.forEach(u => u());
@@ -315,6 +317,9 @@ export default function AdminPage() {
     await setDoc(doc(db, "config", "paymentAccounts"), {
       pagoMovil: pmTel.trim() ? { banco: pmBanco.trim(), telefono: pmTel.trim(), cedula: pmCi.trim() } : null,
       zelle: zCorreo.trim() ? { correo: zCorreo.trim(), titular: zTitular.trim() } : null,
+      // La pantalla de recarga ya sabía ofrecerlo; el panel nunca lo escribía,
+      // así que Binance era un método imposible de habilitar.
+      binance: binance.trim() || null,
       nota: ctaNota.trim() || null, updatedAt: serverTimestamp(),
     });
   }, "Cuentas de cobro guardadas");
@@ -366,7 +371,7 @@ export default function AdminPage() {
   const liquidar = Object.values(gruposLiq).sort((a, b) => b.total - a.total);
   const totalLiquidar = Math.round(liquidar.reduce((n, g) => n + g.total, 0) * 100) / 100;
   const pendientesVendedor = usuarios.filter(u => u.sellerStatus === "pending");
-  const cuentasListas = !!(pmTel || zCorreo);
+  const cuentasListas = !!(pmTel || zCorreo || binance);
 
   const liquidarA = (g: { sellerId: string; nombre: string; ordenes: any[]; total: number }) => {
     const r = prompt(`Vas a dejar asentado que YA le pagaste ${formatUsd(g.total)}${bs(g.total) ? ` (${bs(g.total)})` : ""} a ${g.nombre}, por ${g.ordenes.length} ${g.ordenes.length === 1 ? "venta" : "ventas"}.\n\nHazlo solo si la transferencia ya salió.\n\nReferencia del pago (opcional):`);
@@ -983,6 +988,7 @@ export default function AdminPage() {
                     <div>
                       <div className="lv-field"><label className="lv-field__label">Zelle · Correo</label><input className="lv-input" value={zCorreo} onChange={e => setZCorreo(e.target.value)} placeholder="pagos@vendeloo.io"/></div>
                       <div className="lv-field"><label className="lv-field__label">Titular</label><input className="lv-input" value={zTitular} onChange={e => setZTitular(e.target.value)} placeholder="Nombre del titular"/></div>
+                      <div className="lv-field"><label className="lv-field__label">Binance Pay · correo o ID</label><input className="lv-input" value={binance} onChange={e => setBinance(e.target.value)} placeholder="pagos@vendeloo.io o 123456789"/></div>
                       <div className="lv-field"><label className="lv-field__label">Nota para quien recarga</label><input className="lv-input" value={ctaNota} onChange={e => setCtaNota(e.target.value)} maxLength={200} placeholder="Pon tu nombre en el concepto"/></div>
                     </div>
                   </div>
