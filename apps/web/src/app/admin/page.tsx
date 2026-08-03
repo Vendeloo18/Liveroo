@@ -14,7 +14,6 @@ import {
   ClockCounterClockwise,
   CreditCard,
   GearSix,
-  GoogleLogo,
   Gavel,
   MagnifyingGlass,
   Package,
@@ -132,7 +131,7 @@ function Metric({ label, icon, value, ctx, alerta }: {
 }
 
 export default function AdminPage() {
-  const { profile, loading: authLoading, signIn, signInWithGoogle, signOut, error } = useAuthStore();
+  const { profile, loading: authLoading, signIn, resetPassword, signOut, error } = useAuthStore();
   const [seccion, setSeccion] = useState<Seccion>("cobranza");
 
   // ── datos ──
@@ -176,6 +175,7 @@ export default function AdminPage() {
 
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
+  const [avisoClave, setAvisoClave] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("info@vendeloo.io"); const [loginPass, setLoginPass] = useState(""); const [entrando, setEntrando] = useState(false);
 
   const esAdmin = profile?.role === "admin";
@@ -331,8 +331,19 @@ export default function AdminPage() {
     if (action === "purge" && !confirm("Se borran las publicaciones de muestra (las de vendedores ficticios). Las reales no se tocan. ¿Seguro?")) return;
     correr(`demo_${action}`, () => httpsCallable(functions, "manageDemoAuctions")({ action }), action === "seed" ? "Muestras sembradas" : "Muestras borradas");
   };
+  const recuperarClave = async () => {
+    const correo = loginEmail.trim();
+    if (!correo) { setAvisoClave("Escribe tu correo arriba y toca aquí de nuevo."); return; }
+    setEntrando(true);
+    setAvisoClave(null);
+    try {
+      await resetPassword(correo);
+      setAvisoClave(`Te enviamos un enlace a ${correo}. Ábrelo y define tu contraseña — si la cuenta se creó con Google nunca tuvo una, y ese enlace es justamente el que se la pone.`);
+    } catch { /* el store ya expone el error */ }
+    finally { setEntrando(false); }
+  };
+
   const entrar = async () => { if (!loginEmail.trim() || !loginPass) return; setEntrando(true); try { await signIn(loginEmail.trim(), loginPass); } finally { setEntrando(false); } };
-  const entrarGoogle = async () => { setEntrando(true); try { await signInWithGoogle(); } finally { setEntrando(false); } };
 
   // ── derivados ──
   const saldoDe = (uid: string) => wallets[uid] ?? { saldo: 0, retenido: 0 };
@@ -379,26 +390,26 @@ export default function AdminPage() {
           {!profile ? (
             <>
               <h1>Entra a<br/>la consola</h1>
-              <p>Usa la cuenta oficial <b>info@vendeloo.io</b> para administrar la plataforma.</p>
+              <p>Con tu correo y tu contraseña.</p>
               {error && <div className="lv-note lv-note--bad" style={{ marginBottom: 14 }}>{error}</div>}
-              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg adm-login__google" disabled={entrando} onClick={entrarGoogle}>
-                <GoogleLogo size={20} weight="bold" aria-hidden="true"/>
-                {entrando ? "Entrando…" : "Continuar con Google"}
-              </button>
-              <div className="adm-login__or"><span>o entra con contraseña</span></div>
+              {avisoClave && <div className="lv-note lv-note--ok" style={{ marginBottom: 14 }}>{avisoClave}</div>}
               <div className="lv-field"><label className="lv-field__label" htmlFor="ale">Correo</label><input id="ale" className="lv-input" type="email" autoComplete="username" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} placeholder="info@vendeloo.io"/></div>
               <div className="lv-field"><label className="lv-field__label" htmlFor="alp">Contraseña</label><input id="alp" className="lv-input" type="password" autoComplete="current-password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === "Enter" && entrar()} placeholder="••••••••"/></div>
               <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={entrando} onClick={entrar}>{entrando ? "Entrando…" : "Entrar"}</button>
+              <button
+                type="button"
+                onClick={recuperarClave}
+                disabled={entrando}
+                style={{ display: "block", margin: "14px auto 0", fontSize: "0.8rem", fontWeight: 700, color: "var(--accent-strong)", textDecoration: "underline", textUnderlineOffset: 3 }}
+              >
+                Olvidé mi contraseña
+              </button>
             </>
           ) : (
             <div style={{ textAlign: "center" }}>
               <h1>Sin acceso</h1>
-              <p style={{ marginBottom: 18 }}>La cuenta {profile.email} no es administradora.</p>
-              <button className="lv-btn lv-btn--accent lv-btn--block adm-login__google" disabled={entrando} onClick={entrarGoogle}>
-                <GoogleLogo size={20} weight="bold" aria-hidden="true"/>
-                {entrando ? "Abriendo Google…" : "Entrar como info@vendeloo.io"}
-              </button>
-              <button className="lv-btn lv-btn--ghost lv-btn--block" style={{ marginTop: 8 }} onClick={() => signOut()}>Cerrar esta sesión</button>
+              <p style={{ marginBottom: 18 }}>La cuenta {profile.email} no es administradora. Sal y entra con la cuenta que sí lo es.</p>
+              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => signOut()}>Cerrar esta sesión</button>
             </div>
           )}
         </div>
