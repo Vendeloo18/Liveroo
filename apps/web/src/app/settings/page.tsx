@@ -54,6 +54,16 @@ export default function SettingsPage() {
   const [push, setPush] = useState<EstadoPush | null>(null);
   const [pidiendo, setPidiendo] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
+  // En iPhone los avisos SOLO existen si la app está en la pantalla de
+  // inicio: es un límite de Apple, no de Vendeloo. Decir "no soportado" sin
+  // explicar cómo resolverlo deja a la persona pensando que está rota.
+  const [enIphone, setEnIphone] = useState(false);
+  const [yaInstalada, setYaInstalada] = useState(false);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setEnIphone(/iPad|iPhone|iPod/.test(ua) || (/Mac/.test(ua) && "ontouchend" in document));
+    setYaInstalada(window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true);
+  }, []);
 
   // Se hidrata con lo que el usuario ya tenía guardado
   useEffect(() => {
@@ -158,7 +168,9 @@ export default function SettingsPage() {
                     : push === "denegado"
                     ? "Están bloqueados en la configuración del navegador para este sitio. Hay que reactivarlos ahí."
                     : push === "no-soportado"
-                    ? "Este navegador no los soporta. En iPhone hay que agregar la app a la pantalla de inicio primero."
+                    ? enIphone && !yaInstalada
+                      ? "En iPhone los avisos solo funcionan con la app en la pantalla de inicio. Se agrega en dos toques, aquí abajo te digo cómo."
+                      : "Este navegador no los soporta."
                     : "Sin esto, los avisos solo se ven al abrir la app."}
                 </div>
               </div>
@@ -173,6 +185,18 @@ export default function SettingsPage() {
               )}
             </div>
             {pidiendo && <div className="lv-dim" style={{ fontSize: "0.74rem", marginTop: 8 }}>Un momento…</div>}
+
+            {push === "no-soportado" && enIphone && !yaInstalada && (
+              <div className="lv-note" style={{ marginTop: 12, display: "block", lineHeight: 1.65 }}>
+                <strong>Cómo agregar Vendeloo a tu iPhone</strong>
+                <ol style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: "0.8rem" }}>
+                  <li>Abre esta página en <b>Safari</b> (no en el navegador de WhatsApp).</li>
+                  <li>Toca el botón <b>Compartir</b> — el cuadrito con la flecha hacia arriba, abajo en el centro.</li>
+                  <li>Baja y elige <b>Agregar a inicio</b>.</li>
+                  <li>Abre Vendeloo desde el ícono nuevo y vuelve aquí: el interruptor ya te dejará activarlos.</li>
+                </ol>
+              </div>
+            )}
           </section>
         )}
 
