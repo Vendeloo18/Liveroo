@@ -8,7 +8,7 @@ import { useAuthStore } from "../../../../store/authStore";
 import { useAgora } from "../../../../hooks/useAgora";
 import { useCountdown } from "../../../../hooks/useCountdown";
 import { ImageUploader } from "../../../../components/ui/ImageUploader";
-import { BRAND } from "@subastas-ve/shared";
+import { BRAND, formatUsd } from "@subastas-ve/shared";
 
 const ESTADO: Record<string, { texto: string; clase: string }> = {
   waiting: { texto: "En cola", clase: "lv-badge--soft" },
@@ -73,8 +73,18 @@ export default function SellerShowPage() {
 
   const [titulo, setTitulo] = useState("");
   const [precio, setPrecio] = useState("");
-  const [incremento, setIncremento] = useState("1");
-  const [timer, setTimer] = useState("1"); // minutos
+  // El incremento se calcula del precio y la duración se hereda del
+  // artículo anterior: entre productos del mismo show casi nunca cambian,
+  // y pedirlos cada vez obliga a escribir con una mano sosteniendo el
+  // producto frente a la cámara. Ambos siguen siendo editables.
+  const [timer, setTimer] = useState("1"); // minutos, se recuerda
+  const [ajustes, setAjustes] = useState(false);
+  const [incrementoManual, setIncrementoManual] = useState("");
+
+  // Menos de $20 sube de $1; hasta $100, de $2; más caro, de $5.
+  const incrementoSugerido = (p: number) => (!isFinite(p) || p < 20 ? 1 : p <= 100 ? 2 : 5);
+  const incremento = incrementoManual || String(incrementoSugerido(parseFloat(precio)));
+  const setIncremento = setIncrementoManual;
   const [fotos, setFotos] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLDivElement>(null);
@@ -152,7 +162,10 @@ export default function SellerShowPage() {
         imageURL: fotos[0] ?? null, imageURLs: fotos,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-      setTitulo(""); setPrecio(""); setFotos([]);
+      // La duración SÍ se hereda (es la misma toda la venta). El incremento
+      // vuelve a automático: si pusiste $5 a mano para algo caro, el
+      // siguiente artículo barato no debe heredarlo.
+      setTitulo(""); setPrecio(""); setFotos([]); setIncrementoManual("");
       // En vivo y sin nada subastándose → arranca este al instante.
       if (show?.status === "live" && !productos.some(p => p.status === "active")) {
         await httpsCallable(functions, "presentAuction")({ showId, auctionId: ref.id });
@@ -299,35 +312,52 @@ export default function SellerShowPage() {
                 <input id="t" className="lv-input" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="¿Qué vendes? Ej: Proyector portátil" style={{ fontSize: "1rem", fontWeight: 600 }}/>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                <div className="lv-field" style={{ marginBottom: 0 }}>
-                  <label className="lv-field__label" htmlFor="p">Precio inicial</label>
-                  <input id="p" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="$10"/>
-                </div>
-                <div className="lv-field" style={{ marginBottom: 0 }}>
-                  <label className="lv-field__label" htmlFor="i">Sube de</label>
-                  <input id="i" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={incremento} onChange={e => setIncremento(e.target.value)} placeholder="$1"/>
-                </div>
-              </div>
-
-              {/* Duración en minutos con selector rápido */}
               <div className="lv-field">
-                <span className="lv-field__label">¿Cuánto dura?</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button type="button" aria-label="menos" onClick={() => setTimer(t => String(Math.max(1, (parseInt(t) || 1) - 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>−</button>
-                  <div style={{ flex: 1, textAlign: "center", fontWeight: 800, fontSize: "1.1rem" }}>{parseInt(timer) || 1} min</div>
-                  <button type="button" aria-label="más" onClick={() => setTimer(t => String(Math.min(30, (parseInt(t) || 1) + 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>+</button>
-                </div>
-              </div>
-
-              <div className="lv-field">
-                <span className="lv-field__label">Foto <span className="lv-dim" style={{ fontWeight: 400 }}>· opcional, hace que se vea brutal en el feed</span></span>
-                <ImageUploader images={fotos} onChange={setFotos} path={`products/${profile?.uid ?? "anon"}`} max={3}/>
+                <label className="lv-field__label" htmlFor="p">Precio inicial</label>
+                <input id="p" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={precio} onChange={e => setPrecio(e.target.value)} placeholder="$10" style={{ fontSize: "1.05rem", fontWeight: 700 }}/>
+                {parseFloat(precio) > 0 && (
+                  <div className="lv-field__hint">
+                    Dura {parseInt(timer) || 1} min · sube de {formatUsd(parseFloat(incremento))} por oferta
+                  </div>
+                )}
               </div>
 
               <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado === "add" || !titulo.trim() || !precio} onClick={agregar}>
-                {ocupado === "add" ? "Un momento…" : activa ? "Agregar a la cola" : "Vender ahora"}
+                {ocupado === "add" ? "Un momento…" : activa ? "Agregar a la cola" : "Sacar a la venta"}
               </button>
+
+              {/* Todo lo demás vive detrás de un toque: entre artículos del
+                  mismo show casi nunca se cambia. */}
+              <button
+                type="button"
+                onClick={() => setAjustes(a => !a)}
+                style={{ display: "block", margin: "12px auto 0", fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-3)" }}
+              >
+                {ajustes ? "Listo" : "Duración, incremento y foto"}
+              </button>
+
+              {ajustes && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                  <div className="lv-field">
+                    <span className="lv-field__label">¿Cuánto dura? <span className="lv-dim" style={{ fontWeight: 400 }}>· se queda así para los siguientes</span></span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <button type="button" aria-label="menos" onClick={() => setTimer(t => String(Math.max(1, (parseInt(t) || 1) - 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>−</button>
+                      <div style={{ flex: 1, textAlign: "center", fontWeight: 800, fontSize: "1.1rem" }}>{parseInt(timer) || 1} min</div>
+                      <button type="button" aria-label="más" onClick={() => setTimer(t => String(Math.min(30, (parseInt(t) || 1) + 1)))} className="lv-btn lv-btn--outline" style={{ width: 48, height: 48, padding: 0, fontSize: "1.5rem", borderRadius: 12 }}>+</button>
+                    </div>
+                  </div>
+
+                  <div className="lv-field">
+                    <label className="lv-field__label" htmlFor="i">Sube de <span className="lv-dim" style={{ fontWeight: 400 }}>· automático según el precio</span></label>
+                    <input id="i" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={incremento} onChange={e => setIncremento(e.target.value)}/>
+                  </div>
+
+                  <div className="lv-field" style={{ marginBottom: 0 }}>
+                    <span className="lv-field__label">Foto <span className="lv-dim" style={{ fontWeight: 400 }}>· solo para el feed, en el vivo se ve por cámara</span></span>
+                    <ImageUploader images={fotos} onChange={setFotos} path={`products/${profile?.uid ?? "anon"}`} max={3}/>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* En cola */}
