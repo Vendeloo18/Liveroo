@@ -419,6 +419,35 @@ describe("Pujas: solo por la puerta de /pendingBids", () => {
 });
 
 describe("Shows", () => {
+  // Exactamente lo que manda la app al crear una venta en vivo. Si un día
+  // se endurecen las reglas sin actualizar el cliente (o al revés), esta
+  // prueba se cae aquí y no en el teléfono de un vendedor.
+  const nuevoShow = (over = {}) => ({
+    sellerId: SELLER, sellerName: "Vendedor", title: "Tienda Prueba en vivo",
+    description: "", category: "Electronica", status: "scheduled",
+    viewerCount: 0, totalProducts: 0,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...over,
+  });
+
+  test("el vendedor crea su venta en vivo con lo que manda la app", async () => {
+    await assertSucceeds(addDoc(collection(as(SELLER), "shows"), nuevoShow()));
+  });
+
+  // El canal de video es el id del show y lo decide el servidor: si el
+  // cliente pudiera declararlo, se copiaba el de otro vendedor y se entraba
+  // con cámara a su transmisión.
+  test("nadie declara el canal de video", async () => {
+    await assertFails(
+      addDoc(collection(as(SELLER), "shows"), nuevoShow({ agoraChannelName: "show_ajeno" }))
+    );
+  });
+
+  test("ni nace con audiencia inflada", async () => {
+    await assertFails(
+      addDoc(collection(as(SELLER), "shows"), nuevoShow({ viewerCount: 5000 }))
+    );
+  });
+
   test("EL ATAJO DEL VENDEDOR — ya no puede ponerse en vivo escribiendo status a mano", async () => {
     await assertFails(
       updateDoc(doc(as(SELLER), "shows", "show1"), { status: "live" })

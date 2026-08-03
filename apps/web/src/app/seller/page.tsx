@@ -235,7 +235,11 @@ export default function SellerPage() {
       const ref = await addDoc(collection(db, "shows"), {
         sellerId: profile.uid, sellerName: profile.displayName ?? "Vendedor",
         title: tShow.trim(), description: dShow.trim(), category: catShow,
-        status: "scheduled", agoraChannelName: `show_${Date.now()}`,
+        // Sin agoraChannelName a propósito: el canal de video es el id del
+        // show, que lo pone el servidor. Cuando lo escribía el cliente se
+        // podía copiar el canal de otro vendedor y entrar con cámara a su
+        // transmisión, así que las reglas ya no aceptan ese campo.
+        status: "scheduled",
         viewerCount: 0, totalProducts: 0,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });

@@ -18,7 +18,7 @@ import { formatUsd, formatBs, calcMinNextBid, MOTIVO_RECHAZO } from "@subastas-v
 
 interface Show {
   id: string; sellerName?: string; title?: string; status?: string;
-  viewerCount?: number; currentAuctionId?: string; agoraChannelName?: string; sellerId?: string;
+  viewerCount?: number; currentAuctionId?: string; sellerId?: string;
 }
 interface Subasta {
   id: string; title?: string; currentBidUsd: number; startingPriceUsd: number;
@@ -84,12 +84,15 @@ export default function ShowPage() {
   }, [showId]);
 
   useEffect(() => {
-    if (!show?.agoraChannelName || agora.joined || show.status !== "live") return;
+    // Antes esperaba a que el show tuviera agoraChannelName. Ese campo ya
+    // no existe: el canal es el id del show y lo decide el servidor. Con
+    // los shows nuevos, esperarlo dejaba el video sin conectar nunca.
+    if (!show || agora.joined || show.status !== "live") return;
     // profile puede llegar después que el show; sin esperarlo, el vendedor
     // entraría como espectador y no podría transmitir.
     if (!profile) return;
     agora.join(esHost ? localVideoRef.current : remoteVideoRef.current);
-  }, [show?.agoraChannelName, show?.status, profile?.uid, esHost]);
+  }, [show?.id, show?.status, profile?.uid, esHost]);
 
   useEffect(() => {
     const u = agora.remoteUsers[0];
