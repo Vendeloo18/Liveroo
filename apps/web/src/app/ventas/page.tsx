@@ -39,7 +39,7 @@ export default function VentasPage() {
 
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <header className="lv-topbar"><h1 className="lv-topbar__title">Mis ventas</h1></header>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para ver tus ventas</div>
@@ -52,7 +52,7 @@ export default function VentasPage() {
   const porAtender = ventas.filter(o => ["pending_payment", "payment_confirmed"].includes(o.status)).length;
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <button className="lv-icon-btn" onClick={() => router.push("/account")} aria-label="Atrás">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>

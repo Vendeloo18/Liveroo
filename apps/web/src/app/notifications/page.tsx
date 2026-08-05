@@ -138,7 +138,7 @@ export default function NotificationsPage() {
 
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <Cabecera/>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para ver tus avisos</div>
@@ -149,7 +149,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <Cabecera/>
 
       <div className="lv-pad" style={{ paddingTop: 16 }}>

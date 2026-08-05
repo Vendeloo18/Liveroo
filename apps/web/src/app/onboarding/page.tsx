@@ -128,7 +128,10 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <div className="vlo-onb__content">
+        {/* key={paso}: sin esto React reutiliza el nodo al cambiar de paso y
+            la animación de entrada no se vuelve a disparar — el contenido
+            cambiaba de golpe mientras el hero sí hacía su transición. */}
+        <div className="vlo-onb__content" key={paso}>
           {paso === 0 && (
             <div className="vlo-onb__welcome">
               <div className="vlo-onb__process">

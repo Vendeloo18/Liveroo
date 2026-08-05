@@ -131,7 +131,7 @@ export default function WalletPage() {
 
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <Cabecera/>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para ver tu billetera</div>
@@ -148,7 +148,7 @@ export default function WalletPage() {
   };
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <Cabecera/>
       <div className="lv-pad" style={{ paddingTop: 16, display: "grid", gap: 14 }}>
         {aviso && <div className={`lv-note lv-note--${aviso.tipo}`}>{aviso.texto}</div>}

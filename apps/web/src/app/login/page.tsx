@@ -21,6 +21,11 @@ export default function AuthPage() {
   const [avisoReset, setAvisoReset] = useState<string | null>(null);
   const [verClave, setVerClave] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  // Los tres campos de una hacían que la pantalla se leyera como un
+  // trámite. Google queda como camino a la vista y el correo a un toque
+  // —a un toque, no enterrado: si Google falla, la gente tiene que poder
+  // encontrar la otra puerta sin pensar.
+  const [verCorreo, setVerCorreo] = useState(false);
   const [salidaControlada, setSalidaControlada] = useState(false);
   const esCorreoAdmin = modo === "entrar" && email.trim().toLowerCase() === "info@vendeloo.io";
 
@@ -141,11 +146,14 @@ export default function AuthPage() {
           </button>
         </div>
 
-        <div className="vlo-auth__heading">
-          <span>{modo === "crear" ? "Únete a Vendeloo" : "Qué bueno verte"}</span>
-          <h2>{modo === "crear" ? "Crea tu cuenta" : "Entra a tu cuenta"}</h2>
-          <p>{modo === "crear" ? "Empieza a comprar en vivo desde cualquier lugar de Venezuela." : "Tus ventas en vivo te están esperando."}</p>
-        </div>
+        {/* Antes aquí había antetítulo + "Crea tu cuenta" + subtítulo: tres
+            líneas para repetir lo que ya dice la pestaña activa que tienes
+            justo encima. Queda solo la que aporta algo. */}
+        <p className="vlo-auth__lead">
+          {modo === "crear"
+            ? "Empieza a comprar en vivo desde cualquier lugar de Venezuela."
+            : "Tus ventas en vivo te están esperando."}
+        </p>
 
         <button
           type="button"
@@ -157,13 +165,32 @@ export default function AuthPage() {
           Continuar con Google
         </button>
 
-        <div className="vlo-auth__separator" aria-hidden="true">
-          <i/>
-          <span>o con tu correo</span>
-          <i/>
-        </div>
+        {/* El error va fuera del formulario: si Google falla y los campos
+            están plegados, el aviso tiene que verse igual. */}
+        {error && <div className="lv-note lv-note--bad vlo-auth__error">{error}</div>}
 
-        <form onSubmit={enviar} className="vlo-auth__form">
+        {!verCorreo && (
+          <button
+            type="button"
+            className="vlo-auth__separator vlo-auth__correo"
+            onClick={() => setVerCorreo(true)}
+            aria-expanded={false}
+          >
+            <i aria-hidden="true"/>
+            <span>{modo === "crear" ? "o crea tu cuenta con correo" : "o entra con tu correo"}</span>
+            <i aria-hidden="true"/>
+          </button>
+        )}
+
+        {verCorreo && (
+          <div className="vlo-auth__separator" aria-hidden="true">
+            <i/>
+            <span>o con tu correo</span>
+            <i/>
+          </div>
+        )}
+
+        {verCorreo && <form onSubmit={enviar} className="vlo-auth__form">
           {modo === "crear" && (
             <div className="lv-field">
               <label className="lv-field__label" htmlFor="nombre">Tu nombre</label>
@@ -244,8 +271,6 @@ export default function AuthPage() {
 
           {avisoReset && <div className="lv-note lv-note--ok" style={{ marginBottom: 12 }}>{avisoReset}</div>}
 
-          {error && <div className="lv-note lv-note--bad vlo-auth__error">{error}</div>}
-
           <button
             type="submit"
             className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
@@ -254,19 +279,21 @@ export default function AuthPage() {
             {ocupado ? "Abriendo Google…" : esCorreoAdmin ? "Entrar al panel de administración" : modo === "crear" ? "Crear mi cuenta" : "Entrar a Vendeloo"}
           </button>
 
-          {modo === "crear" && (
-            <p className="vlo-auth__terms">
-              Al crear tu cuenta aceptas los <a href="/terminos">Términos</a> y la <a href="/privacidad">Privacidad</a>.
-            </p>
-          )}
-        </form>
+        </form>}
 
         <button type="button" className="vlo-auth__how" onClick={() => router.push("/onboarding")}>
-          <PlayCircle size={24} weight="regular" aria-hidden="true"/>
+          <PlayCircle size={21} weight="regular" aria-hidden="true"/>
           Ver cómo funciona
         </button>
 
-        <p className="vlo-auth__privacy">Tus datos no son públicos. Solo compartimos lo necesario cuando cierras una compra.</p>
+        {/* Términos y privacidad eran dos bloques de texto separados por un
+            botón, tres cosas apiladas al final. Van en una sola línea. */}
+        <p className="vlo-auth__terms">
+          {modo === "crear" && (
+            <>Al crear tu cuenta aceptas los <a href="/terminos">Términos</a> y la <a href="/privacidad">Privacidad</a>. </>
+          )}
+          Tus datos no son públicos.
+        </p>
       </section>
     </main>
   );

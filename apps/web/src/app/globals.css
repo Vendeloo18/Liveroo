@@ -158,6 +158,60 @@ button:disabled { cursor: not-allowed; }
 .lv-pad { padding-left: 16px; padding-right: 16px; }
 
 /* =============================================================
+   Aurora — malla de color de fondo
+   =============================================================
+   Manchas difusas en la rampa naranja de la marca, detrás del
+   contenido. Le quitan el aire de formulario a las pantallas que son
+   solo listas y texto (cuenta, billetera, actividad, ajustes) sin
+   tocar un solo componente: se enciende agregando lv-app--aurora
+   junto a lv-app.
+
+   isolation:isolate crea el contexto de apilamiento para que el
+   ::before con z-index:-1 quede POR ENCIMA del fondo blanco de
+   .lv-app pero POR DEBAJO del contenido. Sin ese aislamiento, el
+   -1 lo mandaba detrás del blanco y no se veía nada.
+
+   Es fixed y pointer-events:none: no se mueve al hacer scroll, no
+   se come ningún toque y no altera el layout. Sin filter:blur() a
+   propósito — los radiales ya salen difusos, y desenfocar una capa
+   del tamaño de la pantalla cuesta cuadros al hacer scroll en un
+   teléfono de gama media.
+   ============================================================= */
+
+.lv-app--aurora { isolation: isolate; }
+
+.lv-app--aurora::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, var(--app-max));
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 40% at 14% 4%,  color-mix(in srgb, var(--accent) 20%, transparent), transparent 68%),
+    radial-gradient(52% 36% at 94% 16%, color-mix(in srgb, var(--accent-light) 20%, transparent), transparent 70%),
+    radial-gradient(64% 44% at 84% 56%, color-mix(in srgb, var(--accent-soft) 65%, transparent), transparent 68%),
+    radial-gradient(56% 40% at 4% 72%,  color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(54% 38% at 52% 99%, color-mix(in srgb, var(--accent-light) 15%, transparent), transparent 72%);
+}
+
+/* Las tarjetas dejan pasar algo de color. Si quedaran opacas, la malla
+   solo asomaría por los bordes y el efecto se perdería — que es
+   justamente lo que pasa en la referencia cuando las cards son sólidas. */
+.lv-app--aurora .lv-panel {
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border-color: color-mix(in srgb, #ffffff 55%, var(--line));
+}
+.lv-app--aurora .lv-panel--flat {
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+/* =============================================================
    Barra superior
    ============================================================= */
 
@@ -575,9 +629,66 @@ button:disabled { cursor: not-allowed; }
   box-shadow: 0 -12px 36px rgba(93,28,0,0.08);
 }
 
-/* Login único: crear cuenta e iniciar sesión viven en la misma página. */
+/* =============================================================
+   Login — menos blanco
+   =============================================================
+   El shell son 480px centrados con fondo blanco. En un monitor eso
+   era una columna blanca flotando sobre más blanco, sin nada que la
+   enmarcara: la pantalla se leía vacía, no diseñada. Ahora el
+   viewport lleva la malla de la marca por detrás y la columna se lee
+   como una app. En teléfono el shell la tapa entera, así que ahí no
+   cambia nada.
+
+   Todo va colgado de .vlo-auth a propósito: .vlo-flow-shell y
+   .vlo-flow-hero los comparte el onboarding, que tiene su propia
+   proporción calculada (75% producto) y no se debe mover desde aquí.
+   ============================================================= */
+
+.vlo-auth {
+  isolation: isolate;
+  background: transparent;
+}
+
+.vlo-auth::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 45% at 16% 10%, color-mix(in srgb, var(--accent-light) 88%, transparent), transparent 70%),
+    radial-gradient(58% 50% at 90% 86%, color-mix(in srgb, var(--accent-deep) 92%, transparent), transparent 72%),
+    linear-gradient(158deg, var(--accent-darkest), #2b1105 74%);
+}
+
+/* Quién se queda el espacio sobrante. En el shell original la hoja era
+   flex:1, así que cuando el contenido es corto —y con el correo plegado
+   son un botón y dos líneas— la hoja se estiraba y dejaba un vacío
+   blanco enorme abajo. Invertido: crece el HERO, que es una foto y
+   agradece el espacio, y la hoja mide lo que mide su contenido.
+
+   Con el formulario desplegado el contenido pasa de la pantalla, la
+   hoja crece, el hero se queda en su mínimo y la página hace scroll. */
+.vlo-auth .vlo-flow-hero {
+  flex: 1 1 auto;
+  min-height: clamp(272px, 34dvh, 348px);
+}
+.vlo-auth .vlo-flow-sheet { flex: 0 0 auto; }
+.vlo-auth .vlo-flow-hero__copy { top: calc(66px + env(safe-area-inset-top)); }
+.vlo-auth .vlo-flow-hero__eyebrow { margin-bottom: 11px; }
+.vlo-auth .vlo-flow-hero__title { font-size: clamp(2.05rem, 9.2vw, 2.7rem); }
+.vlo-auth .vlo-flow-hero__description { margin-top: 9px; font-size: 0.78rem; }
+
+/* Login único: crear cuenta e iniciar sesión viven en la misma página.
+   La hoja deja de ser blanco plano: un tinte cálido de la misma rampa
+   la separa del hero sin meter un color nuevo. */
 .vlo-auth__sheet {
-  padding: 14px 22px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 22px calc(20px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(85% 38% at 100% 0%, color-mix(in srgb, var(--accent-tint) 90%, transparent), transparent 62%),
+    radial-gradient(72% 32% at 0% 100%, color-mix(in srgb, var(--accent-soft) 42%, transparent), transparent 66%),
+    #fff;
+  border-radius: 26px 26px 0 0;
 }
 
 .vlo-auth__switch {
@@ -604,30 +715,17 @@ button:disabled { cursor: not-allowed; }
   box-shadow: 0 5px 14px rgba(255,106,0,0.2);
 }
 
-.vlo-auth__heading { margin: 18px 0 16px; }
-.vlo-auth__heading > span {
-  color: var(--accent-strong);
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-.vlo-auth__heading h2 {
-  margin-top: 4px;
-  font-size: 1.42rem;
-  line-height: 1.08;
-}
-.vlo-auth__heading p {
+.vlo-auth__lead {
   max-width: 350px;
-  margin-top: 5px;
+  margin: 13px 0 14px;
   color: var(--ink-2);
-  font-size: 0.78rem;
+  font-size: 0.79rem;
   line-height: 1.42;
 }
 
 .vlo-auth__google { gap: 9px; }
 .vlo-auth__separator {
-  margin: 17px 0;
+  margin: 14px 0;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 11px;
@@ -637,6 +735,28 @@ button:disabled { cursor: not-allowed; }
   font-weight: 700;
 }
 .vlo-auth__separator i { height: 1px; background: var(--line); }
+
+/* El mismo separador, pero es un botón: los tres campos plegados hacían
+   que la pantalla se leyera como un trámite en vez de una entrada. Va en
+   color de acento y subrayado para que se lea como puerta, no como
+   rótulo — si Google falla, esta tiene que encontrarse sin pensar. */
+.vlo-auth__correo {
+  width: 100%;
+  padding: 9px 0;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+.vlo-auth__correo span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Entrada al desplegar: confirma que el toque hizo algo. */
+.vlo-auth__form { animation: vlo-onb-rise 0.3s cubic-bezier(.2,.7,.3,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .vlo-auth__form { animation: none; }
+}
+
 .vlo-auth__form .lv-field { margin-bottom: 13px; }
 .vlo-auth__password { position: relative; }
 .vlo-auth__password .lv-input { padding-right: 68px; }
@@ -652,7 +772,8 @@ button:disabled { cursor: not-allowed; }
 }
 .vlo-auth__error { margin-bottom: 13px; }
 .vlo-auth__terms {
-  margin-top: 11px;
+  max-width: 340px;
+  margin: 6px auto 0;
   color: var(--ink-3);
   text-align: center;
   font-size: 0.69rem;
@@ -660,7 +781,7 @@ button:disabled { cursor: not-allowed; }
 }
 .vlo-auth__terms a { color: var(--accent-strong); font-weight: 800; }
 .vlo-auth__how {
-  margin: 16px auto 0;
+  margin: 14px auto 0;
   padding: 7px 12px;
   display: flex;
   align-items: center;
@@ -669,15 +790,6 @@ button:disabled { cursor: not-allowed; }
   font-size: 0.8rem;
   font-weight: 800;
 }
-.vlo-auth__privacy {
-  max-width: 340px;
-  margin: 8px auto 0;
-  color: var(--ink-3);
-  text-align: center;
-  font-size: 0.67rem;
-  line-height: 1.45;
-}
-
 @media (max-width: 370px) {
   .vlo-flow-hero__top { right: 18px; left: 18px; }
   .vlo-flow-hero__copy { right: 18px; left: 18px; }
@@ -1302,6 +1414,98 @@ button:disabled { cursor: not-allowed; }
 @keyframes vlo-onb-product-in {
   from { opacity: 0; transform: translateX(14px) scale(0.97); }
   to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* =============================================================
+   Onboarding — movimiento
+   =============================================================
+   El hero ya animaba, pero la hoja de abajo entraba de golpe: los tres
+   pasos, la línea que los une y el deslizador aparecían todos a la vez.
+   Nada guiaba el ojo por el orden 1→2→3, y nada sugería que al botón de
+   PUJALOO hay que arrastrarlo — que es el gesto del que depende todo
+   el paso 2.
+
+   Todo esto es CSS. Una librería de animación son ~18kb en cada carga
+   y aquí no compra nada: son entradas escalonadas y una pista de gesto.
+   ============================================================= */
+
+@keyframes vlo-onb-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vlo-onb-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  64%  { opacity: 1; transform: scale(1.09); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vlo-onb-line {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 0.76; }
+}
+
+@keyframes vlo-onb-sweep {
+  0%   { transform: translateX(-100%); }
+  55%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* El contenido lleva key={paso}, así que React lo vuelve a montar en
+   cada paso y la entrada se repite: es la transición entre pantallas. */
+.vlo-onb__content { animation: vlo-onb-rise 0.4s cubic-bezier(.2,.7,.3,1) both; }
+
+/* Cascada 1 → 2 → 3. El ojo recorre la fila en el mismo orden que la
+   fila explica, en vez de recibir los tres golpes a la vez. */
+.vlo-onb__process > div { animation: vlo-onb-rise 0.44s cubic-bezier(.2,.7,.3,1) both; }
+.vlo-onb__process > div:nth-of-type(1) { animation-delay: 0.10s; }
+.vlo-onb__process > div:nth-of-type(2) { animation-delay: 0.25s; }
+.vlo-onb__process > div:nth-of-type(3) { animation-delay: 0.40s; }
+
+/* El icono hace su propio rebote (escala) mientras el bloque sube
+   (desplazamiento): son propiedades distintas en elementos distintos,
+   así que no se pisan. */
+.vlo-onb__process-icon { animation: vlo-onb-pop 0.46s cubic-bezier(.34,1.4,.5,1) both; }
+.vlo-onb__process > div:nth-of-type(1) .vlo-onb__process-icon { animation-delay: 0.16s; }
+.vlo-onb__process > div:nth-of-type(2) .vlo-onb__process-icon { animation-delay: 0.31s; }
+.vlo-onb__process > div:nth-of-type(3) .vlo-onb__process-icon { animation-delay: 0.46s; }
+
+/* La línea punteada se dibuja hacia la derecha justo después del icono
+   que acaba de aparecer: convierte tres iconos sueltos en una secuencia. */
+.vlo-onb__process > i {
+  transform-origin: left center;
+  animation: vlo-onb-line 0.36s ease both;
+}
+.vlo-onb__process > i:nth-of-type(1) { animation-delay: 0.26s; }
+.vlo-onb__process > i:nth-of-type(2) { animation-delay: 0.41s; }
+
+/* Pista de gesto en el deslizador: un brillo cruza la píldora hasta que
+   la tocas. NO se anima el knob — su transform es su posición de
+   arrastre y animarlo lo pelearía con el dedo. */
+.vlo-onb__subeloo .vlo-subeloo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,0.3) 47%, transparent 73%);
+  transform: translateX(-100%);
+  animation: vlo-onb-sweep 2.6s ease-in-out 1.2s infinite;
+}
+.vlo-onb__subeloo .vlo-subeloo.is-dragging::after,
+.vlo-onb__subeloo .vlo-subeloo.is-done::after { animation: none; opacity: 0; }
+
+/* Quien pidió menos movimiento en su sistema recibe la pantalla quieta:
+   nada de esto comunica nada que el texto no diga ya. */
+@media (prefers-reduced-motion: reduce) {
+  .vlo-onb__content,
+  .vlo-onb__process > div,
+  .vlo-onb__process > i,
+  .vlo-onb__process-icon,
+  .vlo-flow-hero__art,
+  .vlo-flow-hero__copy { animation: none !important; }
+  .vlo-onb__subeloo .vlo-subeloo::after { animation: none; opacity: 0; }
 }
 
 @media (max-width: 370px) {

@@ -215,7 +215,7 @@ export default function SupportPage() {
   const total = grupos.reduce((n, g) => n + g.preguntas.length, 0);
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <button className="lv-icon-btn" onClick={() => router.push("/account")} aria-label="Atrás">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>

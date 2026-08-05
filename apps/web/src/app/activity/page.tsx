@@ -149,7 +149,7 @@ export default function ActivityPage() {
 
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <header className="lv-topbar"><h1 className="lv-topbar__title">Actividad</h1></header>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para ver tu actividad</div>
@@ -163,7 +163,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <h1 className="lv-topbar__title">Actividad</h1>
       </header>

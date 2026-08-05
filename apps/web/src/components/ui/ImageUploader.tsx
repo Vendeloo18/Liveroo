@@ -19,7 +19,14 @@ const MAX_BYTES = 5 * 1024 * 1024;
 //  · normaliza la orientación al dibujarla en el canvas
 // Si el navegador no puede decodificar el archivo, se avisa y se cae al
 // original (que el chequeo de tamaño atrapa si es muy pesado).
-async function comprimirAJpeg(file: File): Promise<Blob> {
+//
+// `cuadrado` recorta al centro: lo usa el avatar, que siempre se muestra
+// dentro de un círculo. Sin recortar, una foto vertical salía aplastada.
+export async function comprimirAJpeg(
+  file: File,
+  opciones: { max?: number; cuadrado?: boolean } = {}
+): Promise<Blob> {
+  const { max: MAX_LADO = 1600, cuadrado = false } = opciones;
   const dataUrl: string = await new Promise((res, rej) => {
     const fr = new FileReader();
     fr.onload = () => res(fr.result as string);
@@ -32,19 +39,32 @@ async function comprimirAJpeg(file: File): Promise<Blob> {
     im.onerror = () => rej(new Error("no se pudo decodificar"));
     im.src = dataUrl;
   });
-  const MAX = 1600;
-  let { width, height } = img;
-  if (Math.max(width, height) > MAX) {
-    const s = MAX / Math.max(width, height);
-    width = Math.round(width * s);
-    height = Math.round(height * s);
-  }
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("sin canvas");
-  ctx.drawImage(img, 0, 0, width, height);
+
+  if (cuadrado) {
+    // Recorte central: se toma el cuadrado más grande que quepa y se
+    // dibuja lleno, así el círculo del avatar nunca deforma la cara.
+    const lado = Math.min(img.width, img.height);
+    const sx = (img.width - lado) / 2;
+    const sy = (img.height - lado) / 2;
+    const destino = Math.min(lado, MAX_LADO);
+    canvas.width = destino;
+    canvas.height = destino;
+    ctx.drawImage(img, sx, sy, lado, lado, 0, 0, destino, destino);
+  } else {
+    let { width, height } = img;
+    if (Math.max(width, height) > MAX_LADO) {
+      const s = MAX_LADO / Math.max(width, height);
+      width = Math.round(width * s);
+      height = Math.round(height * s);
+    }
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+  }
+
   return await new Promise((res, rej) =>
     canvas.toBlob(b => (b ? res(b) : rej(new Error("sin blob"))), "image/jpeg", 0.85));
 }

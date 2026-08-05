@@ -106,7 +106,7 @@ export default function OrderPage() {
 
   if (noExiste) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <header className="lv-topbar">
           <button className="lv-icon-btn" onClick={() => router.push("/activity")} aria-label="Atrás">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -122,7 +122,7 @@ export default function OrderPage() {
   }
 
   if (!order) {
-    return <div className="lv-app"><div className="lv-empty"><div className="lv-empty__text">Cargando orden…</div></div></div>;
+    return <div className="lv-app lv-app--aurora"><div className="lv-empty"><div className="lv-empty__text">Cargando orden…</div></div></div>;
   }
 
   const base = ESTADO[order.status] ?? { texto: order.status, detalle: "", clase: "lv-badge--soft" };
@@ -167,7 +167,7 @@ export default function OrderPage() {
     : `https://wa.me/?text=${encodeURIComponent(mensajeFinal)}`;
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <button className="lv-icon-btn" onClick={() => router.push("/activity")} aria-label="Atrás">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>

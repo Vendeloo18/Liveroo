@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import { useAuthStore } from "../../../store/authStore";
+import { AvatarUploader } from "../../../components/ui/AvatarUploader";
 import { CATEGORIAS, CIUDADES_VENEZUELA } from "../../../lib/marketplace";
 
 // buildWhatsappLink hace phone.replace(/\D/g,"") y arma wa.me/<digitos>,
@@ -35,6 +36,7 @@ export default function EditProfilePage() {
   const [city, setCity] = useState("");
   const [shopName, setShopName] = useState("");
   const [sellerCat, setSellerCat] = useState("");
+  const [avatar, setAvatar] = useState<string | undefined>(undefined);
 
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
@@ -48,7 +50,24 @@ export default function EditProfilePage() {
     setCity(p.city ?? "");
     setShopName(p.shopName ?? "");
     setSellerCat(p.sellerCat ?? "");
+    setAvatar(p.avatar ?? undefined);
   }, [profile]);
+
+  // La foto se guarda sola en cuanto termina de subir, sin esperar a
+  // "Guardar cambios": el archivo ya está en Storage, así que dejarla a
+  // medias solo consigue que quien se salga sin guardar crea que se
+  // perdió. syncPublicProfile la replica a /publicProfiles.
+  const guardarAvatar = async (url: string) => {
+    if (!profile) return;
+    setAvatar(url);
+    try {
+      await updateDoc(doc(db, "users", profile.uid), { avatar: url, updatedAt: serverTimestamp() });
+      setAviso({ tipo: "ok", texto: "Foto actualizada" });
+      setTimeout(() => setAviso(null), 2500);
+    } catch {
+      setAviso({ tipo: "bad", texto: "La foto subió pero no se pudo guardar en tu perfil" });
+    }
+  };
 
   const esVendedor = profile?.sellerStatus === "approved";
 
@@ -94,7 +113,7 @@ export default function EditProfilePage() {
 
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para editar tu perfil</div>
           <button className="lv-btn lv-btn--primary" style={{ marginTop: 16 }} onClick={() => router.push("/login")}>Entrar</button>
@@ -106,7 +125,7 @@ export default function EditProfilePage() {
   const faltaWhatsapp = esVendedor && !(profile as any).whatsapp;
 
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <button className="lv-icon-btn" onClick={() => router.push("/account")} aria-label="Atrás">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -129,6 +148,15 @@ export default function EditProfilePage() {
             </div>
           </div>
         )}
+
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+          <AvatarUploader
+            url={avatar}
+            inicial={(displayName || profile.email || "?")[0].toUpperCase()}
+            uid={profile.uid}
+            onSubida={guardarAvatar}
+          />
+        </div>
 
         <div className="lv-field">
           <label className="lv-field__label" htmlFor="nombre">Nombre</label>

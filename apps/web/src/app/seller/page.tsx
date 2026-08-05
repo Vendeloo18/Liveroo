@@ -17,7 +17,7 @@ import {
   telefonoVenezolanoValido,
 } from "../../lib/marketplace";
 
-type Pantalla = "hub" | "subasta" | "show" | "producto";
+type Pantalla = "hub" | "subasta";
 
 const DURACIONES: [string, string][] = [
   ["6", "6 horas"], ["24", "1 día"], ["72", "3 días"], ["168", "7 días"],
@@ -35,6 +35,42 @@ const ESTADO: Record<string, { texto: string; clase: string }> = {
   live: { texto: "EN VIVO", clase: "lv-badge--live" },
   ended: { texto: "Terminado", clase: "lv-badge--soft" },
 };
+
+// Qué le toca al VENDEDOR en cada estado de la orden. No es el estado
+// crudo: es la frase que le dice qué tiene que hacer ahora.
+const ORDEN: Record<string, { texto: string; tuTurno?: boolean }> = {
+  pending_payment: { texto: "Confirma que te pagaron", tuTurno: true },
+  payment_confirmed: { texto: "Despacha el producto", tuTurno: true },
+  shipped: { texto: "Enviado — esperando al comprador" },
+  delivered: { texto: "Entregado" },
+  cancelled: { texto: "Cancelada" },
+  disputed: { texto: "En disputa" },
+};
+
+function FilaOrden({ o, onClick }: { o: any; onClick: () => void }) {
+  const e: { texto: string; tuTurno?: boolean } = ORDEN[o.status] ?? { texto: o.status };
+  return (
+    <button className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={onClick}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 11, overflow: "hidden", background: "var(--surface-2)", flexShrink: 0 }}>
+          {o.productImageURL && <img src={o.productImageURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "0.86rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {o.productTitle ?? "Producto"}
+          </div>
+          <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 1 }}>
+            {formatUsd(o.bidAmountUsd ?? 0)} · {o.buyerName ?? "Comprador"}
+          </div>
+          <span className={`lv-badge ${e.tuTurno ? "lv-badge--accent" : "lv-badge--soft"}`} style={{ marginTop: 4 }}>
+            {e.texto}
+          </span>
+        </div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  );
+}
 
 function FilaSubasta({ a, onClick }: { a: any; onClick: () => void }) {
   const { texto, vencida } = useCountdown(a.endsAt);
@@ -78,6 +114,7 @@ export default function SellerPage() {
   const [pantalla, setPantalla] = useState<Pantalla>("hub");
   const [shows, setShows] = useState<any[]>([]);
   const [auctions, setAuctions] = useState<any[]>([]);
+  const [ventas, setVentas] = useState<any[]>([]);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "bad"; texto: string } | null>(null);
 
@@ -89,13 +126,6 @@ export default function SellerPage() {
   const [duracion, setDuracion] = useState("24");
   const [catSub, setCatSub] = useState("Moda y Ropa");
   const [fotosSub, setFotosSub] = useState<string[]>([]);
-
-  // Formulario de show
-  const [tShow, setTShow] = useState("");
-  const [dShow, setDShow] = useState("");
-  const [catShow, setCatShow] = useState("Moda y Ropa");
-  const [verCategorias, setVerCategorias] = useState(false);
-  const [verDescripcion, setVerDescripcion] = useState(false);
 
   // Solicitud de vendedor (estado no-aprobado)
   const [solTienda, setSolTienda] = useState("");
@@ -114,11 +144,6 @@ export default function SellerPage() {
     setSolCiudad(actual => actual || p.city || "");
     setSolTienda(actual => actual || p.shopName || "");
     setSolCat(actual => p.sellerCat || actual);
-    // Salir en vivo no debería empezar por llenar una ficha: el nombre de
-    // la tienda y la categoría ya los eligió al hacerse vendedor. Se
-    // proponen y se sale al aire; ambos se pueden cambiar antes de crear.
-    setTShow(actual => actual || (p.shopName ? `${p.shopName} en vivo` : ""));
-    setCatShow(actual => p.sellerCat || actual);
   }, [profile]);
 
   useEffect(() => {
@@ -166,14 +191,6 @@ export default function SellerPage() {
     }
   };
 
-  // Formulario de producto de show
-  const [showElegido, setShowElegido] = useState("");
-  const [tProd, setTProd] = useState("");
-  const [precioProd, setPrecioProd] = useState("");
-  const [incProd, setIncProd] = useState("1");
-  const [timer, setTimer] = useState("30");
-  const [fotosProd, setFotosProd] = useState<string[]>([]);
-
   useEffect(() => {
     if (!profile) return;
     const u1 = onSnapshot(
@@ -184,7 +201,14 @@ export default function SellerPage() {
       query(collection(db, "auctions"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
       s => setAuctions(s.docs.map(d => ({ id: d.id, ...d.data() }))),
       e => console.error("auctions:", e.code));
-    return () => { u1(); u2(); };
+    // Las órdenes son la mitad del trabajo del vendedor —confirmar el pago,
+    // despachar— y no se veían en ninguna pantalla: solo se llegaba a ellas
+    // por el link del aviso. Por eso el panel "no decía nada".
+    const u3 = onSnapshot(
+      query(collection(db, "orders"), where("sellerId", "==", profile.uid), orderBy("createdAt", "desc")),
+      s => setVentas(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+      e => console.error("orders:", e.code));
+    return () => { u1(); u2(); u3(); };
   }, [profile]);
 
   const avisar = (tipo: "ok" | "bad", texto: string) => {
@@ -227,14 +251,31 @@ export default function SellerPage() {
     } finally { setOcupado(false); }
   };
 
-  const crearShow = async () => {
-    if (!tShow.trim() || !profile) return;
+  // Salir en vivo es UN toque. Antes eran tres pantallas —el hub, una
+  // ficha con título y categoría, y un "todo listo" — para decidir
+  // exactamente nada: los dos campos venían pre-llenados del perfil. El
+  // título se puede cambiar después, desde el propio panel del vivo.
+  const salirEnVivo = async () => {
+    if (!profile || ocupado) return;
     if (faltaWhatsapp()) return;
+
+    // Si ya tiene uno abierto, volver a ese en vez de acumular shows
+    // fantasma que después salen en su tienda sin haber transmitido nunca.
+    const abierto = shows.find(s => s.status === "live")
+      ?? shows.find(s => ["scheduled", "draft"].includes(s.status));
+    if (abierto) {
+      router.push(`/seller/show/${abierto.id}${abierto.status === "live" ? "" : "?vivo=1"}`);
+      return;
+    }
+
     setOcupado(true);
     try {
+      const p = profile as any;
+      const tienda = p.shopName || profile.displayName || "Vendedor";
       const ref = await addDoc(collection(db, "shows"), {
         sellerId: profile.uid, sellerName: profile.displayName ?? "Vendedor",
-        title: tShow.trim(), description: dShow.trim(), category: catShow,
+        title: `${tienda} en vivo`.slice(0, 120), description: "",
+        category: p.sellerCat || "Moda y Ropa",
         // Sin agoraChannelName a propósito: el canal de video es el id del
         // show, que lo pone el servidor. Cuando lo escribía el cliente se
         // podía copiar el canal de otro vendedor y entrar con cámara a su
@@ -243,43 +284,20 @@ export default function SellerPage() {
         viewerCount: 0, totalProducts: 0,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
-      setTShow(""); setDShow("");
-      setPantalla("hub");
-      // Directo a la página del show: ahí agrega las subastas y sale en vivo.
-      router.push(`/seller/show/${ref.id}`);
+      // ?vivo=1: el panel llama a startShow y prende la cámara solo. El
+      // ocupado NO se limpia a propósito — estamos navegando, y así el
+      // botón no acepta un segundo toque que crearía un show de más.
+      router.push(`/seller/show/${ref.id}?vivo=1`);
     } catch (e: any) {
-      avisar("bad", e.message ?? "No se pudo crear la venta en vivo");
-    } finally { setOcupado(false); }
-  };
-
-  const agregarProducto = async () => {
-    if (!showElegido || !tProd.trim() || !precioProd || !profile) return;
-    setOcupado(true);
-    try {
-      const p = parseFloat(precioProd);
-      const enCola = auctions.filter(a => a.showId === showElegido).length;
-      await addDoc(collection(db, "auctions"), {
-        mode: "live", showId: showElegido,
-        sellerId: profile.uid, sellerName: profile.displayName ?? "Vendedor",
-        title: tProd.trim(), description: "",
-        startingPriceUsd: p, currentBidUsd: p, minIncrementUsd: parseFloat(incProd),
-        timerSeconds: parseInt(timer),
-        status: "waiting", sortOrder: enCola,
-        bidsCount: 0, currentBidderId: null, winnerId: null, orderId: null,
-        imageURL: fotosProd[0] ?? null, imageURLs: fotosProd,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-      });
-      setTProd(""); setPrecioProd(""); setFotosProd([]);
-      avisar("ok", "Producto agregado a la venta en vivo");
-    } catch (e: any) {
-      avisar("bad", e.message ?? "No se pudo agregar");
-    } finally { setOcupado(false); }
+      avisar("bad", e.message ?? "No se pudo salir en vivo");
+      setOcupado(false);
+    }
   };
 
   // ── Puertas ──
   if (!profile) {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <header className="lv-topbar"><h1 className="lv-topbar__title">Vender</h1></header>
         <div className="lv-empty">
           <div className="lv-empty__title">Entra para vender</div>
@@ -409,6 +427,16 @@ export default function SellerPage() {
   // Solo lo que está vivo: subastas sueltas activas y shows sin terminar.
   const activas = auctions.filter(a => a.mode !== "live" && a.status === "active");
   const showsActivos = shows.filter(s => !["ended", "cancelled"].includes(s.status));
+  const enVivoAhora = shows.find(s => s.status === "live");
+
+  // Lo que el vendedor tiene que MOVER hoy: confirmar un pago o despachar.
+  // Va primero porque es lo único de esta pantalla con una fecha encima.
+  const teToca = ventas.filter(o => ["pending_payment", "payment_confirmed"].includes(o.status));
+  // Su parte de todo lo vendido (ya descontada la comisión), sin contar
+  // lo cancelado. Es la cifra que de verdad le interesa ver al entrar.
+  const ganado = ventas
+    .filter(o => o.status !== "cancelled")
+    .reduce((s, o) => s + (o.payoutUsd ?? o.sellerReceivesUsd ?? o.bidAmountUsd ?? 0), 0);
 
   const shopName = (profile as any).shopName || profile.displayName || "Mi tienda";
   const avatar = (profile as any).avatar as string | undefined;
@@ -427,7 +455,7 @@ export default function SellerPage() {
   // ══ Publicar subasta suelta ══
   if (pantalla === "subasta") {
     return (
-      <div className="lv-app">
+      <div className="lv-app lv-app--aurora">
         <Encabezado titulo="Publicar una venta"/>
         <div className="lv-pad" style={{ paddingTop: 18 }}>
           {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
@@ -488,141 +516,9 @@ export default function SellerPage() {
     );
   }
 
-  // ══ Crear show ══
-  if (pantalla === "show") {
-    return (
-      <div className="lv-app">
-        <Encabezado titulo="Nueva venta en vivo"/>
-        <div className="lv-pad" style={{ paddingTop: 18 }}>
-          {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
-
-          <div className="lv-field">
-            <label className="lv-field__label" htmlFor="ts">Título de la venta en vivo</label>
-            <input id="ts" className="lv-input" value={tShow} onChange={e => setTShow(e.target.value)} placeholder="Sneakers exclusivos importados"/>
-          </div>
-
-          {/* La categoría se muestra resuelta, no como un muro de 26 fichas */}
-          <button
-            className="lv-row"
-            style={{ width: "100%", textAlign: "left", marginBottom: 14 }}
-            onClick={() => setVerCategorias(v => !v)}
-          >
-            <div>
-              <div className="lv-eyebrow">Categoría</div>
-              <div style={{ fontSize: "0.95rem", fontWeight: 700, marginTop: 2 }}>{catShow}</div>
-            </div>
-            <span style={{ color: "var(--accent-strong)", fontSize: "0.82rem", fontWeight: 700 }}>
-              {verCategorias ? "Listo" : "Cambiar"}
-            </span>
-          </button>
-
-          {verCategorias && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-              {CATEGORIAS.map(c => (
-                <button key={c} onClick={() => { setCatShow(c); setVerCategorias(false); }} className={`lv-chip${catShow === c ? " lv-chip--active" : ""}`}>{c}</button>
-              ))}
-            </div>
-          )}
-
-          <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !tShow.trim()} onClick={crearShow}>
-            {ocupado ? "Creando…" : "Salir en vivo"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setVerDescripcion(v => !v)}
-            style={{ display: "block", margin: "12px auto 0", fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-3)" }}
-          >
-            {verDescripcion ? "Listo" : "Agregar una descripción"}
-          </button>
-
-          {verDescripcion && (
-            <div className="lv-field" style={{ marginTop: 14 }}>
-              <textarea id="ds" className="lv-input" rows={3} value={dShow} onChange={e => setDShow(e.target.value)} placeholder="Qué vas a vender en vivo" aria-label="Descripción"/>
-            </div>
-          )}
-
-          <p className="lv-dim" style={{ fontSize: "0.76rem", lineHeight: 1.5, textAlign: "center", marginTop: 16 }}>
-            Entras directo a tu panel: ahí prendes la cámara y vas sacando los productos uno por uno.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ══ Agregar subasta a un show ══
-  if (pantalla === "producto") {
-    const programados = shows.filter(s => ["draft", "scheduled", "live"].includes(s.status));
-    return (
-      <div className="lv-app">
-        <Encabezado titulo="Agregar a una venta en vivo"/>
-        <div className="lv-pad" style={{ paddingTop: 18 }}>
-          {aviso && <div className={`lv-note lv-note--${aviso.tipo}`} style={{ marginBottom: 14 }}>{aviso.texto}</div>}
-
-          {programados.length === 0 ? (
-            <div className="lv-empty">
-              <div className="lv-empty__title">No tienes ventas en vivo abiertas</div>
-              <button className="lv-btn lv-btn--accent" style={{ marginTop: 14 }} onClick={() => setPantalla("show")}>Crear una venta en vivo</button>
-            </div>
-          ) : (
-            <>
-              <div className="lv-field">
-                <span className="lv-field__label">¿A cuál venta en vivo?</span>
-                <div style={{ display: "grid", gap: 8 }}>
-                  {programados.map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => setShowElegido(s.id)}
-                      className="lv-panel lv-panel--flat"
-                      style={{ textAlign: "left", padding: "12px 14px", boxShadow: showElegido === s.id ? "inset 0 0 0 2px var(--ink)" : "none" }}
-                    >
-                      <div style={{ fontSize: "0.86rem", fontWeight: 700 }}>{s.title}</div>
-                      <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
-                        {auctions.filter(a => a.showId === s.id).length} en cola
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="lv-field">
-                <span className="lv-field__label">Fotos</span>
-                <ImageUploader images={fotosProd} onChange={setFotosProd} path={`products/${profile.uid}`} max={5}/>
-              </div>
-
-              <div className="lv-field">
-                <label className="lv-field__label" htmlFor="tp">Producto</label>
-                <input id="tp" className="lv-input" value={tProd} onChange={e => setTProd(e.target.value)} placeholder="Nombre del producto"/>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                <div className="lv-field">
-                  <label className="lv-field__label" htmlFor="pp">Precio</label>
-                  <input id="pp" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={precioProd} onChange={e => setPrecioProd(e.target.value)} placeholder="10"/>
-                </div>
-                <div className="lv-field">
-                  <label className="lv-field__label" htmlFor="ip">Incremento</label>
-                  <input id="ip" className="lv-input" type="number" inputMode="decimal" min="0.5" step="0.5" value={incProd} onChange={e => setIncProd(e.target.value)}/>
-                </div>
-                <div className="lv-field">
-                  <label className="lv-field__label" htmlFor="tm">Timer (s)</label>
-                  <input id="tm" className="lv-input" type="number" inputMode="numeric" min="10" step="5" value={timer} onChange={e => setTimer(e.target.value)}/>
-                </div>
-              </div>
-
-              <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" disabled={ocupado || !showElegido || !tProd.trim() || !precioProd} onClick={agregarProducto}>
-                {ocupado ? "Agregando…" : "Agregar a la cola"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // ══ Hub ══
   return (
-    <div className="lv-app">
+    <div className="lv-app lv-app--aurora">
       <header className="lv-topbar">
         <h1 className="lv-topbar__title">Vender</h1>
         <button className="lv-icon-btn lv-icon-btn--bare" style={{ marginLeft: "auto" }} onClick={() => router.push(`/seller/${profile.uid}`)} aria-label="Ver mi tienda">
@@ -662,44 +558,77 @@ export default function SellerPage() {
           </button>
         )}
 
+        {/* Dejaste un vivo encendido. Va arriba de todo: mientras siga
+            abierto aparece en el inicio y la gente entra a una cámara que
+            quizá ya no está. */}
+        {enVivoAhora && (
+          <button
+            onClick={() => router.push(`/seller/show/${enVivoAhora.id}`)}
+            style={{
+              width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 12,
+              padding: "14px 16px", borderRadius: "var(--r-card)", background: "var(--live)", color: "#fff",
+            }}
+          >
+            <span style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(255,255,255,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+            </span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{ display: "block", fontSize: "0.92rem", fontWeight: 800 }}>Sigues en vivo</span>
+              <span style={{ display: "block", fontSize: "0.76rem", opacity: 0.92, marginTop: 1 }}>
+                {enVivoAhora.viewerCount ?? 0} viendo · toca para volver
+              </span>
+            </span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        )}
+
+        {/* Los tres números que importan al entrar. Antes esta pantalla no
+            mostraba un solo bolívar: no había forma de saber si el negocio
+            iba bien sin abrir orden por orden. */}
+        <div className="lv-grid" style={{ gridTemplateColumns: "1.3fr 1fr 1fr", gap: 10 }}>
+          <div className="lv-panel" style={{ padding: "13px 12px", textAlign: "center" }}>
+            <div className="lv-price" style={{ fontSize: "1.25rem" }}>{formatUsd(ganado)}</div>
+            <div className="lv-eyebrow" style={{ marginTop: 2 }}>Tu parte</div>
+          </div>
+          <div className="lv-panel" style={{ padding: "13px 12px", textAlign: "center", boxShadow: teToca.length > 0 ? "inset 0 0 0 2px var(--accent)" : undefined }}>
+            <div className="lv-price" style={{ fontSize: "1.25rem", color: teToca.length > 0 ? "var(--accent-strong)" : undefined }}>{teToca.length}</div>
+            <div className="lv-eyebrow" style={{ marginTop: 2 }}>Te toca</div>
+          </div>
+          <div className="lv-panel" style={{ padding: "13px 12px", textAlign: "center" }}>
+            <div className="lv-price" style={{ fontSize: "1.25rem" }}>{activas.length}</div>
+            <div className="lv-eyebrow" style={{ marginTop: 2 }}>Activas</div>
+          </div>
+        </div>
+
         {/* Acciones — Vender en vivo arriba y prominente; artículo, secundario */}
-        <button className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg" onClick={() => setPantalla("show")} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
+        <button
+          className="lv-btn lv-btn--accent lv-btn--block lv-btn--lg"
+          onClick={salirEnVivo}
+          disabled={ocupado}
+          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9 }}
+        >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Vender en vivo
+          {ocupado ? "Saliendo…" : enVivoAhora ? "Volver a tu vivo" : "Vender en vivo"}
         </button>
         <button className="lv-btn lv-btn--outline lv-btn--block" onClick={() => setPantalla("subasta")} style={{ marginTop: -4 }}>
           Vender un artículo
         </button>
 
-        {/* Shows activos */}
-        {showsActivos.length > 0 && (
-          <section className="lv-panel" style={{ padding: "2px 16px" }}>
+        {/* Te toca — lo primero después de las acciones porque es lo único
+            con un comprador esperando del otro lado. */}
+        {teToca.length > 0 && (
+          <section className="lv-panel" style={{ padding: "2px 16px", boxShadow: "inset 0 0 0 2px var(--accent)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
-              <span className="lv-eyebrow">Ventas en vivo</span>
-              {showsActivos.some(s => s.status === "live")
-                ? <span className="lv-badge lv-badge--live" style={{ fontSize: "0.6rem" }}><i className="lv-dot"/> EN VIVO</span>
-                : <span className="lv-badge lv-badge--soft" style={{ fontSize: "0.6rem" }}>{showsActivos.length}</span>}
+              <span className="lv-eyebrow" style={{ color: "var(--accent-strong)" }}>Te toca</span>
+              <span className="lv-badge lv-badge--accent" style={{ fontSize: "0.62rem" }}>{teToca.length}</span>
             </div>
-            {showsActivos.map(s => {
-              const e = ESTADO[s.status] ?? { texto: s.status, clase: "lv-badge--soft" };
-              const cola = auctions.filter(a => a.showId === s.id && a.status === "waiting").length;
-              return (
-                <button key={s.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/seller/show/${s.id}`)}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "0.86rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
-                    <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>{s.status === "live" ? `${s.viewerCount ?? 0} viendo ahora` : "Listo para salir en vivo"}</div>
-                    <span className={`lv-badge ${e.clase}`} style={{ marginTop: 5 }}>
-                      {s.status === "live" && <i className="lv-dot"/>}{e.texto}
-                    </span>
-                  </div>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                </button>
-              );
-            })}
+            {teToca.map(o => (
+              <FilaOrden key={o.id} o={o} onClick={() => router.push(`/orders/${o.id}`)}/>
+            ))}
           </section>
         )}
 
-        {/* Ventas activas */}
+        {/* Ventas activas (subastas sueltas) */}
         {activas.length > 0 && (
           <section className="lv-panel" style={{ padding: "2px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 4px" }}>
@@ -712,10 +641,51 @@ export default function SellerPage() {
           </section>
         )}
 
-        {/* Nada activo todavía */}
-        {showsActivos.length === 0 && activas.length === 0 && (
+        {/* Vivos preparados pero sin transmitir (el que está al aire ya
+            tiene su franja arriba, no hace falta repetirlo aquí). */}
+        {showsActivos.filter(s => s.status !== "live").length > 0 && (
+          <section className="lv-panel" style={{ padding: "2px 16px" }}>
+            <div className="lv-eyebrow" style={{ padding: "14px 0 4px" }}>Listos para salir</div>
+            {showsActivos.filter(s => s.status !== "live").map(s => {
+              const cola = auctions.filter(a => a.showId === s.id && a.status === "waiting").length;
+              return (
+                <button key={s.id} className="lv-row" style={{ width: "100%", textAlign: "left" }} onClick={() => router.push(`/seller/show/${s.id}?vivo=1`)}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "0.86rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
+                    <div className="lv-dim" style={{ fontSize: "0.73rem", marginTop: 2 }}>
+                      {cola > 0 ? `${cola} en cola · toca para salir al aire` : "Toca para salir al aire"}
+                    </div>
+                  </div>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-4)" strokeWidth="2.2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              );
+            })}
+          </section>
+        )}
+
+        {/* El historial completo vive en /ventas, que ya existía pero solo
+            se alcanzaba desde Mi cuenta — nadie la encontraba desde aquí,
+            que es donde un vendedor la busca. Se enlaza en vez de repetir
+            la lista: una sola pantalla manda sobre las órdenes. */}
+        {ventas.length > 0 && (
+          <button className="lv-panel" onClick={() => router.push("/ventas")} style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", width: "100%" }}>
+            <span className="lv-avatar" style={{ background: "var(--accent-tint)", color: "var(--accent-strong)", borderRadius: 11 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2l1.5 3h9L18 2M3 6h18l-1.5 13a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8z"/></svg>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>Todas mis ventas</div>
+              <div className="lv-dim" style={{ fontSize: "0.74rem" }}>
+                {ventas.length} {ventas.length === 1 ? "orden" : "órdenes"} · pagos y envíos
+              </div>
+            </div>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="2.2" strokeLinecap="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        )}
+
+        {/* Nada todavía */}
+        {showsActivos.length === 0 && activas.length === 0 && ventas.length === 0 && (
           <div className="lv-dim" style={{ fontSize: "0.84rem", textAlign: "center", lineHeight: 1.6, padding: "18px 12px" }}>
-            No tienes nada activo ahora mismo.<br/>Toca <strong style={{ color: "var(--ink-2)" }}>Vender en vivo</strong> o <strong style={{ color: "var(--ink-2)" }}>Vender un artículo</strong> para empezar.
+            Todavía no has vendido nada.<br/>Toca <strong style={{ color: "var(--ink-2)" }}>Vender en vivo</strong> y sales al aire de una.
           </div>
         )}
       </div>

@@ -472,32 +472,82 @@ describe("Shows", () => {
     );
   });
 
-  test("un espectador suma 1 al contador de audiencia", async () => {
-    await assertSucceeds(
+  // El contador dejó de moverlo cada espectador de uno en uno: bastaba un
+  // navegador que muriera sin ejecutar su cleanup para dejarlo inflado
+  // para siempre. Ahora la verdad son las presencias de /viewers, y quien
+  // publica el total es el transmisor — el único presente todo el vivo.
+  test("un espectador ya no mueve el contador de audiencia", async () => {
+    await assertFails(
       updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 13 })
     );
   });
 
-  test("y resta 1 al salir, sin bajar de cero", async () => {
+  test("el transmisor sí publica cuánta gente lo está viendo", async () => {
     await assertSucceeds(
-      updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 11 })
-    );
-    // show1 está en 0: restarle es inventar audiencia negativa
-    await assertFails(
-      updateDoc(doc(as(BUYER), "shows", "show1"), { viewerCount: -1 })
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { viewerCount: 13 })
     );
   });
 
-  test("pero no puede inflar el contador de golpe", async () => {
+  test("pero no fuera del aire, ni con audiencia inventada", async () => {
+    // show1 está programado: ahí todavía no hay nada que contar
     await assertFails(
-      updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 99999 })
+      updateDoc(doc(as(SELLER), "shows", "show1"), { viewerCount: 13 })
+    );
+    await assertFails(
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { viewerCount: -1 })
+    );
+    await assertFails(
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { viewerCount: 999999 })
     );
   });
 
   test("ni colar otro campo junto al contador", async () => {
     await assertFails(
-      updateDoc(doc(as(BUYER), "shows", "showLive"), { viewerCount: 13, status: "ended" })
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { viewerCount: 13, status: "ended" })
     );
+  });
+
+  // El latido es lo único que le dice al barrido que el vendedor sigue
+  // frente a la cámara. Si un extraño pudiera escribirlo, un vivo
+  // abandonado se quedaría encendido mientras alguien lo "mantuviera".
+  test("el transmisor late mientras está al aire", async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { hostSeenAt: serverTimestamp() })
+    );
+  });
+
+  test("un extraño no puede latir por él", async () => {
+    await assertFails(
+      updateDoc(doc(as(BUYER), "shows", "showLive"), { hostSeenAt: serverTimestamp() })
+    );
+  });
+
+  test("ni se late con una hora inventada", async () => {
+    // Con fecha libre se podía dejar un latido en el año 2099 y el vivo
+    // no se cerraría nunca solo.
+    await assertFails(
+      updateDoc(doc(as(SELLER), "shows", "showLive"), { hostSeenAt: new Date(2099, 0, 1) })
+    );
+  });
+
+  test("cada quien marca su propia presencia en el vivo", async () => {
+    await assertSucceeds(
+      setDoc(doc(as(BUYER), "shows", "showLive", "viewers", BUYER), { seenAt: serverTimestamp() })
+    );
+  });
+
+  test("pero no la de otro, ni con hora inventada", async () => {
+    await assertFails(
+      setDoc(doc(as(BUYER), "shows", "showLive", "viewers", OTHER_BUYER), { seenAt: serverTimestamp() })
+    );
+    await assertFails(
+      setDoc(doc(as(BUYER), "shows", "showLive", "viewers", BUYER), { seenAt: new Date(2099, 0, 1) })
+    );
+  });
+
+  test("las presencias las lee el dueño del show, no el público", async () => {
+    await assertSucceeds(getDocs(collection(as(SELLER), "shows", "showLive", "viewers")));
+    await assertFails(getDocs(collection(as(BUYER), "shows", "showLive", "viewers")));
   });
 });
 

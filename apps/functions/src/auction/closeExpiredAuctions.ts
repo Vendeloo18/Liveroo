@@ -64,6 +64,9 @@ export const closeExpiredAuctions = functions
   .pubsub.schedule("every 1 minutes")
   .onRun(async () => {
     const startedAt = Date.now();
+    // Primero los vivos abandonados: si el vendedor se fue, no tiene
+    // sentido quedarse 50 segundos barriendo la cola de un show muerto.
+    await cerrarShowsZombis();
     let totalClosed = await sweep();
 
     while (Date.now() - startedAt < SWEEP_BUDGET_MS) {
@@ -86,33 +89,93 @@ export const closeExpiredAuctions = functions
     return null;
   });
 
-// Con el modelo "vende en vivo" un show ya no se termina solo al vaciarse
-// la cola — pero si el vendedor cierra la app y lo abandona, quedaba EN
-// VIVO para siempre en el home. Un show sin subasta actual y sin actividad
-// por 45 minutos se termina de oficio.
+// Con el modelo "vende en vivo" un show no se termina solo al vaciarse la
+// cola: el vendedor sigue al aire y va sacando productos uno por uno. La
+// única señal fiable de que todavía está ahí es el latido que su panel
+// escribe en hostSeenAt cada pocos segundos.
+//
+// Antes esto miraba updatedAt y además exigía que no hubiera subasta
+// actual, con 45 minutos de plazo. Resultado: quien cerraba la app dejaba
+// su vivo encendido en el home casi una hora, con la cámara ya muerta —
+// y si el show se quedó con currentAuctionId apuntando a algo cerrado, no
+// se terminaba nunca.
+// 5 minutos, no 90 segundos. En un teléfono el vendedor se va a segundo
+// plano constantemente —y el botón "Invitar" del propio panel abre el
+// compartir nativo de iOS, que congela los timers de Safari—: con 90s,
+// tardar dos minutos eligiendo contactos en WhatsApp le mataba el vivo.
+// Cinco minutos sigue siendo abismalmente mejor que los 45 de antes, y
+// deja que una interrupción corta se recupere sola.
+const LATIDO_MUERTO_MS = 5 * 60_000;
+const GRACIA_INICIO_MS = 120_000;         // recién al aire, aún sin latir
+const SIN_LATIDO_JAMAS_MS = 10 * 60_000;  // shows de antes del latido
+
 async function cerrarShowsZombis(): Promise<void> {
   try {
     const ahora = Timestamp.now();
-    const limite = Timestamp.fromMillis(ahora.toMillis() - 45 * 60_000);
+    const ms = (t: unknown): number =>
+      typeof (t as Timestamp | undefined)?.toMillis === "function" ? (t as Timestamp).toMillis() : 0;
+
     const vivos = await db
       .collection(COLLECTIONS.SHOWS)
       .where("status", "==", "live")
       .limit(200)
       .get();
 
-    const zombis = vivos.docs.filter((d) => {
+    const abandonados = vivos.docs.filter((d) => {
       const s = d.data();
-      const upd = s.updatedAt as Timestamp | undefined;
-      return !s.currentAuctionId && upd && upd.toMillis() < limite.toMillis();
-    });
-    if (zombis.length === 0) return;
+      const inicio = ms(s.startedAt) || ms(s.updatedAt);
+      // Acaba de salir al aire: dale tiempo de mandar el primer latido.
+      if (inicio && ahora.toMillis() - inicio < GRACIA_INICIO_MS) return false;
 
-    const lote = db.batch();
-    zombis.forEach((d) =>
-      lote.update(d.ref, { status: "ended", endedAt: ahora, updatedAt: ahora, currentAuctionId: null })
-    );
-    await lote.commit();
-    functions.logger.info(`Shows zombis terminados: ${zombis.length}`);
+      const latido = ms(s.hostSeenAt);
+      if (latido) return ahora.toMillis() - latido > LATIDO_MUERTO_MS;
+      // Sin latido nunca: o es un show viejo, o el panel no llegó a
+      // escribirlo. Plazo largo antes de darlo por muerto.
+      return !inicio || ahora.toMillis() - inicio > SIN_LATIDO_JAMAS_MS;
+    });
+    if (abandonados.length === 0) return;
+
+    for (const d of abandonados) {
+      // Con plata encima no se toca. Si el artículo actual sigue abierto y
+      // ya tiene ofertas, hay compradores pujando en este segundo: cerrar
+      // el show ahí los sacaría a la calle en mitad de una puja. Se deja
+      // pasar esta ronda; cuando esa subasta cierre sola y cree su orden,
+      // el barrido siguiente ya podrá terminarlo sin dañar a nadie.
+      const actualId = d.data().currentAuctionId as string | undefined;
+      if (actualId) {
+        const actual = (await db.doc(`${COLLECTIONS.AUCTIONS}/${actualId}`).get()).data();
+        if (actual?.status === "active" && actual?.currentBidderId) {
+          functions.logger.info("Vivo abandonado pero con pujas en curso, se pospone", { showId: d.id });
+          continue;
+        }
+      }
+
+      // La subasta que esté ACTIVA se deja cerrar sola: si alguien pujó,
+      // merece su orden. Solo se cancela lo que quedó en cola, igual que
+      // hace endShow — sin nadie transmitiendo no se va a subastar nunca.
+      await d.ref.update({
+        status: "ended",
+        endedAt: ahora,
+        currentAuctionId: null,
+        updatedAt: ahora,
+      });
+
+      const cola = await db
+        .collection(COLLECTIONS.AUCTIONS)
+        .where("showId", "==", d.id)
+        .where("status", "==", "waiting")
+        .limit(400)
+        .get();
+      if (!cola.empty) {
+        const lote = db.batch();
+        cola.docs.forEach((a) =>
+          lote.update(a.ref, { status: "cancelled", endedAt: ahora, updatedAt: ahora })
+        );
+        await lote.commit();
+      }
+    }
+
+    functions.logger.info(`Vivos abandonados terminados: ${abandonados.length}`);
   } catch (e) {
     functions.logger.warn("cerrarShowsZombis falló", e);
   }

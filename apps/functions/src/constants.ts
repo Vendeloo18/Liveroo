@@ -83,8 +83,12 @@ export type BidRejectedReason =
 // para que nadie gane disparando en el último segundo.
 // En vivo el ritmo es de segundos; en subastas sueltas, de minutos.
 
+// En vivo se extiende a 10s, no a 30: con 30 una puja a falta de 7
+// segundos revivía la subasta casi medio minuto y el vendedor se quedaba
+// esperando en cámara. 10s alcanza para que otro responda sin frenar el
+// ritmo del show.
 export const ANTI_SNIPE = {
-  live: { thresholdS: 10, extendToS: 30 },
+  live: { thresholdS: 10, extendToS: 10 },
   standalone: { thresholdS: 120, extendToS: 120 },
 } as const;
 

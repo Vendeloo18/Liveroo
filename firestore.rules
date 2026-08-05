@@ -253,25 +253,49 @@ service cloud.firestore {
              'scheduledAt', 'updatedAt'
            ])
       ) || (
-        // Contador de espectadores: de uno en uno, sube al entrar y baja
-        // al salir (nunca bajo cero). Es una métrica de vanidad; si se
-        // vuelve importante, la mueve una Function con presencia real.
-        // Solo mientras transmite y con techo: fuera del vivo no hay nada
-        // que contar, y así no se puede hundir/inflar el orden del home.
+        // Latido del transmisor. El panel del vendedor lo escribe cada
+        // pocos segundos mientras está al aire. Si deja de llegar, el
+        // barrido da el vivo por abandonado y lo termina. Sin esto, un
+        // show quedaba EN VIVO en el home aunque el vendedor hubiera
+        // cerrado la app hacía rato.
         isSignedIn()
+        && resource.data.sellerId == uid()
+        && resource.data.status == 'live'
+        && onlyChanges(['hostSeenAt'])
+        && request.resource.data.hostSeenAt == request.time
+      ) || (
+        // Espectadores: los cuenta el propio transmisor sumando las
+        // presencias frescas de /viewers, que es el único que está
+        // garantizado presente durante todo el vivo. Antes lo movía cada
+        // espectador de uno en uno, y bastaba un navegador que muriera
+        // sin avisar para que el número quedara inflado para siempre.
+        isSignedIn()
+        && resource.data.sellerId == uid()
         && resource.data.status == 'live'
         && onlyChanges(['viewerCount'])
+        && request.resource.data.viewerCount is int
+        && request.resource.data.viewerCount >= 0
         && request.resource.data.viewerCount <= 100000
-        && (
-          request.resource.data.viewerCount == resource.data.viewerCount + 1
-          || (request.resource.data.viewerCount == resource.data.viewerCount - 1
-              && resource.data.viewerCount > 0)
-        )
       );
 
       allow delete: if isApprovedSeller()
         && resource.data.sellerId == uid()
         && resource.data.status in ['draft', 'scheduled'];
+
+      // Presencia de espectadores: un doc por persona, que su propio
+      // dispositivo refresca mientras está mirando. El transmisor cuenta
+      // los de los últimos segundos — así el contador se cura solo y
+      // nadie puede inflarlo escribiendo por otro. Solo los lee el dueño
+      // del show: al público le llega el total ya sumado en viewerCount.
+      match /viewers/{viewerId} {
+        allow read: if isSignedIn()
+          && get(/databases/$(database)/documents/shows/$(showId)).data.sellerId == uid();
+        allow create, update: if isSignedIn()
+          && viewerId == uid()
+          && request.resource.data.keys().hasOnly(['seenAt'])
+          && request.resource.data.seenAt == request.time;
+        allow delete: if isSignedIn() && viewerId == uid();
+      }
 
       // Chat en vivo
       match /messages/{messageId} {

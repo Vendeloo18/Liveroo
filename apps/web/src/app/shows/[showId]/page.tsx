@@ -3,7 +3,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import {
   doc, collection, query, orderBy, limit, onSnapshot, addDoc,
-  serverTimestamp, getDoc, updateDoc, increment,
+  serverTimestamp, getDoc, setDoc, deleteDoc,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "../../../lib/firebase";
@@ -77,17 +77,36 @@ export default function ShowPage() {
   }, []);
 
   useEffect(() => {
-    const ref = doc(db, "shows", showId);
-    // Entra +1, sale −1 (las reglas no dejan bajar de cero). Es mejor
-    // esfuerzo: si el navegador muere sin cleanup, el conteo queda alto
-    // hasta que otro ciclo lo compense.
-    updateDoc(ref, { viewerCount: increment(1) }).catch(() => undefined);
-    const unsub = onSnapshot(ref, s => { if (s.exists()) setShow({ id: s.id, ...s.data() } as Show); });
-    return () => {
-      unsub();
-      updateDoc(ref, { viewerCount: increment(-1) }).catch(() => undefined);
-    };
+    const unsub = onSnapshot(doc(db, "shows", showId), s => {
+      if (s.exists()) setShow({ id: s.id, ...s.data() } as Show);
+    });
+    return () => unsub();
   }, [showId]);
+
+  // Presencia: mientras esta pantalla esté abierta, refresca su propia
+  // marca. El vendedor cuenta las frescas y publica el total en el show.
+  //
+  // Antes esto era un +1 al entrar y un −1 al salir sobre viewerCount:
+  // bastaba un navegador que muriera sin ejecutar el cleanup —cerrar la
+  // pestaña, quedarse sin batería— para dejar el contador inflado para
+  // siempre, y el vendedor no tenía forma de saber cuánta gente había de
+  // verdad del otro lado.
+  useEffect(() => {
+    if (!profile) return;
+    const ref = doc(db, "shows", showId, "viewers", profile.uid);
+    const marcar = () => { setDoc(ref, { seenAt: serverTimestamp() }).catch(() => undefined); };
+    marcar();
+    const t = setInterval(marcar, 25_000);
+    // El navegador congela los timers en segundo plano: al volver hay que
+    // marcar de una para no desaparecer del conteo del vendedor.
+    const alVolver = () => { if (document.visibilityState === "visible") marcar(); };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", alVolver);
+      deleteDoc(ref).catch(() => undefined);
+    };
+  }, [showId, profile?.uid]);
 
   useEffect(() => {
     // Antes esperaba a que el show tuviera agoraChannelName. Ese campo ya
