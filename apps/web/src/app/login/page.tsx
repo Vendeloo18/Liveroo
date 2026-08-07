@@ -3,17 +3,22 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { httpsCallable } from "firebase/functions";
-import { GoogleLogo, PlayCircle } from "@phosphor-icons/react";
+import { CaretLeft, GoogleLogo, PlayCircle } from "@phosphor-icons/react";
 import { useAuthStore } from "../../store/authStore";
 import { BrandFlowHero } from "../../components/ui/BrandFlowHero";
 import { functions } from "../../lib/firebase";
 
 type Modo = "entrar" | "crear";
+// La pantalla ahora tiene dos momentos, como un paso de onboarding:
+// primero se elige puerta, después se pide la credencial. Antes las tres
+// cosas —pestañas, Google y tres campos— llegaban de una.
+type Vista = "elegir" | "formulario";
 
 export default function AuthPage() {
   const router = useRouter();
   const { signIn, signUp, signInWithGoogle, resetPassword, error, clearError, profile } = useAuthStore();
   const [modo, setModo] = useState<Modo>("crear");
+  const [vista, setVista] = useState<Vista>("elegir");
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
@@ -49,7 +54,12 @@ export default function AuthPage() {
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    setModo(query.get("entrar") === "1" ? "entrar" : "crear");
+    const entrar = query.get("entrar") === "1";
+    const crear = query.get("crear") === "1";
+    setModo(entrar ? "entrar" : "crear");
+    // Quien llega con la puerta ya elegida —el onboarding manda
+    // ?crear=1 con el bono pendiente— no debe volver a elegirla.
+    if (entrar || crear) setVista("formulario");
   }, []);
 
   useEffect(() => {
@@ -104,15 +114,23 @@ export default function AuthPage() {
     finally { setOcupado(false); }
   };
 
-  const cambiarModo = (nuevoModo: Modo) => {
+  const abrirFormulario = (nuevoModo: Modo) => {
     setModo(nuevoModo);
+    setVista("formulario");
+    clearError();
+  };
+
+  const volverAElegir = () => {
+    setVista("elegir");
+    setVerCorreo(false);
+    setAvisoReset(null);
     clearError();
   };
 
   const puedeEnviar = !!email.trim() && clave.length >= 6 && (modo === "entrar" || !!nombre.trim());
 
   return (
-    <main className="vlo-flow-shell vlo-auth">
+    <main className={`vlo-flow-shell vlo-auth vlo-auth--${vista}`}>
       <BrandFlowHero
         imageSrc="/brand/venta-en-vivo-headphones.png"
         imageAlt="Audífonos presentados en una venta en vivo de Vendeloo"
@@ -125,30 +143,40 @@ export default function AuthPage() {
       />
 
       <section className="vlo-flow-sheet vlo-auth__sheet">
-        <div className="vlo-auth__switch" role="tablist" aria-label="Acceso a Vendeloo">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={modo === "crear"}
-            className={modo === "crear" ? "is-active" : ""}
-            onClick={() => cambiarModo("crear")}
-          >
-            Crear cuenta
+        {vista === "elegir" ? (
+          // Misma geometría que un paso del onboarding: la hoja mide lo
+          // mismo y el naranja cae donde cae CONTINUAR. Solo dos puertas;
+          // pedir credenciales es asunto de la pantalla siguiente.
+          <div className="vlo-auth__puertas">
+            <button
+              type="button"
+              className="vlo-auth__puerta vlo-auth__puerta--principal"
+              onClick={() => abrirFormulario("crear")}
+            >
+              CREAR CUENTA
+            </button>
+            <button
+              type="button"
+              className="vlo-auth__puerta vlo-auth__puerta--secundaria"
+              onClick={() => abrirFormulario("entrar")}
+            >
+              INICIAR SESIÓN
+            </button>
+
+            <p className="vlo-auth__terms">
+              Al crear tu cuenta aceptas los <a href="/terminos">Términos</a> y la{" "}
+              <a href="/privacidad">Privacidad</a>. Tus datos no son públicos.
+            </p>
+          </div>
+        ) : (
+        <>
+        <div className="vlo-auth__encabezado">
+          <button type="button" className="vlo-auth__volver" onClick={volverAElegir}>
+            <CaretLeft size={16} weight="bold" aria-hidden="true"/> Atrás
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={modo === "entrar"}
-            className={modo === "entrar" ? "is-active" : ""}
-            onClick={() => cambiarModo("entrar")}
-          >
-            Iniciar sesión
-          </button>
+          <span>{modo === "crear" ? "Crear cuenta" : "Iniciar sesión"}</span>
         </div>
 
-        {/* Antes aquí había antetítulo + "Crea tu cuenta" + subtítulo: tres
-            líneas para repetir lo que ya dice la pestaña activa que tienes
-            justo encima. Queda solo la que aporta algo. */}
         <p className="vlo-auth__lead">
           {modo === "crear"
             ? "Empieza a comprar en vivo desde cualquier lugar de Venezuela."
@@ -294,6 +322,8 @@ export default function AuthPage() {
           )}
           Tus datos no son públicos.
         </p>
+        </>
+        )}
       </section>
     </main>
   );

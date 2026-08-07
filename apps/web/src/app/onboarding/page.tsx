@@ -162,7 +162,22 @@ export default function OnboardingPage() {
               <div className="vlo-onb__reward-copy">
                 <b>Desliza y recibe $1</b>
               </div>
+            </div>
+          )}
+        </div>
 
+        {/* El pie son tres ranuras de alto fijo, iguales en los dos pasos.
+            Antes CONTINUAR vivía aquí y el deslizador dentro del contenido:
+            el naranja saltaba 75px al pasar de un paso al otro. Ahora los
+            dos caen en la MISMA ranura, y las de abajo reservan su alto
+            aunque el paso no las use. */}
+        <footer className="vlo-onb__footer">
+          <div className="vlo-onb__action">
+            {paso < TOTAL - 1 ? (
+              <button type="button" className="vlo-onb__continue" onClick={siguiente}>
+                CONTINUAR
+              </button>
+            ) : (
               <div className="vlo-onb__subeloo">
                 <SlideToBid
                   key={bonusIntento}
@@ -174,6 +189,11 @@ export default function OnboardingPage() {
                   onConfirm={reclamarBono}
                 />
               </div>
+            )}
+          </div>
+
+          <div className="vlo-onb__support">
+            {paso === 1 && (
               <p className={`vlo-onb__demo-help${subido ? " is-success" : ""}`}>
                 {bonusEstado === "error"
                   ? "No pudimos activar tu bono. Desliza otra vez."
@@ -185,23 +205,17 @@ export default function OnboardingPage() {
                         ? "Crea tu cuenta para usarlo."
                         : "Solo para ofertas · no retirable"}
               </p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <footer className="vlo-onb__footer">
-          {paso < TOTAL - 1 && (
-            <button type="button" className="vlo-onb__continue" onClick={siguiente}>
-              CONTINUAR
-            </button>
-          )}
-
-          {paso > 0 && (
-            <button type="button" className="vlo-onb__back" onClick={atras} disabled={subido}>
-              <CaretLeft size={16} weight="bold"/> Atrás
-            </button>
-          )}
-          <span className="vlo-onb__mantra">{BRAND.mantra}</span>
+          <div className="vlo-onb__tail">
+            {paso > 0 && (
+              <button type="button" className="vlo-onb__back" onClick={atras} disabled={subido}>
+                <CaretLeft size={16} weight="bold"/> Atrás
+              </button>
+            )}
+            <span className="vlo-onb__mantra">{BRAND.mantra}</span>
+          </div>
         </footer>
       </section>
     </main>

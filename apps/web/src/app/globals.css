@@ -536,25 +536,38 @@ button:disabled { cursor: not-allowed; }
 
 /* Los dos pasos comparten la misma proporción visual: 75% producto y 25%
    acción. La hoja conserva 16px extra para solaparse sobre el hero. */
+/* 70/30 en vez de 75/25: con 25dvh la hoja no le daba a su propio
+   contenido —el pie del paso 1 terminaba 13px por debajo del borde— y ese
+   desborde era lo que bajaba el botón naranja respecto del paso 2. */
 .vlo-onb .vlo-flow-hero {
-  height: calc(75dvh + 16px);
-  min-height: calc(75dvh + 16px);
+  height: calc(70dvh + 16px);
+  min-height: calc(70dvh + 16px);
 }
 
-.vlo-onb--step-1 .vlo-flow-hero__copy {
-  top: calc(88px + env(safe-area-inset-top));
-  max-width: 244px;
-}
+/* Los tres heroes del recorrido —paso 1, paso 2 y la entrada— comparten
+   una sola escala. Antes cada uno traía la suya: 40,8px, 47,25px y
+   34,5px de titular, con anchos máximos y sombras distintas. Un 37% de
+   diferencia entre el más chico y el más grande, en tres pantallas que
+   se ven seguidas: se leían como tres plantillas, no como un flujo.
 
-.vlo-onb--step-1 .vlo-flow-hero__title {
-  max-width: 238px;
-  font-size: clamp(2.55rem, 10.8vw, 3.2rem);
+   La sombra fuerte se aplica a TODOS, no solo al paso 1: todos van sobre
+   foto de producto y todos la necesitan igual. */
+.vlo-onb .vlo-flow-hero__title,
+.vlo-auth--elegir .vlo-flow-hero__title {
   text-shadow: 0 4px 10px rgba(92, 24, 0, 0.62);
 }
 
-.vlo-onb--step-1 .vlo-flow-hero__description {
-  max-width: 220px;
+.vlo-onb .vlo-flow-hero__description,
+.vlo-auth--elegir .vlo-flow-hero__description {
   text-shadow: 0 2px 8px rgba(92, 24, 0, 0.72);
+}
+
+/* El antetítulo era el único de los tres sin sombra, y cae sobre la zona
+   más clara de la foto: "PASO 1 DE 2 · DESCUBRE" se perdía contra el
+   blanco del producto. Los tres niveles del hero se defienden igual. */
+.vlo-onb .vlo-flow-hero__eyebrow,
+.vlo-auth--elegir .vlo-flow-hero__eyebrow {
+  text-shadow: 0 2px 8px rgba(92, 24, 0, 0.66);
 }
 
 .vlo-flow-hero__top {
@@ -599,12 +612,23 @@ button:disabled { cursor: not-allowed; }
 
 .vlo-flow-hero__title {
   max-width: 92%;
+  /* El aire para la tilde va en em, no en un margen fijo del antetítulo:
+     con interlineado 0.86 la Í de MÍRALO se sale por arriba de su caja, y
+     cuánto se sale depende del tamaño. Fijo en píxeles se rompía cada vez
+     que cambiaba la escala —fue justo lo que pasó al unificarla. */
+  padding-top: 0.13em;
   color: #fff;
   font-family: var(--f-campaign);
   font-size: clamp(2.75rem, 12.6vw, 3.8rem);
   font-weight: 400;
   letter-spacing: 0.004em;
-  line-height: 0.86;
+  /* 1.0, no 0.86. En Anton la mayúscula mide ~0.73em y la tilde suma
+     ~0.20em por encima: con 0.86 la tilde de la línea de abajo entraba
+     dentro de la línea de arriba —se veía en ASÍ DE FÁCIL del login, y ya
+     pasaba antes de unificar la escala—. 0.93 es el punto donde la tilde
+     roza la línea superior; 1.0 le deja el aire mínimo y sigue siendo
+     interlineado de titular de campaña. */
+  line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 3px 20px rgba(105,28,0,0.2);
 }
@@ -674,10 +698,15 @@ button:disabled { cursor: not-allowed; }
   min-height: clamp(272px, 34dvh, 348px);
 }
 .vlo-auth .vlo-flow-sheet { flex: 0 0 auto; }
-.vlo-auth .vlo-flow-hero__copy { top: calc(66px + env(safe-area-inset-top)); }
-.vlo-auth .vlo-flow-hero__eyebrow { margin-bottom: 11px; }
-.vlo-auth .vlo-flow-hero__title { font-size: clamp(2.05rem, 9.2vw, 2.7rem); }
-.vlo-auth .vlo-flow-hero__description { margin-top: 9px; font-size: 0.78rem; }
+
+/* La vista de elección hereda la escala del recorrido tal cual: mismo
+   antetítulo, mismo titular, misma bajada. Solo la vista de FORMULARIO
+   comprime, y por una razón física: ahí el hero se encoge a 34dvh para
+   dejarle sitio a los campos, y el titular de tres líneas no entra. */
+.vlo-auth--formulario .vlo-flow-hero__copy { top: calc(66px + env(safe-area-inset-top)); }
+.vlo-auth--formulario .vlo-flow-hero__eyebrow { margin-bottom: 11px; }
+.vlo-auth--formulario .vlo-flow-hero__title { font-size: clamp(2.05rem, 9.2vw, 2.7rem); }
+.vlo-auth--formulario .vlo-flow-hero__description { margin-top: 9px; font-size: 0.78rem; }
 
 /* Login único: crear cuenta e iniciar sesión viven en la misma página.
    La hoja deja de ser blanco plano: un tinte cálido de la misma rampa
@@ -689,6 +718,92 @@ button:disabled { cursor: not-allowed; }
     radial-gradient(72% 32% at 0% 100%, color-mix(in srgb, var(--accent-soft) 42%, transparent), transparent 66%),
     #fff;
   border-radius: 26px 26px 0 0;
+}
+
+/* =============================================================
+   Login — vista de elección
+   =============================================================
+   La entrada a Vendeloo usa la MISMA geometría que un paso del
+   onboarding: hero al 70% y hoja blanca al 30%, con el naranja cayendo
+   donde cae CONTINUAR. Antes esta pantalla tenía otra proporción, otras
+   pestañas y un formulario abierto de entrada: se leía como un trámite
+   distinto al recorrido de bienvenida que la precede.
+
+   Aquí solo hay dos puertas. La credencial se pide en la vista
+   siguiente, que sí necesita el alto de un formulario.
+   ============================================================= */
+
+.vlo-auth--elegir .vlo-flow-hero {
+  flex: 0 0 calc(70dvh + 16px);
+  height: calc(70dvh + 16px);
+  min-height: calc(70dvh + 16px);
+}
+
+.vlo-auth--elegir .vlo-auth__sheet {
+  flex: 0 0 30dvh;
+  min-height: 215px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 22px calc(8px + env(safe-area-inset-bottom));
+}
+
+.vlo-auth__puertas {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 11px;
+}
+
+/* 58px es el mismo alto que la ranura de acción del onboarding: los tres
+   botones naranjas del recorrido miden y pesan igual. */
+.vlo-auth__puerta {
+  width: 100%;
+  min-height: 58px;
+  padding: 0 20px;
+  border-radius: var(--r-pill);
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.vlo-auth__puerta--principal {
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 10px 24px rgba(255,106,0,0.2);
+}
+
+.vlo-auth__puerta--secundaria {
+  color: var(--ink-1);
+  background: #fff;
+  border: 1.5px solid var(--line);
+}
+
+.vlo-auth--elegir .vlo-auth__terms {
+  margin: 2px 0 0;
+  text-align: center;
+}
+
+/* Encabezado de la vista de formulario: la vuelta a las dos puertas y el
+   nombre de la que se eligió. */
+.vlo-auth__encabezado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.vlo-auth__encabezado > span {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.vlo-auth__volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .vlo-auth__switch {
@@ -943,8 +1058,8 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__sheet {
   position: relative;
   z-index: 3;
-  flex: 0 0 25dvh;
-  min-height: 180px;
+  flex: 0 0 30dvh;
+  min-height: 215px;
   margin-top: -16px;
   padding: 8px 22px calc(8px + env(safe-area-inset-bottom));
   display: flex;
@@ -1292,6 +1407,38 @@ button:disabled { cursor: not-allowed; }
   margin-top: 6px;
 }
 
+/* Ranura de la acción principal. Los dos pasos meten aquí su naranja
+   —CONTINUAR o el deslizador— y ambos se estiran al mismo alto, así que
+   el botón no cambia de sitio al pasar de pantalla. */
+.vlo-onb__action {
+  display: grid;
+  /* Alto EXACTO, no mínimo: con min-height el deslizador (58px + su
+     margen) estiraba la ranura y, como el pie está anclado abajo, el
+     naranja subía 30px en el paso 2. */
+  height: 58px;
+}
+.vlo-onb__action > * { align-self: stretch; }
+/* Dentro de la ranura el envoltorio no aporta separación: la da la ranura. */
+.vlo-onb__action .vlo-onb__subeloo { margin: 0; }
+
+/* Estas dos reservan su alto aunque el paso las deje vacías: si no, lo
+   que falta abajo tira del naranja hacia abajo. */
+.vlo-onb__support {
+  min-height: 17px;
+  display: grid;
+  place-items: center;
+}
+
+/* Alto fijo con sitio para "Atrás" aunque el paso 1 no lo tenga: si no,
+   el paso 2 crece por abajo y vuelve a empujar el naranja hacia arriba. */
+.vlo-onb__tail {
+  height: 36px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+}
+
 .vlo-onb__continue {
   width: 100%;
   min-height: 46px;
@@ -1496,6 +1643,23 @@ button:disabled { cursor: not-allowed; }
 .vlo-onb__subeloo .vlo-subeloo.is-dragging::after,
 .vlo-onb__subeloo .vlo-subeloo.is-done::after { animation: none; opacity: 0; }
 
+/* El titular entra GRANDE y se asienta, como un sello que cae. El resto
+   del hero (antetítulo y bajada) sube suave con vlo-onb-copy-in; el
+   titular se separa de esa cortesía a propósito: es lo único de la
+   pantalla que tiene derecho a golpear. */
+@keyframes vlo-onb-sello {
+  0%   { opacity: 0; transform: scale(1.42); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Origen a la izquierda: el titular está alineado a la izquierda, y
+   escalando desde el centro se despegaría del margen al entrar. */
+.vlo-onb .vlo-flow-hero__title {
+  transform-origin: left center;
+  animation: vlo-onb-sello 0.44s cubic-bezier(.2, 1.5, .4, 1) 0.16s both;
+}
+
 /* Quien pidió menos movimiento en su sistema recibe la pantalla quieta:
    nada de esto comunica nada que el texto no diga ya. */
 @media (prefers-reduced-motion: reduce) {
@@ -1504,6 +1668,7 @@ button:disabled { cursor: not-allowed; }
   .vlo-onb__process > i,
   .vlo-onb__process-icon,
   .vlo-flow-hero__art,
+  .vlo-onb .vlo-flow-hero__title,
   .vlo-flow-hero__copy { animation: none !important; }
   .vlo-onb__subeloo .vlo-subeloo::after { animation: none; opacity: 0; }
 }
